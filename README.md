@@ -17,9 +17,10 @@ REPR is a prediction algorithm using linear regression with both linear and boxe
 * MPI 
 * R with RuleFit, randomForest, gbm, and fastAdaboost packages
 
-## The description and user guide of RMA
-* Presentation
+## The description and user guide of Boosting algorithms
+* [Presentation](https://github.com/aik7/Boosting/blob/master/Boosting.pdf)
 * User Guide
+* Please find information about the subprocedure of [RMA](https://github.com/aik7/RMA)
 
 ## How to download and build Boosting algorithm
 
