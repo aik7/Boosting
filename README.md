@@ -13,13 +13,13 @@ REPR is a prediction algorithm using linear regression with both linear and boxe
 ## Software Requirement:
 * C++ compiler
 * [PEBBL](https://software.sandia.gov/trac/acro/wiki/Example/Building/acro-pebbl)
-* Gurobi
+* [Gurobi](http://www.gurobi.com/)
 * MPI 
 * R with RuleFit, randomForest, gbm, and fastAdaboost packages
 
 ## The description and user guide of RMA
-* [Presentation]( )
-* [User Guide]( )
+* Presentation
+* User Guide
 
 ## How to download and build Boosting algorithm
 
