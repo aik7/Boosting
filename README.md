@@ -52,8 +52,7 @@ Please read the user guide about how to use parameters for the Boosting solver.
 ```
 @phdthesis{AiThesis,
   author       = {Ai Kagawa}, 
-  title        = {The Rectangular Maximum Agreement Problem: Applications and 
-                  Parallel Solution},
+  title        = {The Rectangular Maximum Agreement Problem: Applications and Parallel Solution},
   school       = {Rutgers University},
   year         = 2018
 }
@@ -61,15 +60,14 @@ Please read the user guide about how to use parameters for the Boosting solver.
 
 ```
 @InProceedings{egk2017,
-  title =    {Rule-Enhanced Penalized Regression by Column Generation using Rectangular
-              Maximum Agreement},
-  author =   {Jonathan Eckstein and Noam Goldberg and Ai Kagawa},
-  booktitle = {Proceedings of the 34th International Conference on Machine Learning},
-  pages =    {1059--1067},
-  year =   {2017},
-  editor =   {D. Precup and Y.W. Teh},
-  volume =   {70},
-  series =   {Proceedings of Machine Learning Research},
-  address =    {Sydney, Australia}
+  title     =  {Rule-Enhanced Penalized Regression by Column Generation using Rectangular Maximum Agreement},
+  author    =  {Jonathan Eckstein and Noam Goldberg and Ai Kagawa},
+  booktitle =  {Proceedings of the 34th International Conference on Machine Learning},
+  pages     =  {1059--1067},
+  year      =  {2017},
+  editor    =  {D. Precup and Y.W. Teh},
+  volume    =  {70},
+  series    =  {Proceedings of Machine Learning Research},
+  address   =  {Sydney, Australia}
 }
 ```
