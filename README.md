@@ -28,7 +28,7 @@ REPR is a prediction algorithm using linear regression with both linear and boxe
 ```
 git clone https://github.com/aik7/Boosting.git
 ```
-* Run the following command for compiling and building applications
+* Run the following command for compiling and building applications after chaning the file directories in "Makefile"
 ```
 cd Boosting
 make
