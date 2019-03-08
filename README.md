@@ -50,6 +50,11 @@ Please read the user guide about how to use parameters for the Boosting solver.
 
 ## Reference
 
+Eckstein J, Kagawa A , Goldberg N (2019), “Rule-Enhanced Penalized Regression by Column
+Generation using Rectangular Maximum Agreement and Greedy Heuristic”, Special issue
+in Machine Learning and Optimization in INFORMS Journal On Optimization.
+(Accepted in Feburary 2019)
+
 ```
 @phdthesis{AiThesis,
   author       = {Ai Kagawa}, 
