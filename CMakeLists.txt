@@ -9,3 +9,9 @@ if(NOT CMAKE_BUILD_TYPE)
  endif()
 
 add_executable(boosting ${SOURCES})
+
+target_link_libraries(boosting "${PEBBL_LIBRARIES}")
+target_link_libraries(boosting "${GRB_LIBRARIES}")
+target_link_libraries(boosting "${R_LIBRARIES}")
+target_link_libraries(boosting "${Rcpp_LIBRARIES}")
+target_link_libraries(boosting "${RInside_LIBRARIES}")
