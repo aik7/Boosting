@@ -1,7 +1,8 @@
 /*
  *  File name:   compModel.cpp
  *  Author:      Ai Kagawa
- *  Description: a source file for compModel classes
+ *  Description: We compare our boosting method to the other classification
+ *               or regression algorithms.
  */
 
 #include "compModel.h"
@@ -354,12 +355,6 @@ void compLPBR::runCompModels() {
 	R["testY1"] = TestY;
 	R["compIter"] = data->getCompModelIters();
 
-/*
-cmd =	"trainData <- data.frame(X=trainX, Y=trainY); "
-			"testData  <- data.frame(X=testX, Y=testY); "
-			"trainData$Y <- factor(trainData$Y);"
-			"testData$Y  <- factor(testData$Y);";
-			*/
 	cmd = "X=trainX; Y=trainY;"
 	      "trainData <- data.frame(X, Y); "
 				"trainData$Y <- factor(trainData$Y);";
@@ -399,48 +394,6 @@ cmd =	"trainData <- data.frame(X=trainX, Y=trainY); "
 	ucout << "AdaBoost     ";
 	avgRunTime[AdaBoost] += tc.endWallTime();
 
-	/*
-		cmd = "ada = adaboost(Y~X, trainData, compIter);"
-				  "predTrain <- predict(ada, newdata=trainData); predTrain$error";
-
-		trainMSE[AdaBoost] = Rcpp::as< double >(R.parseEval(cmd));
-		avgTrainMSE[AdaBoost] += trainMSE[AdaBoost];
-
-		cmd = "X=testX; Y=testY;"
-		      "testData  <- data.frame(X, Y); "
-					"testData$Y  <- factor(testData$Y);";
-		R.parseEval(cmd);
-
-		cmd = "predTest <- predict(ada, newdata=testData); predTest$error";
-		testMSE[AdaBoost] = Rcpp::as< double >(R.parseEval(cmd));
-		avgTestMSE[AdaBoost] += testMSE[AdaBoost];
-
-		// Predictions
-		if (data->writePred()) {
-			cmd = "predTrain$class" ;
-			predTrain[AdaBoost] = Rcpp::as< vector<double> >(R.parseEval(cmd));
-			for (int i=0; i<numTrainData; ++i)
-				if (predTrain[AdaBoost][i] == 2) predTrain[AdaBoost][i]=-1;
-			cmd = "predTest$class" ;
-			predTest[AdaBoost] = Rcpp::as< vector<double> >(R.parseEval(cmd));
-			for (int i=0; i<numTestData; ++i)
-				if (predTest[AdaBoost][i] == 2) predTest[AdaBoost][i]=-1;
-		}
-
-	*/
-
-/*
-	cmd = "ada = adaboost(trainY~trainX, trainData, compIter);"
-				"predTrain <- predict(ada, newdata=trainData); predTrain$error";
-	trainMSE[AdaBoost] = Rcpp::as< double >(R.parseEval(cmd));
-	avgTrainMSE[AdaBoost] += trainMSE[AdaBoost];
-
-	cmd = "predTest <- predict(ada, newdata=testData); predTest$error";
-	predTest[AdaBoost] = Rcpp::as< vector<double> >(R.parseEval(cmd));
-	avgTestMSE[AdaBoost] += testMSE[AdaBoost];
-*/
-
-
 	////////////////////////////////// Random Forest //////////////////////////////////
 //*
 	tc.startTime();
@@ -476,87 +429,9 @@ cmd =	"trainData <- data.frame(X=trainX, Y=trainY); "
 	testMSE[RandFore] = numMiss / (double) numTestData;
 	avgTestMSE[RandFore] += testMSE[RandFore];
 
-/*
-	cmd = "predTrain = predict(rf, trainX);"
-	      "err=0.0; for (i in 1:nrow(trainX)) { "
-				" if ( trainY[i]!=predTrain[i] ) {err<-err+1;} }; "
-        //" else if ( trainY[i]>0 & predTrain[i]==0 ) {err<-err+1;} }; "
-				"err<-err/nrow(trainX)" ;
-	trainMSE[RandFore] = Rcpp::as< double >(R.parseEval(cmd)); // parse, eval + return result
-	avgTrainMSE[RandFore] += trainMSE[RandFore];
-
-	// TEST
-	cmd = "predTest = predict(rf, testX); "
-				"err=0.0; for (i in 1:nrow(testX)) { "
-				" if ( testY[i]!=predTest[i] ) {err<-err+1;} }; "
-				//" else if ( testY[i]>0 & predTest[i]==0 ) {err<-err+1;} }; "
-				"err<-err/nrow(testX)" ;
-	testMSE[RandFore] = Rcpp::as< double >(R.parseEval(cmd)); // parse, eval + return result
-	avgTestMSE[RandFore] += testMSE[RandFore];
-
-	// Predictions
-	if (data->writePred()) {
-		cmd = "predTrain" ;
-		predTrain[RandFore] = Rcpp::as< vector<double> >(R.parseEval(cmd));
-		cmd = "predTest" ;
-		predTest[RandFore] = Rcpp::as< vector<double> >(R.parseEval(cmd));
-		for (int i=0; i<numTrainData; ++i) {
-			if (predTrain[RandFore][i] == 1) predTrain[RandFore][i]=-1;
-			else if (predTrain[RandFore][i] == 2) predTrain[RandFore][i]=1;
-		}
-		for (int i=0; i<numTestData; ++i) {
-			if (predTest[RandFore][i] == 1) predTest[RandFore][i]=-1;
-			else if (predTest[RandFore][i] == 2) predTest[RandFore][i]=1 ;
-		}
-	}
-*/
 	ucout << "RandomForest ";
 	avgRunTime[RandFore] += tc.endWallTime();
 
-	////////////////////////////////// Gradient Boosting in R //////////////////////////////////
-/*
-	tc.startTime();
-
-	cmd = "for (i in 1:nrow(trainX)) { if (trainY1[i]<0) {trainY1[i] = 0;} };"
-				"for (i in 1:nrow(testX))  { if (testY1[i]<0)  {testY1[i]  = 0;} };"
-				"trainData <- data.frame(trainX, trainY); "
-				"testData  <- data.frame(testX, testY); ";
-	R.parseEval(cmd);
-
-	cmd = "gb <- gbm.fit(trainX, trainY1, n.trees=compIter, distribution=\"bernoulli\");" ;
-	// cmd = "gb <- gbm( trainY1~trainX, data=trainData, n.trees=compIter, distribution=\"bernoulli\");" ;
-	// cmd = "gb <- gbm.fit(trainX, trainY1, interaction.depth=4, n.trees=5000, distribution=\"bernoulli\");" ;
-	R.parseEval(cmd);
-
-	// TRAIN
-	cmd = "predTrain = predict(gb, trainX, n.trees = compIter);"
-				"err=0.0; for (i in 1:nrow(trainX)) { "
-				" if ( trainY1[i]!=predTrain[i] ) {err<-err+1;} }; "
-				//" else if ( trainY[i]>0 & predTrain[i]==0 ) {err<-err+1;} }; "
-				"err<-err/nrow(trainX)" ;
-	trainMSE[GradBoost] = Rcpp::as< double >(R.parseEval(cmd));
-	avgTrainMSE[GradBoost] += trainMSE[GradBoost];
-
-	// TEST
-	cmd = "predTest = predict(gb, testX, n.trees = compIter); "
-				"err=0.0; for (i in 1:nrow(testX)) { "
-				" if ( testY1[i]!=predTest[i] ) {err<-err+1;} }; "
-				//" else if ( testY[i]>0 & predTest[i]==0 ) {err<-err+1;} }; "
-				"err<-err/nrow(testX)" ;
-	testMSE[GradBoost] = Rcpp::as< double >(R.parseEval(cmd));
-	avgTestMSE[GradBoost] += testMSE[GradBoost];
-
-	// Predictions
-	if (data->writePred()) {
-		cmd = "predTrain" ;
-		predTrain[GradBoost] = Rcpp::as< vector<double> >(R.parseEval(cmd));
-		cmd = "predTest" ;
-		predTest[GradBoost] = Rcpp::as< vector<double> >(R.parseEval(cmd));
-	}
-
-	ucout << "Gradient Boosting ";
-	avgRunTime[GradBoost] += tc.endWallTime();
-*/
 }
 
 
