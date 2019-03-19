@@ -71,7 +71,6 @@ in Machine Learning and Optimization in INFORMS Journal On Optimization.
   booktitle =  {Proceedings of the 34th International Conference on Machine Learning},
   pages     =  {1059--1067},
   year      =  {2017},
-  editor    =  {D. Precup and Y.W. Teh},
   volume    =  {70},
   series    =  {Proceedings of Machine Learning Research},
   address   =  {Sydney, Australia}
