@@ -717,7 +717,7 @@ double REPR::evaluateAtFinal(const int & isTest) {
 
 			// if the coefficients (gamma^+-gamma^-)=0 for the box[k] is not 0
 			// if the coefficients for the box[k] is not 0
-      if (!(vecPrimal[data->numTrainObs+2*NumAttrib+k+1] ==0)) {				//if (vecPrimal[numVar+2*k]!=0) {
+      if (!(vecPrimal[data->numTrainObs+2*NumAttrib+k+1] ==0)) {//if (vecPrimal[numVar+2*k]!=0) {
 
 				for (int j=0; j<NumAttrib; ++j) { // for each attribute
 					if (matOrigLower[k][j] <= data->origData[obs].X[j] &&

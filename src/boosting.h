@@ -50,7 +50,6 @@ public:
 
   Boosting() : rma(NULL), prma(NULL), parallel(false), model(env) {};
 
-
   // model.set(GRB_IntAttr_ModelSense,1); // minimization
 	virtual ~Boosting() {
     #ifdef ACRO_HAVE_MPI
@@ -70,18 +69,18 @@ public:
 	virtual void setInitialMaster() = 0;
   //void solveInitialMaster();
 	virtual void setDataWts() = 0;
-	void solveRMA();
+	void         solveRMA();
 	virtual void insertColumns() = 0; //const int& GreedyLevel
-	void solveMaster();
+	void         solveMaster();
 
-	void setOriginalBounds();
+	void   setOriginalBounds();
 	double getLowerBound(int k, int j, int value, bool isUpper) ;
 	double getUpperBound(int k, int j, int value, bool isUpper) ;
 
-  void resetGurobi();
+  void   resetGurobi();
 
 	virtual void printRMPSolution() = 0;  		// restricted mater problem solution
-	virtual void printRMAInfo() = 0;					// pritinc problem, RMA
+	virtual void printRMAInfo()     = 0;		  // pritinc problem, RMA
 
 	//////////////////////// checking duplicate ///////////////////////
 	bool isDuplicate();
@@ -97,7 +96,7 @@ public:
 	void evaluateFinal();
 
 	virtual double evaluateEachIter(const int& isTest) = 0;
-  virtual double evaluateAtFinal(const int& isTest) = 0;
+  virtual double evaluateAtFinal(const int& isTest)  = 0;
 
   virtual void printEachIterAllErrs() = 0;
 
@@ -121,7 +120,7 @@ public:
   bool isOuter;
 
 	///////////////////// GUROBI variables /////////////////////
-	GRBEnv       env;
+	GRBEnv      env;
 	GRBModel    model;
   GRBLinExpr 	lhs;
   GRBConstr* 	constr;

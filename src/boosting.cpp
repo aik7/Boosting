@@ -374,7 +374,7 @@ void Boosting::checkObjValue() {
 
 
 void Boosting::checkObjValue(int k) {
-	int obs;
+	int    obs;
 	double wt=0.0;
 
 	for (int i=0; i<NumObs; i++) { // for each training data

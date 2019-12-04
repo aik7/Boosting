@@ -6,7 +6,7 @@ We implemented both classification and regression algorithms using rectangular m
 
 LPBR is a two-class classification algorithm using LPBoost and RMA.
 
-## REPR (Rule-Enhanced Penalized Regression) 
+## REPR (Rule-Enhanced Penalized Regression)
 
 REPR is a prediction algorithm using linear regression with both linear and boxed-based rule variables.
 
@@ -14,7 +14,7 @@ REPR is a prediction algorithm using linear regression with both linear and boxe
 * C++ compiler
 * [PEBBL](https://software.sandia.gov/trac/acro/wiki/Example/Building/acro-pebbl)
 * [Gurobi](http://www.gurobi.com/)
-* MPI 
+* MPI
 * R with RuleFit, randomForest, gbm, and fastAdaboost packages
 
 ## The description and user guide of Boosting algorithms
@@ -50,14 +50,21 @@ Please read the user guide about how to use parameters for the Boosting solver.
 
 ## Reference
 
-Eckstein J, Kagawa A , Goldberg N (2019), “Rule-Enhanced Penalized Regression by Column
-Generation using Rectangular Maximum Agreement and Greedy Heuristic”, Special issue
-in Machine Learning and Optimization in INFORMS Journal On Optimization.
-(Accepted in Feburary 2019)
+```
+@article{doi:10.1287/ijoo.2019.0015,
+  author = {Eckstein, Jonathan and Kagawa, Ai and Goldberg, Noam},
+  title = {REPR: Rule-Enhanced Penalized Regression},
+  journal = {INFORMS Journal on Optimization},
+  volume = {1},
+  number = {2},
+  pages = {143-163},
+  year = {2019}
+}
+```
 
 ```
 @phdthesis{AiThesis,
-  author       = {Ai Kagawa}, 
+  author       = {Ai Kagawa},
   title        = {The Rectangular Maximum Agreement Problem: Applications and Parallel Solution},
   school       = {Rutgers University},
   year         = 2018
