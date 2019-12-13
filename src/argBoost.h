@@ -3,26 +3,27 @@
  *  Author:    Ai Kagawa
  */
 
-#ifndef allParams_h
-#define allParams_h
+#ifndef ARG_BOOST_h
+#define ARG_BOOST_h
 
 #include <pebbl_config.h>
 #include <pebbl/utilib/ParameterSet.h>
 #include <limits>
-#include "rmaParams.h"
+#include "argRMA.h"
+
 using namespace std;
-using namespace pebblRMA;
+//using namespace pebblRMA;
 
 
-namespace base {
+namespace arg {
 
-  static double inf = numeric_limits<double>::infinity();
+  // static double inf = numeric_limits<double>::infinity();
   static int intInf = numeric_limits<int>::max();
 
 
 //  Boosting parameters class
-class allParams :
-  public rmaParams,
+class ArgBoost :
+  public ArgRMA,
   //virtual public pebbl::pebblParams,
   //virtual public pebbl::parallelPebblParams,
   virtual public utilib::ParameterSet,
@@ -30,81 +31,81 @@ class allParams :
 
 public:
 
-  allParams();
-  virtual ~allParams(){};
+  ArgBoost();
+  virtual ~ArgBoost(){};
 
 /////////////////////// Data parameters ///////////////////////
-  double getDelta() const {return _delta;}
-	double shrinkDelta() const {return _shrinkDelta;}
-	double getLimitInterval() const {return _limitInterval;}
-	int fixedSizeBin() const {return _fixedSizeBin;}
-
+  double getDelta()         const {return _delta;}
+  double shrinkDelta()      const {return _shrinkDelta;}
+  double getLimitInterval() const {return _limitInterval;}
+  int    fixedSizeBin()      const {return _fixedSizeBin;}
+  
 /////////////////// parameters for CrossValidation class ///////////////////
 
-  bool outerCV() const {return _outerCV;}
-	bool innerCV() const {return _innerCV;}
+  bool outerCV()    const {return _outerCV;}
+  bool innerCV()    const {return _innerCV;}
   bool validation() const {return _validation;}
-
+  
   int getNumLimitedObs() const {return _numLimitedObs;}
-
-  bool shuffleObs() const {return _shuffleObs;}
-  bool readShuffledObs() const {return _readShuffledObs;}
+  
+  bool shuffleObs()       const {return _shuffleObs;}
+  bool readShuffledObs()  const {return _readShuffledObs;}
   bool writeShuffledObs() const {return _writeShuffledObs;}
 
-/////////////////// parameters for Boosting ///////////////////
+  /////////////////// parameters for Boosting ///////////////////
 
-  bool isLPBoost() const {return _isLPBoost;}
-  bool isREPR() const {return _isREPR;}
-	int getIterations() const {return _iterations;}
-  int getExponentP() const {return _exponentP;}
-  bool printBoost() const {return _printBoost;}
+  bool isLPBoost()     const {return _isLPBoost;}
+  bool isREPR()        const {return _isREPR;}
+  int  getIterations() const {return _iterations;}
+  int  getExponentP()  const {return _exponentP;}
+  bool printBoost()    const {return _printBoost;}
 
-/////////////////// parameters for LPBR class ///////////////////
+  /////////////////// parameters for LPBR class ///////////////////
 
   double getCoefficientD() const {return _coeffD;}
-  double getNu() const {return _nu;}
-  bool getNoSoftMargin() const {return _noSoftMargin; }
-  double getLowerRho() const {return _lowerRho; }
-  double getUpperRho() const {return _upperRho;}
-  bool initRules() const {return _initRules; }
-  bool init1DRules() const {return _init1DRules; }
+  double getNu()           const {return _nu;}
+  bool   getNoSoftMargin() const {return _noSoftMargin; }
+  double getLowerRho()     const {return _lowerRho; }
+  double getUpperRho()     const {return _upperRho;}
+  bool   initRules()       const {return _initRules; }
+  bool   init1DRules()     const {return _init1DRules; }
 
-/////////////////// parameters for REPR class ///////////////////
+  /////////////////// parameters for REPR class ///////////////////
 
   double getCoefficientC() const {return _coeffC;}
   double getCoefficientE() const {return _coeffE;}
   double getCoefficientF() const {return _coeffF;}
 
-/////////////////// Parameters for Greedy level of pricing problems ///////////////////
+  /////////////////// Parameters for Greedy level of pricing problems ///////////////////
 
   bool SeqCoverValue() const {return _SeqCoverValue;}
-  bool greedyRMA() const {return _greedyRMA;}
-  bool exactRMA() const {return _exactRMA;}
+  //bool greedyRMA()     const {return _greedyRMA;}
+  //bool exactRMA()      const {return _exactRMA;}
   //bool greedyExactRMA() const {return _greedyExactRMA;}
 
-/////////////////////// RMA parameters ///////////////////////
+  /////////////////////// RMA parameters ///////////////////////
 
-  bool initGuess() const {return _initGuess;}
-  bool randSeed() const {return _randSeed;}
+  //bool initGuess() const {return _initGuess;}
+  bool randSeed()  const {return _randSeed;}
 
-//////////////////////// Evaluation parameters ////////////////////////
+  //////////////////////// Evaluation parameters ////////////////////////
 
-  bool compModels() const {return _compModels;}
-  int getCompModelIters() const {return _compModelIters;}
-	bool evaluateEachIter() const {return _evalEachIter;}
-  bool evaluateFinalIter() const {return _evalFinalIter;}
-	bool writePred() const {return _writePredictions;}
+  bool compModels()        const {return _compModels;}
+  int  getCompModelIters() const {return _compModelIters;}
+  bool evalEachIter()  const {return _evalEachIter;}
+  bool evalFinalIter() const {return _evalFinalIter;}
+  bool writePred()         const {return _writePredictions;}
 
-protected:
+ protected:
 
-/////////////////// parameters for Data class ///////////////////
+  /////////////////// parameters for Data class ///////////////////
 
   double _delta;
   double _shrinkDelta;
   double _limitInterval;
-  int _fixedSizeBin;
+  int    _fixedSizeBin;
 
-/////////////////// Parameters for CrossValidation class ///////////////////
+  /////////////////// Parameters for CrossValidation class ///////////////////
 
   bool _outerCV;						// enable outer crossvalitaion
   bool _innerCV; 						// enable inner cross valitaion (outerCV must be enabled)
@@ -114,7 +115,7 @@ protected:
   bool _readShuffledObs;    // read shuffled observation indices from a file
   bool _writeShuffledObs;   // write shuffled observation indices to a file
 
-/////////////////// Parameters for Boosting ///////////////////
+  /////////////////// Parameters for Boosting ///////////////////
 
   bool _isLPBoost;
   bool _isREPR;
@@ -122,7 +123,7 @@ protected:
   int _exponentP;	// exponent of residuals
   bool _printBoost; // print out more details for boosting
 
-/////////////////// Parameters for LPBoost class ///////////////////
+  /////////////////// Parameters for LPBoost class ///////////////////
 
   double _coeffD;	// coefficients parameters
   double _nu;     // D = 1 / (m * nu)
@@ -132,26 +133,26 @@ protected:
   double _lowerRho;
   double _upperRho;
 
-/////////////////// Parameters for LPBoost class ///////////////////
+  /////////////////// Parameters for LPBoost class ///////////////////
 
   double _coeffC;	// coefficients parameters
   double _coeffE;	// coefficients parameters
   double _coeffF;	// coefficients parameters
 
-/////////////////// Parameters for Greedy level of pricing problems ///////////////////
+  /////////////////// Parameters for Greedy level of pricing problems ///////////////////
 
-  bool _exactRMA;
-  bool _greedyRMA;
+  //bool _exactRMA;
+  //bool _greedyRMA;
   bool _SeqCoverValue;
   int _numLimitedObs;
   int _maxBoundedSP;				// set a maximum number of bounded subproblems to check
 
-/////////////////// Parameters for RMA class  ///////////////////
+  /////////////////// Parameters for RMA class  ///////////////////
 
-  bool _initGuess;		// compute an initial incumbent
+  //bool _initGuess;		// compute an initial incumbent
   bool _randSeed;     // random seed for tied solution or bound
   
-//////////////////////// Evaluation parameters ////////////////////////
+  //////////////////////// Evaluation parameters ////////////////////////
 
   bool _evalEachIter;   		// evaluate solutions in each iteration
   bool _evalFinalIter;      // evaluate solutions in the final column generation
@@ -159,57 +160,14 @@ protected:
   int _compModelIters;          // iterations or the number of trees for competing models
   bool _writePredictions;		// print prediction
 
-//////////////////////// Debugging parameters ////////////////////////
+  //////////////////////// Debugging parameters ////////////////////////
 
   //bool debug_solver_params1;
 
-};
+  };
 
 
-} // namespace lpboost
+} // namespace arg
 
 #endif
 
-/*
-  bool countingSort() const {return _countingSort;}
-
-  int branchSelection() const {return _branchSelection;}
-
-  double perCachedCutPts() const {return _perCachedCutPts;}
-  bool binarySearchCutVal() const {return _binarySearchCutVal;}
-
-  double perLimitAttrib() const {return _perLimitAttrib;}
-
-  bool checkObjVal() const {return _checkObjVal;}
-
-  bool writingInstances() const {return _writeInstances;}
-  bool writingNodeTime() const {return _writeNodeTime;}
-  bool writingCutPts() const {return _writeCutPts;}
-
-  bool testWeight() const {return _testWt;}
-
-  int maxBoundedSP() const {return _maxBoundedSP;}
-
-  double rampUpSizeFact() const {return _rampUpSizeFact;}
-//*/
-
-/*
-  bool _countingSort;
-  int _branchSelection;
-
-  // for non-strong branching ...
-  double _perCachedCutPts;		// check only stored cuts points which is x % of total cut points
-  bool _binarySearchCutVal;	// binarySearchCutVal
-
-  double _perLimitAttrib;			// percentages of features to check
-
-  bool _checkObjVal;				// check the solution is right in the end
-
-  bool _writeInstances;
-  bool _writeNodeTime;			// make an output file containing BoundedSP and run time
-  bool _writeCutPts;
-
-  bool _testWt;
-
-  double _rampUpSizeFact;
-//*/

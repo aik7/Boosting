@@ -18,16 +18,16 @@
 #include <deque>
 #include <map>
 
-#include "gurobi_c++.h"
+//#include "gurobi_c++.h"
 #include "Time.h"
-#include "base.h"
+//#include "baseBoost.h"
 #include "boosting.h"
 
 #ifdef ACRO_HAVE_MPI
 #include <pebbl/pbb/parBranching.h>
 #include "parRMA.h"
 #define outstream ucout
-#define IO(action) if (uMPI::iDoIO) { CommonIO::end_tagging(); action; }
+//#define IO(action) if (uMPI::iDoIO) { CommonIO::end_tagging(); action; }
 #else // ACRO_HAVE_MPI
 typedef void parRMA;
 #define outstream cout
@@ -39,14 +39,16 @@ namespace boosting {
 
 using namespace utilib;
 using namespace std;
+using namespace arg;
 
 
 class REPR : public Boosting {
 
 public:
 
-	REPR() {}
-	REPR(int argc, char** argv, Data* d) ;
+	//REPR() {}
+	REPR(int argc, char** argv) : Boosting(argc, argv) {};
+	//REPR(int argc, char** argv, Data* d) ;
 	~REPR() {}
 
 	void initBoostingData();
@@ -62,8 +64,8 @@ public:
 	void printRMPSolution();	// restricted mater problem solution
 	void printRMAInfo();			// print RMA problem info
 
-	double evaluateEachIter(const int& isTest);
-	double evaluateAtFinal(const int& isTest);
+	double evaluateEachIter(const int& isTest, vector<DataXy> origData);
+	double evaluateAtFinal (const int& isTest, vector<DataXy> origData);
 
 	void printEachIterAllErrs() {}
 

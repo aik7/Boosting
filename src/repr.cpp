@@ -11,7 +11,8 @@ namespace boosting {
 
 ///////////////////////// functions for LPB class /////////////////////////
 
-REPR::REPR(int argc, char** argv, Data* d) {
+/*
+REPR::REPR(int argc, char** argv) { // }, Data* d) {
 
   data = d;
 
@@ -44,7 +45,7 @@ REPR::REPR(int argc, char** argv, Data* d) {
   } // end if exactRMA is enabled
 
 }
-
+*/
 
 void REPR::initBoostingData() {
 
@@ -53,18 +54,18 @@ void REPR::initBoostingData() {
 	NumObs = data->numTrainObs;
 	NumAttrib = data->numAttrib;
 
-  if (!data->innerCV()) {
-  	C 				= data->getCoefficientC();
-  	D 				= data->getCoefficientD();
-  	E 				= data->getCoefficientE();
-  	F 				= data->getCoefficientF();
+  if (!innerCV()) {
+  	C 				= getCoefficientC();
+  	D 				= getCoefficientD();
+  	E 				= getCoefficientE();
+  	F 				= getCoefficientF();
   }
   D = 0;
 	F = 0;
 
 	vecDual.resize(NumObs);
 	vecIsCovered.resize(NumObs);
-	if (data->exactRMA())	rma->incumbentValue = inf;
+	if (BaseRMA::exactRMA())	rma->incumbentValue = inf;
 
 	matIntLower.clear();
 	matIntUpper.clear();
@@ -72,7 +73,7 @@ void REPR::initBoostingData() {
   matOrigLower.clear();
   matOrigUpper.clear();
 
-	if (data->evaluateEachIter()) {
+	if (evalEachIter()) {
 		vecCoveredObsByBox.clear();
 		vecCoveredObsByBox.resize(data->numOrigObs);
 	}
@@ -91,24 +92,24 @@ void REPR::trainData(const bool& isOuter, const int& NumIter, const int& greedyL
 
 	try {
 
-		data->setStandData();					// standadize data for L1 regularization
+		data->setStandData(data->origTrainData, data->standTrainData);					// standadize data for L1 regularization
 		setInitialMaster();
 		solveMaster();  //solveInitialMaster();
 
-		data->integerizeData(); 	// integerize features
-		if (data->exactRMA()) rma->setData(data);
+		data->integerizeData(data->origTrainData, data->intTrainData); 	// integerize features
+		if (BaseRMA::exactRMA()) rma->setData(data);
 
 		for (curIter=0; curIter<NumIter; ++curIter) {
 
 			//ucout << "\nColGen Iter: " << curIter << "\n";
       setDataWts();
 
-			if (data->greedyRMA() || greedyLevel==Greedy) {	// Greedy RMA
+			if ( !BaseRMA::exactRMA() || greedyLevel==Greedy) {	// Greedy RMA
 
-				grma = new GreedyRMA(data);
+				grma = new GreedyRMA(static_cast<BaseRMA *>(this), data);
         grma->runGreedyRangeSearch();
 
-        if ( isOuter && grma->maxObjValue <= E + .00001 && data->exactRMA()) {
+        if ( isOuter && grma->maxObjValue <= E + .00001 && BaseRMA::exactRMA()) {
 
           solveRMA();	// solve RMA for each iteration
 /*
@@ -164,7 +165,7 @@ void REPR::trainData(const bool& isOuter, const int& NumIter, const int& greedyL
           insertGreedyColumns(); // add Greedy RMA solutions
         }
 
-			} else if (data->exactRMA()) {	// Exact RMA
+			} else if (BaseRMA::exactRMA()) {	// Exact RMA
 
 #ifdef ACRO_HAVE_MPI
   if (uMPI::rank==0) {
@@ -230,16 +231,17 @@ void REPR::trainData(const bool& isOuter, const int& NumIter, const int& greedyL
 	}
 #endif //  ACRO_HAVE_MPI
 
-		if ( data->evaluateFinalIter() && !(data->evaluateEachIter()) )
+		if ( evalFinalIter() && !(evalEachIter()) )
 			evaluateFinal();
 
 		// clean up GUROBI for the next crossvalidation set
 		resetGurobi();
-
+/*
 	} catch(GRBException e) {
 		ucout << "Error during GUROBI " << e.getErrorCode() << "\n";
 		ucout << e.getMessage() << "\n";
 		return; // EXIT_FAILURE;
+*/
   } catch(...) {
 		ucout << "Exception during optimization" << "\n";
 		return; // EXIT_FAILURE;
@@ -258,17 +260,17 @@ void REPR::setInitialMaster() {
 	double* UB = new double[numCols];
 	char* vtype = NULL;
 
-	DEBUGPRX(10, data, "Setup Initial Restricted Master Problem!" << "\n");
+	DEBUGPR(10, cout << "Setup Initial Restricted Master Problem!" << "\n");
 
-	model.getEnv().set(GRB_IntParam_Method, 0);
+	// model.getEnv().set(GRB_IntParam_Method, 0);
 
 	LB[0] = -inf; // beta is free variable
 	for (int i = 1; i < numCols; ++i) LB[i] = 0;
 	for (int i = 0; i < numCols; ++i) UB[i] = inf;
 
 	// Add variables to the model
-	vars = model.addVars(LB, UB, NULL, vtype, NULL, numCols);
-
+	//vars = model.addVars(LB, UB, NULL, vtype, NULL, numCols);
+/*
 	// set constraits
 	for (i = 0; i < NumObs; ++i) {
 		lhs = vars[0];										   // beta_0
@@ -282,7 +284,7 @@ void REPR::setInitialMaster() {
 		for (j = 0; j < NumObs; ++j) 				// episilon
 			if (i==j)
 				lhs -= vars[1+2*NumAttrib+j];
-		model.addConstr(lhs, GRB_LESS_EQUAL, data->standData[obs].y);
+		// model.addConstr(lhs, GRB_LESS_EQUAL, data->standData[obs].y);
 	}
 
 	for (i = 0; i < NumObs; ++i) {
@@ -297,7 +299,7 @@ void REPR::setInitialMaster() {
 		for (j = 0; j < NumObs; ++j) 				// episilon
 			if (i==j)
 				lhs -= vars[1+2*NumAttrib+j];
-		model.addConstr(lhs, GRB_LESS_EQUAL, -data->standData[obs].y);
+		// model.addConstr(lhs, GRB_LESS_EQUAL, -data->standData[obs].y);
 	}
 
 	// set cobjectives
@@ -315,11 +317,13 @@ void REPR::setInitialMaster() {
 		if (P==1)  		 obj += vars[j];
 		else if (P==2) obj += vars[j]*vars[j];
 	}
-
+*/
+/*
 	model.setObjective(obj);
 	model.update();
 	//model.write("master.lp");
 	model.getEnv().set(GRB_IntParam_OutputFlag, 0);  // not to print out GUROBI
+*/
 
 }  // end function REPR::setInitialMaster()
 
@@ -328,13 +332,13 @@ void REPR::setDataWts() {
 
 	int obs;
 
-  DEBUGPRX(1, data, "wt: ");
+  DEBUGPR(1, cout << "wt: ");
 	for (int i=0; i < NumObs ; ++i) {
 		obs = data->vecTrainData[i];
-		data->intData[obs].w = (vecDual[i]-vecDual[NumObs+i]);
-    DEBUGPRX(1, data, data->intData[obs].w << ", ");
+		data->intTrainData[obs].w = (vecDual[i]-vecDual[NumObs+i]);
+    DEBUGPR(1, cout << data->intTrainData[obs].w << ", ");
 	}
-  DEBUGPRX(1, data, "\n");
+  DEBUGPR(1, cout << "\n");
 
 }
 
@@ -412,8 +416,8 @@ void REPR::insertColumns() { //const int& GreedyLevel) {
 		for (int i=0; i< NumObs; ++i) { // for each observation
 			obs = data->vecTrainData[i];
 			for (int j=0; j< NumAttrib; ++j) { // for each attribute
-				if ( sl[k]->a[j] <=  data->intData[obs].X[j] &&
-					   data->intData[obs].X[j] <= sl[k]->b[j] ) {
+				if ( sl[k]->a[j] <=  data->intTrainData[obs].X[j] &&
+					   data->intTrainData[obs].X[j] <= sl[k]->b[j] ) {
 					if ( j==NumAttrib-1)
 						vecIsCovered[i]= true;
 				} else {
@@ -424,10 +428,10 @@ void REPR::insertColumns() { //const int& GreedyLevel) {
 		} // end for each observation, i
 
 		if (sl[k]->isPosIncumb) {
-			DEBUGPRX(1, data, "Positive Box\n");
+			DEBUGPR(1, cout << "Positive Box\n");
 			vecCoveredSign[numBox+numRMASols] = true;
 		} else {
-			DEBUGPRX(1, data, "Negative Box\n");
+			DEBUGPR(1, cout << "Negative Box\n");
 			vecCoveredSign[numBox+numRMASols] = false;
 		}
 
@@ -435,24 +439,24 @@ void REPR::insertColumns() { //const int& GreedyLevel) {
 		matIntUpper[matIntUpper.size()-s.size()+k] = sl[k]->b;
 		++numRMASols;  // number of RMA solutions
 
-		DEBUGPRX(1, data, "vecIsCovered: " << vecIsCovered << "\n" );
+		DEBUGPR(1, cout << "vecIsCovered: " << vecIsCovered << "\n" );
 
     // add columns using GUROBI
-    col.clear();
-    constr = model.getConstrs();
+    //col.clear();
+    //constr = model.getConstrs();
     for (int i = 0; i < NumObs; ++i) {
       obs = data->vecTrainData[i];
       if (vecIsCovered[i]==true) {
         if (sl[k]->isPosIncumb) {
-          col.addTerm(1, constr[i]);
-          col.addTerm(-1, constr[i+NumObs]);
+          //col.addTerm(1, constr[i]);
+          //col.addTerm(-1, constr[i+NumObs]);
         } else {
-          col.addTerm(-1, constr[i]);
-          col.addTerm(1, constr[i+NumObs]);
+          //col.addTerm(-1, constr[i]);
+          //col.addTerm(1, constr[i+NumObs]);
         }
       }
     }
-    model.addVar(0.0, GRB_INFINITY, E, GRB_CONTINUOUS, col);
+    //model.addVar(0.0, GRB_INFINITY, E, GRB_CONTINUOUS, col);
 
 		//} // end if duplicate rules
 
@@ -487,8 +491,8 @@ void REPR::insertGreedyColumns() { //const int& GreedyLevel) {
 	for (int i=0; i< NumObs; ++i) { // for each observation
 		obs = data->vecTrainData[i];
 		for (int j=0; j< NumAttrib; ++j) { // for each attribute
-			if ( grma->L[j] <=  data->intData[obs].X[j] &&
-				   data->intData[obs].X[j] <= grma->U[j] ) {
+			if ( grma->L[j] <=  data->intTrainData[obs].X[j] &&
+				   data->intTrainData[obs].X[j] <= grma->U[j] ) {
 				if ( j==NumAttrib-1)
 					vecIsCovered[i]= true;
 			} else {
@@ -499,34 +503,34 @@ void REPR::insertGreedyColumns() { //const int& GreedyLevel) {
 	} // end for each observation, i
 
 	if (grma->isPosIncumb) {
-		DEBUGPRX(1, data, "Positive Box\n");
+		DEBUGPR(1, cout << "Positive Box\n");
 		vecCoveredSign[numBox] = true;
 	} else {
-		DEBUGPRX(1, data, "Negative Box\n");
+		DEBUGPR(1, cout << "Negative Box\n");
 		vecCoveredSign[numBox] = false;
 	}
 
 	matIntLower[matIntLower.size()-1] = grma->L;
 	matIntUpper[matIntUpper.size()-1] = grma->U;
 
-	DEBUGPRX(1, data, "vecIsCovered: " << vecIsCovered );
+	DEBUGPR(1, cout << "vecIsCovered: " << vecIsCovered );
 
 	// add columns using GUROBI
-	col.clear();
-	constr = model.getConstrs();
+	//col.clear();
+	//constr = model.getConstrs();
 	for (int i = 0; i < NumObs; ++i) {
 		obs = data->vecTrainData[i];
     if (vecIsCovered[i]==true) {
       if (grma->isPosIncumb) {
-        col.addTerm(1, constr[i]);
-        col.addTerm(-1, constr[i+NumObs]);
+        //col.addTerm(1, constr[i]);
+        //col.addTerm(-1, constr[i+NumObs]);
       } else {
-        col.addTerm(-1, constr[i]);
-        col.addTerm(1, constr[i+NumObs]);
+        //col.addTerm(-1, constr[i]);
+        //col.addTerm(1, constr[i+NumObs]);
       }
     }
 	}
-	model.addVar(0.0, GRB_INFINITY, E, GRB_CONTINUOUS, col);
+	//model.addVar(0.0, GRB_INFINITY, E, GRB_CONTINUOUS, col);
 
 	++numBox;
 	++numCols;
@@ -540,7 +544,7 @@ void REPR::printRMAInfo() {
 #ifdef ACRO_HAVE_MPI
 	if (uMPI::rank==0) {
 #endif //  ACRO_HAVE_MPI
-		DEBUGPRX(20, data,  "E: " << E <<
+		DEBUGPR(20, cout <<  "E: " << E <<
 									 ", incumb: " << rma->incumbentValue<< "\n");
 #ifdef ACRO_HAVE_MPI
 	}
@@ -577,11 +581,11 @@ void REPR::printRMPSolution() {
 	vector<double> checkConst(NumAttrib);
 	for (i=0; i<NumObs; i++)  {
 		obs = data->vecTrainData[i];
-		sumDual += data->standData[obs].y * ( vecDual[i] - vecDual[NumObs+i] );
+		sumDual += data->standTrainData[obs].y * ( vecDual[i] - vecDual[NumObs+i] );
 		if (P==2)  sumDual -= pow( ( vecDual[i] - vecDual[NumObs+i] ), 2 ) / 4.0 ;
 		sumCheck += ( vecDual[i] - vecDual[NumObs+i] );
 
-		DEBUGPRX(10, data, "mu: " << vecDual[i] << " nu:" << vecDual[NumObs+i]
+		DEBUGPR(10, cout << "mu: " << vecDual[i] << " nu:" << vecDual[NumObs+i]
 			<< " eps: " << vecPrimal[2*NumAttrib+i+1] << "\n" );
 	}
 
@@ -589,16 +593,16 @@ void REPR::printRMPSolution() {
 		for (i=0; i<NumObs; ++i)  {
 			obs = data->vecTrainData[i];
 			checkConst[j] += ( vecDual[i] - vecDual[NumObs+i] )
-									 			* data->standData[obs].X[j] ;
+									 			* data->standTrainData[obs].X[j] ;
 		}
 	}
 
-	DEBUGPRX(1, data, "vecPrimal: " << vecPrimal
+	DEBUGPR(1, cout << "vecPrimal: " << vecPrimal
                  << " PrimalObj:" << sumPrimal << "\n" );
-	DEBUGPRX(1, data, "vecDual: " << vecDual
+	DEBUGPR(1, cout << "vecDual: " << vecDual
 								 << " DualObj:" << sumDual << "\n" );
-	DEBUGPRX(1, data, "sumCheck: " << sumCheck << "\n" );  // sum has to be 1
-	DEBUGPRX(1, data, "checkCons: " << checkConst << "\n" );
+	DEBUGPR(1, cout << "sumCheck: " << sumCheck << "\n" );  // sum has to be 1
+	DEBUGPR(1, cout << "checkCons: " << checkConst << "\n" );
 #ifdef ACRO_HAVE_MPI
 	}
 #endif //  ACRO_HAVE_MPI
@@ -607,7 +611,7 @@ void REPR::printRMPSolution() {
 ////////////////////// Evaluating methods ///////////////////////////////////////
 
 // evaluate error rate in each iteration
-double REPR::evaluateEachIter(const int & isTest) {
+double REPR::evaluateEachIter(const int & isTest, vector<DataXy> origData) {
 
 	double err, err2, actY, expY, mse=0.0;
 	int obs, size;
@@ -618,19 +622,19 @@ double REPR::evaluateEachIter(const int & isTest) {
 	for (int i=0; i<size; ++i) { // for each obsercation
 
 		expY = vecPrimal[0];    // for constant terms
-		DEBUGPRX(20, data, "constant expY: " << expY << "\n");
+		DEBUGPR(20, cout << "constant expY: " << expY << "\n");
 
 		if (isTest) obs = data->vecTestData[i];
 		else        obs = data->vecTrainData[i];
 
 		for (int j=0; j<NumAttrib; ++j) {
-	  	expY +=  ( data->origData[obs].X[j]-data->avgX[j] ) / data->sdX[j]
+	  	expY +=  ( origData[obs].X[j]-data->avgX[j] ) / data->sdX[j]
 		        * ( vecPrimal[j+1] - vecPrimal[NumAttrib+j+1] );
-	  	DEBUGPRX(20, data, "linear expY: " << expY << "\n");
+	  	DEBUGPR(20, cout << "linear expY: " << expY << "\n");
 	  }
 
-	  DEBUGPRX(20, data, "obs: " << obs << " linearReg expY: " << expY
-							<<  " features: " << data->origData[obs].X );
+	  DEBUGPR(20, cout << "obs: " << obs << " linearReg expY: " << expY
+							<<  " features: " << origData[obs].X );
 
 		for (int k=0; k<matOrigLower.size(); ++k) { // for each box solution
       if (!(vecPrimal[data->numTrainObs+2*NumAttrib+k+1] ==0) ) {	//if (vecPrimal[numVar+2*k]!=0) {
@@ -639,23 +643,23 @@ double REPR::evaluateEachIter(const int & isTest) {
             expY +=  vecPrimal[data->numTrainObs+2*data->numAttrib+k+1] ;
           else
             expY += -vecPrimal[data->numTrainObs+2*data->numAttrib+k+1] ;
-					DEBUGPRX(20, data, "kth box: " << k	<< " box exp: " << expY << "\n");
+					DEBUGPR(20, cout << "kth box: " << k	<< " box exp: " << expY << "\n");
 				}
 			} // end if for the coefficient of box not 0
 		} // end for each box
 
-		DEBUGPRX(20, data, "before normalied expY: " << expY
+		DEBUGPR(20, cout << "before normalied expY: " << expY
 			<< ",  avgY: " <<  data->avgY << ", sdY: " <<  data->sdY << "\n") ;
 
 		expY = data->avgY + expY * data->sdY;
-		actY = data->origData[obs].y;	// actual y value
+		actY = origData[obs].y;	// actual y value
 
 		// if writePred is enabled and the last column generation iteration
-		if ( data->writePred() && (curIter==NumIter) ) {
+		if ( writePred() && (curIter==NumIter) ) {
 			//predictions.resize(data->numOrigObs);
 			//predictions[obs] = expY;
-			writePredictions(TEST);
-			writePredictions(TRAIN);
+			writePredictions(TEST, data->origTestData);
+			writePredictions(TRAIN, data->origTrainData);
 		}
 
 		err = expY - actY;	// difference between expacted and actual y values
@@ -664,7 +668,7 @@ double REPR::evaluateEachIter(const int & isTest) {
 #ifdef ACRO_HAVE_MPI
 if (uMPI::rank==0) {
 #endif //  ACRO_HAVE_MPI
-		DEBUGPRX(10, data, "actY-expY " << actY << " - " << expY
+		DEBUGPR(10, cout << "actY-expY " << actY << " - " << expY
 					             << " = " << err << " err^2: " << err2 << "\n" ) ;
 #ifdef ACRO_HAVE_MPI
 }
@@ -677,7 +681,7 @@ if (uMPI::rank==0) {
 #ifdef ACRO_HAVE_MPI
 if (uMPI::rank==0) {
 #endif //  ACRO_HAVE_MPI
- DEBUGPRX(20, data, "mse: " <<  mse/(double)size << "\n");
+ DEBUGPR(20, cout << "mse: " <<  mse/(double)size << "\n");
 #ifdef ACRO_HAVE_MPI
 }
 #endif //  ACRO_HAVE_MPI
@@ -688,7 +692,7 @@ if (uMPI::rank==0) {
 
 
 // evaluate error rate in the end of iterations
-double REPR::evaluateAtFinal(const int & isTest) {
+double REPR::evaluateAtFinal(const int & isTest, vector<DataXy> origData) {
 
 	double err, err2, actY, expY, mse=0.0;
 	int obs, size;
@@ -699,19 +703,19 @@ double REPR::evaluateAtFinal(const int & isTest) {
 	for (int i=0; i<size; ++i) { // for each obsercation
 
 		expY = vecPrimal[0];    // for constant terms
-		DEBUGPRX(20, data, "constant expY: " << expY << "\n");
+		DEBUGPR(20, cout << "constant expY: " << expY << "\n");
 
 		if (isTest) obs = data->vecTestData[i];
 		else        obs = data->vecTrainData[i];
 
 		for (int j=0; j<NumAttrib; ++j) {
-	  	expY +=  ( data->origData[obs].X[j]-data->avgX[j] ) / data->sdX[j]
+	  	expY +=  ( origData[obs].X[j]-data->avgX[j] ) / data->sdX[j]
 		        * ( vecPrimal[j+1] - vecPrimal[NumAttrib+j+1] );
-	  	DEBUGPRX(20, data, "linear expY: " << expY << "\n");
+	  	DEBUGPR(20, cout << "linear expY: " << expY << "\n");
 	  }
 
-	  DEBUGPRX(20, data, "obs: " << obs << " linearReg expY: " << expY
-							<<  " features: " << data->origData[obs].X );
+	  DEBUGPR(20, cout << "obs: " << obs << " linearReg expY: " << expY
+							<<  " features: " << origData[obs].X );
 
 		for (int k=0; k<matOrigLower.size(); ++k) { // for each box solution
 
@@ -720,14 +724,14 @@ double REPR::evaluateAtFinal(const int & isTest) {
       if (!(vecPrimal[data->numTrainObs+2*NumAttrib+k+1] ==0)) {//if (vecPrimal[numVar+2*k]!=0) {
 
 				for (int j=0; j<NumAttrib; ++j) { // for each attribute
-					if (matOrigLower[k][j] <= data->origData[obs].X[j] &&
-							data->origData[obs].X[j] <= matOrigUpper[k][j] ) {
+					if (matOrigLower[k][j] <= origData[obs].X[j] &&
+							origData[obs].X[j] <= matOrigUpper[k][j] ) {
 						if ( j==NumAttrib-1) { // all features are covered by the box
               if (vecCoveredSign[k])
                 expY +=  vecPrimal[data->numTrainObs+2*NumAttrib+k+1] ;
               else
                 expY += -vecPrimal[data->numTrainObs+2*NumAttrib+k+1] ;
-              DEBUGPRX(20, data, "kth box: " << k	<< " box exp: " << expY << "\n");
+              DEBUGPR(20, cout << "kth box: " << k	<< " box exp: " << expY << "\n");
 						}
 					} else break; // this observation is not covered
 				} // end for each attribute, j
@@ -736,18 +740,18 @@ double REPR::evaluateAtFinal(const int & isTest) {
 
 		} // end for each box
 
-		DEBUGPRX(20, data, "before normalied expY: " << expY
+		DEBUGPR(20, cout << "before normalied expY: " << expY
 			<< ",  avgY: " <<  data->avgY << ", sdY: " <<  data->sdY << "\n") ;
 
 		expY = data->avgY + expY * data->sdY;
-		actY = data->origData[obs].y;	// actual y value
+		actY = origData[obs].y;	// actual y value
 
 		// if writePred is enabled and the last column generation iteration
-		if ( data->writePred() && (curIter==NumIter) ) {
+		if ( writePred() && (curIter==NumIter) ) {
 			//predictions.resize(data->numOrigObs);
 			//predictions[obs] = expY;
-			writePredictions(TEST);
-			writePredictions(TRAIN);
+      writePredictions(TEST, data->origTestData);
+			writePredictions(TRAIN, data->origTrainData);
 		}
 
 		err = expY - actY;	// difference between expacted and actual y values
@@ -756,7 +760,7 @@ double REPR::evaluateAtFinal(const int & isTest) {
 #ifdef ACRO_HAVE_MPI
 if (uMPI::rank==0) {
 #endif //  ACRO_HAVE_MPI
-		DEBUGPRX(10, data, "actY-expY " << actY << " - " << expY
+		DEBUGPR(10, cout << "actY-expY " << actY << " - " << expY
 					<< " = " << err << " err^2: " << err2 << "\n" ) ;
 #ifdef ACRO_HAVE_MPI
 }
@@ -769,7 +773,7 @@ if (uMPI::rank==0) {
 #ifdef ACRO_HAVE_MPI
 	if (uMPI::rank==0) {
 #endif //  ACRO_HAVE_MPI
- 		DEBUGPRX(20, data, "mse: " <<  mse/(double)size << "\n");
+ 		DEBUGPR(20, cout << "mse: " <<  mse/(double)size << "\n");
 #ifdef ACRO_HAVE_MPI
 	}
 #endif //  ACRO_HAVE_MPI

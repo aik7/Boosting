@@ -4,16 +4,17 @@
  *  Description: a dirver to run LPBoost or REPR with cross-validation
  */
 
-#include "boosting.h"
+#include "repr.h"
 
-using namespace crossvalidation;
+using namespace boosting;
 
 
 int main(int argc, char** argv) {
 
-	Boosting boosting;
-	//cv.setupData(argc, argv);
-	//cv.runOuterCrossValidation();
+	//REPR repr();
+	REPR repr(argc, argv);
+	//repr.setup();
+	//repr.run();
 
 	return 0;
 
