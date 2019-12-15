@@ -28,7 +28,11 @@
 #include "ClpSimplex.hpp"
 #include "ClpFactorization.hpp"
 #include "ClpNetworkMatrix.hpp"
-
+/*
+#include <ClpSimplex.hpp>
+#include <CoinPackedMatrix.hpp>
+#include <CoinPackedVector.hpp>
+*/
 #include <pebbl_config.h>
 #include <pebbl/utilib/ParameterList.h>
 #include <pebbl/utilib/memdebug.h>
@@ -127,7 +131,7 @@ public:
   double getLowerBound(int k, int j, int value, bool isUpper) ;
   double getUpperBound(int k, int j, int value, bool isUpper) ;
 
-  void   resetMaster();
+  // virtual void   resetMaster() = 0;
   //void   resetGurobi();
 
   virtual void printRMPSolution() = 0;  		// restricted mater problem solution
@@ -171,13 +175,20 @@ public:
   bool isOuter;
 
   ///////////////////// CLP variables /////////////////////
-  ClpSimplex   model;
-  double       *objective;   //= new double[numberColumns];
-  double       *lowerColumn; //= new double[numberColumns];
-  double       *upperColumn; //= new double[numberColumns];
-  double       *element;     //= new double [2*numberColumns];
-  CoinBigIndex *start;       // = new CoinBigIndex[numberColumns+1];
-  int          *row;         // = new int[2*numberColumns];
+  ClpSimplex       model;
+  CoinPackedMatrix matrix(false,0,0);
+  CoinPackedVector row;
+
+  double *dataWts;
+  double *objective;   //= new double[numberColumns];
+  double *lowerColumn; //= new double[numberColumns];
+  double *upperColumn; //= new double[numberColumns];
+  double *lowerRow;
+  double *upperRow;
+  int *columnIndex;
+  //double       *element;     //= new double [2*numberColumns];
+  //CoinBigIndex *start;       // = new CoinBigIndex[numberColumns+1];
+  //int          *row;         // = new int[2*numberColumns];
 
   /*
   ///////////////////// GUROBI variables /////////////////////

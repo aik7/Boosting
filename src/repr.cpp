@@ -49,10 +49,10 @@ REPR::REPR(int argc, char** argv) { // }, Data* d) {
 
 void REPR::initBoostingData() {
 
-  numBox = 0;
-	numRMASols=0;
-	NumObs = data->numTrainObs;
-	NumAttrib = data->numAttrib;
+  numBox     = 0;
+	numRMASols = 0;
+	NumObs     = data->numTrainObs;
+	NumAttrib  = data->numAttrib;
 
   if (!innerCV()) {
   	C 				= getCoefficientC();
@@ -253,20 +253,82 @@ void REPR::trainData(const bool& isOuter, const int& NumIter, const int& greedyL
 // set up for the initial master problem
 void REPR::setInitialMaster() {
 
-	int i, j, obs;
+  int i, j, obs;
 	numRows = 2*NumObs;
 	numCols = 1+2*NumAttrib+NumObs; //NumVar+1;	// +1 for constant term
-	double* LB = new double[numCols];
-	double* UB = new double[numCols];
-	char* vtype = NULL;
+	//double* LB = new double[numCols];
+	//double* UB = new double[numCols];
+	//char* vtype = NULL;
 
 	DEBUGPR(10, cout << "Setup Initial Restricted Master Problem!" << "\n");
 
+  int sizeCol = vecPrimal.size();
+  int sizeRow = isLPBoost() ? NumObs+1 : 2*NumObs ;
+
+  objective   = new double[sizeCol];
+  lowerColumn = new double[sizeCol];
+  upperColumn = new double[sizeCol];
+  lowerRow    = new double[sizeRow];
+  upperRow    = new double[sizeRow];
+  dataWts     = new double[NumObs];
+
+  columnIndex = new int[NumRow];
+  for (i=0; i<NumRow; ++i) columnIndex[i] = i;
+  //element     = new double [2*sizeCol];
+  //start       = new CoinBigIndex[sizeCol+1];
+  //row         = new int[sizeRow];
+  //start[sizeCol] = 2 * sizeCol;
+
+  model.setOptimizationDirection(1);               // maximization
+  model.setLogLevel(0); // to turn off some output, 0 gives nothing and each increase in value switches on more messages.
+  matrix.setDimensions(sizeRow, sizeCol); // setDimensions (int numrows, int numcols)
+
 	// model.getEnv().set(GRB_IntParam_Method, 0);
 
-	LB[0] = -inf; // beta is free variable
-	for (int i = 1; i < numCols; ++i) LB[i] = 0;
-	for (int i = 0; i < numCols; ++i) UB[i] = inf;
+	for (i=0; i<numCols; ++i) {
+    lowerColumn[i] = 0;
+    upperColumn[i] = inf;
+    objective[i]   = 1.0;
+    row.insert(i, 1.0); // insert( int index, double element )
+  }
+
+  lowerColumn[0] = -inf; // beta_0 is free variable
+
+  // set constraits
+	for (i = 0; i < NumObs; ++i) {
+    row.insert(0, 1.0);
+		obs = data->vecTrainData[i];
+		for (j = 0; j < NumAttrib; ++j)      // beta^+_j
+      row.insert(1+j, data->standData[obs].X[j]);
+		for (j = 0; j < NumAttrib; ++j)      // beta^-_j
+      row.insert(1+NumAttrib+j, -data->standData[obs].X[j);
+		for (j = 0; j < NumObs; ++j) 				// episilon
+			if (i==j)
+				row.insert(1+2*NumAttrib+j, 1.0);
+
+    matrix.appendRow(row);
+    lowerRow[i] = -inf;
+    upperRow[i] = data->standData[obs].y;
+	}
+
+	for (i = 0; i < NumObs; ++i) {
+		row.insert(0, -1.0);									   // beta_0
+		obs = data->vecTrainData[i];
+		for (j = 0; j < NumAttrib; ++j)      // beta^+_j
+			row.insert(1+j, -data->standData[obs].X[j]);
+		for (j = 0; j < NumAttrib; ++j)      // beta^-_j
+      row.insert(1+NumAttrib+j, data->standData[obs].X[j);
+		for (j = 0; j < NumObs; ++j) 				// episilon
+			if (i==j)
+        row.insert(1+2*NumAttrib+j, -1.0);
+
+    matrix.appendRow(row);
+    lowerRow[NumObs+i] = -inf;
+    upperRow[NumObs+i] = -data->standData[obs].y;
+	}
+
+  matrix.loadProblem(matrix, lowerColumn, upperColumn, objective,
+                     lowerRow, upperRow);
 
 	// Add variables to the model
 	//vars = model.addVars(LB, UB, NULL, vtype, NULL, numCols);
@@ -441,21 +503,28 @@ void REPR::insertColumns() { //const int& GreedyLevel) {
 
 		DEBUGPR(1, cout << "vecIsCovered: " << vecIsCovered << "\n" );
 
-    // add columns using GUROBI
+    // add columns using GUROBI/CLP
     //col.clear();
     //constr = model.getConstrs();
+
+    double *columnValue = new double[NumRow];
     for (int i = 0; i < NumObs; ++i) {
       obs = data->vecTrainData[i];
       if (vecIsCovered[i]==true) {
         if (sl[k]->isPosIncumb) {
+          columnValue[i]        = 1;
+          columnValue[NumObs+i] = -1;
           //col.addTerm(1, constr[i]);
           //col.addTerm(-1, constr[i+NumObs]);
         } else {
+          columnValue[i]        = -1;
+          columnValue[NumObs+i] = 1;
           //col.addTerm(-1, constr[i]);
           //col.addTerm(1, constr[i+NumObs]);
         }
       }
     }
+    model.addColumn(1, columnIndex, columnValue, 0.0, COIN_DBL_MAX, E);
     //model.addVar(0.0, GRB_INFINITY, E, GRB_CONTINUOUS, col);
 
 		//} // end if duplicate rules

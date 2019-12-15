@@ -134,17 +134,7 @@ namespace boosting {
 
     tc.startTime();
 
-    for (i = 0; i < numberColumns; i++) {
-         start[i] = 2 * i;
-         element[2*i] = -1.0;
-         element[2*i+1] = 1.0;
-         row[2*i] = head[i];
-         row[2*i+1] = tail[i];
-         lowerColumn[i] = 0.0;
-         upperColumn[i] = ub[i];
-         objective[i] = cost[i];
-    }
-
+/*
     // Create Packed Matrix
     CoinPackedMatrix matrix;
     int *lengths = NULL;
@@ -152,6 +142,7 @@ namespace boosting {
                         2 * numberColumns, element, row, start, lengths);
     ClpNetworkMatrix network(matrix);
     // load model
+*/
 
     model.loadProblem(network,
                       lowerColumn, upperColumn, objective,
@@ -289,21 +280,10 @@ namespace boosting {
     return data->vecFeature[j].vecIntMinMax[boundVal+value].maxOrigVal;
   }
 
-
+/*
   void Boosting::resetMaster() {
 
-    int sizeCol = vecPrimal.size();
-    int sizeRow = isLPBoost() ? NumObs+1 : 2*NumObs ;
-
-    objective   = new double[sizeCol];
-    lowerColumn = new double[sizeCol];
-    upperColumn = new double[sizeCol];
-    element     = new double [2*sizeCol];
-    start       = new CoinBigIndex[sizeCol+1];
-    row         = new int[sizeRow];
-
-    start[sizeCol] = 2 * sizeCol;
-
+    /*  GUROBI
     for (int i=0; i<sizeRow; ++i)
       model.remove(model.getConstrs()[i]);
     //ucout << "Num var: " << sizeCol << endl;
@@ -314,7 +294,10 @@ namespace boosting {
     model.reset();
     model.update();
 
+
   }
+*/
+
 
 /*
   // reset Gurobi for the next column generation iteration

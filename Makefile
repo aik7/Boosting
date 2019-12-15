@@ -2,9 +2,12 @@
 
 CXX=mpicxx
 
-RMA_DIR=/home/kagawa/Projects/thesis/code/RMA
-BOOST_DIR=/home/kagawa/Projects/thesis/code/Boosting
-PEBBL_DIR=/home/kagawa/Projects/thesis/code/pebbl/installpebbl
+RMA_DIR=/home/ai/Projects/thesis/code/RMA
+BOOST_DIR=/home/ai/Projects/thesis/code/Boosting
+PEBBL_DIR=/home/ai/Projects/thesis/code/pebbl/installpebbl
+CLP_DIR=/home/ai/Projects/thesis/code/coin-Clp
+CUTIL_DIR=/home/ai/Projects/thesis/code/CoinUtils
+CLP_BIN=/usr/bin/
 MPI_DIR=/usr/lib/x86_64-linux-gnu/openmpi
 
 ######################################### SYMBOLS ########################################
@@ -12,13 +15,14 @@ SYMBOLS=HAVE_CONFIG_H ANSI_HDRS ANSI_NAMESPACES
 DEFSYMBOLS=$(patsubst %, -D%, $(SYMBOLS))
 
 ######################################## INCLUDES ##########################################
-HEADERDIRS=$(RMA_DIR)/src $(BOOST_DIR)/src $(PEBBL_DIR)/include $(MPI_DIR)/include
+HEADERDIRS=$(RMA_DIR)/src $(BOOST_DIR)/src $(PEBBL_DIR)/include \
+            $(CLP_DIR)/Clp/src $(CUTIL_DIR)/include/coin $(MPI_DIR)/include
 INCLUDES=$(patsubst %,-I%,$(HEADERDIRS))
 
 ######################################### LIB ############################################
-LIBDIRS=$(PEBBL_DIR)/lib $(MPI_DIR)/lib
+LIBDIRS=$(PEBBL_DIR)/lib $(MPI_DIR)/lib $(CUTIL_DIR)/lib
 LIBLOCATIONS=$(patsubst %,-L%,$(LIBDIRS))
-LIBS=pebbl mpi mpi_cxx open-rte open-pal
+LIBS=pebbl mpi mpi_cxx open-rte open-pal clp CoinUtils
 LIBSPECS=$(patsubst %,-l%,$(LIBS))
 
 ########################################## FLAGS ##########################################
