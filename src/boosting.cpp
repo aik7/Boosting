@@ -24,12 +24,14 @@ namespace boosting {
     /*
       #ifdef ACRO_HAVE_MPI
       if (uMPI::rank==0) {
-      #endif //  ACRO_HAVE_MPI */
+      #endif //  ACRO_HAVE_MPI
+    */
     setData(argc, argv);   // set data
     /*
       #ifdef ACRO_HAVE_MPI
       }
-      #endif //  ACRO_HAVE_MPI*/
+      #endif //  ACRO_HAVE_MPI
+    */
 
     setupRMA(argc, argv);  // setup RMA
 
@@ -83,6 +85,7 @@ namespace boosting {
     grma->runGreedyRangeSearch();
   }
 
+
   void Boosting::solveExactRMA() {
 
   #ifdef ACRO_HAVE_MPI
@@ -106,7 +109,7 @@ namespace boosting {
     rma->resetTimers();
     InitializeTiming();
     if (BaseRMA::printBBdetails()) rma->solve();  // print out B&B details
-    else                rma->search();
+    else                           rma->search();
 
   #ifdef ACRO_HAVE_MPI
     if (uMPI::rank==0) {
@@ -130,6 +133,41 @@ namespace boosting {
     DEBUGPR(10, cout <<  "Solve Restricted Master Problem!\n");
 
     tc.startTime();
+
+    for (i = 0; i < numberColumns; i++) {
+         start[i] = 2 * i;
+         element[2*i] = -1.0;
+         element[2*i+1] = 1.0;
+         row[2*i] = head[i];
+         row[2*i+1] = tail[i];
+         lowerColumn[i] = 0.0;
+         upperColumn[i] = ub[i];
+         objective[i] = cost[i];
+    }
+
+    // Create Packed Matrix
+    CoinPackedMatrix matrix;
+    int *lengths = NULL;
+    matrix.assignMatrix(true, numberRows, numberColumns,
+                        2 * numberColumns, element, row, start, lengths);
+    ClpNetworkMatrix network(matrix);
+    // load model
+
+    model.loadProblem(network,
+                      lowerColumn, upperColumn, objective,
+                      lower, upper);
+
+    model.factorization()->maximumPivots(200 + model.numberRows() / 100);
+    model.factorization()->maximumPivots(1000);
+    //model.factorization()->maximumPivots(1);
+    if (model.numberRows() < 50)
+         model.messageHandler()->setLogLevel(63);
+    model.dual();
+    model.setOptimizationDirection(-1);
+    //model.messageHandler()->setLogLevel(63);
+    model.primal();
+    model.setOptimizationDirection(1);
+    model.primal();
 
     /*
     model.optimize();
@@ -252,13 +290,20 @@ namespace boosting {
   }
 
 
-  // reset Gurobi for the next column generation iteration
-  void Boosting::resetGurobi() {
+  void Boosting::resetMaster() {
 
     int sizeCol = vecPrimal.size();
     int sizeRow = isLPBoost() ? NumObs+1 : 2*NumObs ;
 
-    /*
+    objective   = new double[sizeCol];
+    lowerColumn = new double[sizeCol];
+    upperColumn = new double[sizeCol];
+    element     = new double [2*sizeCol];
+    start       = new CoinBigIndex[sizeCol+1];
+    row         = new int[sizeRow];
+
+    start[sizeCol] = 2 * sizeCol;
+
     for (int i=0; i<sizeRow; ++i)
       model.remove(model.getConstrs()[i]);
     //ucout << "Num var: " << sizeCol << endl;
@@ -268,9 +313,28 @@ namespace boosting {
 
     model.reset();
     model.update();
-    */
+
   }
 
+/*
+  // reset Gurobi for the next column generation iteration
+  void Boosting::resetGurobi() {
+
+    int sizeCol = vecPrimal.size();
+    int sizeRow = isLPBoost() ? NumObs+1 : 2*NumObs ;
+
+    for (int i=0; i<sizeRow; ++i)
+      model.remove(model.getConstrs()[i]);
+    //ucout << "Num var: " << sizeCol << endl;
+
+    for (int j=0; j<sizeCol; ++j)
+      model.remove(model.getVars()[j]);
+
+    model.reset();
+    model.update();
+
+  }
+*/
 
   bool Boosting::isDuplicate() {
 

@@ -25,6 +25,10 @@
 #include "serRMA.h"
 #include "greedyRMA.h"
 
+#include "ClpSimplex.hpp"
+#include "ClpFactorization.hpp"
+#include "ClpNetworkMatrix.hpp"
+
 #include <pebbl_config.h>
 #include <pebbl/utilib/ParameterList.h>
 #include <pebbl/utilib/memdebug.h>
@@ -123,7 +127,8 @@ public:
   double getLowerBound(int k, int j, int value, bool isUpper) ;
   double getUpperBound(int k, int j, int value, bool isUpper) ;
 
-  void   resetGurobi();
+  void   resetMaster();
+  //void   resetGurobi();
 
   virtual void printRMPSolution() = 0;  		// restricted mater problem solution
   virtual void printRMAInfo()     = 0;		  // pritinc problem, RMA
@@ -164,6 +169,15 @@ public:
   bool parallel;	// is parallel or not
   bool flagDuplicate;
   bool isOuter;
+
+  ///////////////////// CLP variables /////////////////////
+  ClpSimplex   model;
+  double       *objective;   //= new double[numberColumns];
+  double       *lowerColumn; //= new double[numberColumns];
+  double       *upperColumn; //= new double[numberColumns];
+  double       *element;     //= new double [2*numberColumns];
+  CoinBigIndex *start;       // = new CoinBigIndex[numberColumns+1];
+  int          *row;         // = new int[2*numberColumns];
 
   /*
   ///////////////////// GUROBI variables /////////////////////

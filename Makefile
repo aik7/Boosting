@@ -38,7 +38,7 @@ OBJDIRRMA=$(RMA_DIR)/obj
 OBJDIRBOOST=$(BOOST_DIR)/src
 _HEADERSRMA=Time.h argRMA.h dataRMA.h serRMA.h parRMA.h greedyRMA.h baseRMA.h #driverRMA.h
 _HEADERSBOOST=argBoost.h dataBoost.h baseBoost.h boosting.h repr.h # lpbr.h
-_SOURCESRMA=argRMA.cpp dataRMA.cpp serRMA.cpp parRMA.cpp greedyRMA.cpp #driverRMA.cpp  #baseRMA.cpp
+_SOURCESRMA=argRMA.cpp dataRMA.cpp serRMA.cpp parRMA.cpp greedyRMA.cpp baseRMA.cpp #driverRMA.cpp  #
 _SOURCESBOOST=driver.cpp argBoost.cpp dataBoost.cpp boosting.cpp repr.cpp #lpbr.cpp baseBoost.cpp
 
 _OBJECTSRMA=$(_SOURCESRMA:.cpp=.o)
