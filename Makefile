@@ -2,12 +2,11 @@
 
 CXX=mpicxx
 
-RMA_DIR=/home/ai/Projects/thesis/code/RMA
-BOOST_DIR=/home/ai/Projects/thesis/code/Boosting
-PEBBL_DIR=/home/ai/Projects/thesis/code/pebbl/installpebbl
-CLP_DIR=/home/ai/Projects/thesis/code/coin-Clp
-CUTIL_DIR=/home/ai/Projects/thesis/code/CoinUtils
-CLP_BIN=/usr/bin/
+RMA_DIR=/home/kagawa/Projects/thesis/code/RMA
+BOOST_DIR=/home/kagawa/Projects/thesis/code/Boosting
+PEBBL_DIR=/home/kagawa/Projects/thesis/code/pebbl/installpebbl
+CLP_DIR=/home/kagawa/Projects/thesis/code/coinbrew/Clp #Projects/thesis/code/coinbrew/Clp #coin-Clp
+CUTIL_DIR=/home/kagawa/Projects/thesis/code/coinbrew/CoinUtils/CoinUtils
 MPI_DIR=/usr/lib/x86_64-linux-gnu/openmpi
 
 ######################################### SYMBOLS ########################################
@@ -16,13 +15,16 @@ DEFSYMBOLS=$(patsubst %, -D%, $(SYMBOLS))
 
 ######################################## INCLUDES ##########################################
 HEADERDIRS=$(RMA_DIR)/src $(BOOST_DIR)/src $(PEBBL_DIR)/include \
-            $(CLP_DIR)/Clp/src $(CUTIL_DIR)/include/coin $(MPI_DIR)/include
+           /home/kagawa/Projects/thesis/code/coinbrew/Clp/include/coin \
+	         /home/kagawa/Projects/thesis/code/coinbrew/CoinUtils/CoinUtils/src \
+           $(CLP_DIR)/include/coin $(CUTIL_DIR)/src $(MPI_DIR)/include
 INCLUDES=$(patsubst %,-I%,$(HEADERDIRS))
 
 ######################################### LIB ############################################
-LIBDIRS=$(PEBBL_DIR)/lib $(MPI_DIR)/lib $(CUTIL_DIR)/lib
+LIBDIRS=$(PEBBL_DIR)/lib $(MPI_DIR)/lib $(CLP_DIR)/lib  \
+        /home/kagawa/Projects/thesis/code/coinbrew/Clp/lib
 LIBLOCATIONS=$(patsubst %,-L%,$(LIBDIRS))
-LIBS=pebbl mpi mpi_cxx open-rte open-pal clp CoinUtils
+LIBS=pebbl mpi mpi_cxx open-rte open-pal Clp CoinUtils
 LIBSPECS=$(patsubst %,-l%,$(LIBS))
 
 ########################################## FLAGS ##########################################

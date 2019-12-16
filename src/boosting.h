@@ -25,14 +25,16 @@
 #include "serRMA.h"
 #include "greedyRMA.h"
 
+/*
 #include "ClpSimplex.hpp"
 #include "ClpFactorization.hpp"
 #include "ClpNetworkMatrix.hpp"
-/*
+*/
+//*
 #include <ClpSimplex.hpp>
 #include <CoinPackedMatrix.hpp>
 #include <CoinPackedVector.hpp>
-*/
+//*/
 #include <pebbl_config.h>
 #include <pebbl/utilib/ParameterList.h>
 #include <pebbl/utilib/memdebug.h>
@@ -176,7 +178,7 @@ public:
 
   ///////////////////// CLP variables /////////////////////
   ClpSimplex       model;
-  CoinPackedMatrix matrix(false,0,0);
+  CoinPackedMatrix matrix;
   CoinPackedVector row;
 
   double *dataWts;
@@ -185,7 +187,7 @@ public:
   double *upperColumn; //= new double[numberColumns];
   double *lowerRow;
   double *upperRow;
-  int *columnIndex;
+  int    *columnIndex;
   //double       *element;     //= new double [2*numberColumns];
   //CoinBigIndex *start;       // = new CoinBigIndex[numberColumns+1];
   //int          *row;         // = new int[2*numberColumns];

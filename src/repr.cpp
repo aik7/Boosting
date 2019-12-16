@@ -235,7 +235,7 @@ void REPR::trainData(const bool& isOuter, const int& NumIter, const int& greedyL
 			evaluateFinal();
 
 		// clean up GUROBI for the next crossvalidation set
-		resetGurobi();
+		//resetGurobi();
 /*
 	} catch(GRBException e) {
 		ucout << "Error during GUROBI " << e.getErrorCode() << "\n";
@@ -254,34 +254,33 @@ void REPR::trainData(const bool& isOuter, const int& NumIter, const int& greedyL
 void REPR::setInitialMaster() {
 
   int i, j, obs;
-	numRows = 2*NumObs;
-	numCols = 1+2*NumAttrib+NumObs; //NumVar+1;	// +1 for constant term
+	numCols = vecPrimal.size(); 2*NumObs; // 1+2*NumAttrib+NumObs;
+	numRows = isLPBoost() ? NumObs+1 : 2*NumObs ; // //NumVar+1;	// +1 for constant term
 	//double* LB = new double[numCols];
 	//double* UB = new double[numCols];
 	//char* vtype = NULL;
+  //int sizeCol = vecPrimal.size();
+  //int sizeRow = isLPBoost() ? NumObs+1 : 2*NumObs ;
 
 	DEBUGPR(10, cout << "Setup Initial Restricted Master Problem!" << "\n");
 
-  int sizeCol = vecPrimal.size();
-  int sizeRow = isLPBoost() ? NumObs+1 : 2*NumObs ;
-
-  objective   = new double[sizeCol];
-  lowerColumn = new double[sizeCol];
-  upperColumn = new double[sizeCol];
-  lowerRow    = new double[sizeRow];
-  upperRow    = new double[sizeRow];
+  objective   = new double[numCols];
+  lowerColumn = new double[numCols];
+  upperColumn = new double[numCols];
+  lowerRow    = new double[numRows];
+  upperRow    = new double[numRows];
   dataWts     = new double[NumObs];
 
-  columnIndex = new int[NumRow];
-  for (i=0; i<NumRow; ++i) columnIndex[i] = i;
-  //element     = new double [2*sizeCol];
-  //start       = new CoinBigIndex[sizeCol+1];
+  columnIndex = new int[numRows];
+  for (i=0; i<numRows; ++i) columnIndex[i] = i;
+  //element     = new double [2*numCols];
+  //start       = new CoinBigIndex[numCols+1];
   //row         = new int[sizeRow];
-  //start[sizeCol] = 2 * sizeCol;
+  //start[numCols] = 2 * numCols;
 
   model.setOptimizationDirection(1);               // maximization
   model.setLogLevel(0); // to turn off some output, 0 gives nothing and each increase in value switches on more messages.
-  matrix.setDimensions(sizeRow, sizeCol); // setDimensions (int numrows, int numcols)
+  matrix.setDimensions(numRows, numCols); // setDimensions (int numrows, int numcols)
 
 	// model.getEnv().set(GRB_IntParam_Method, 0);
 
@@ -299,35 +298,35 @@ void REPR::setInitialMaster() {
     row.insert(0, 1.0);
 		obs = data->vecTrainData[i];
 		for (j = 0; j < NumAttrib; ++j)      // beta^+_j
-      row.insert(1+j, data->standData[obs].X[j]);
+      row.insert(1+j, data->standTrainData[obs].X[j]);
 		for (j = 0; j < NumAttrib; ++j)      // beta^-_j
-      row.insert(1+NumAttrib+j, -data->standData[obs].X[j);
+      row.insert(1+NumAttrib+j, -data->standTrainData[obs].X[j]);
 		for (j = 0; j < NumObs; ++j) 				// episilon
 			if (i==j)
 				row.insert(1+2*NumAttrib+j, 1.0);
 
     matrix.appendRow(row);
     lowerRow[i] = -inf;
-    upperRow[i] = data->standData[obs].y;
+    upperRow[i] = data->standTrainData[obs].y;
 	}
 
 	for (i = 0; i < NumObs; ++i) {
 		row.insert(0, -1.0);									   // beta_0
 		obs = data->vecTrainData[i];
 		for (j = 0; j < NumAttrib; ++j)      // beta^+_j
-			row.insert(1+j, -data->standData[obs].X[j]);
+			row.insert(1+j, -data->standTrainData[obs].X[j]);
 		for (j = 0; j < NumAttrib; ++j)      // beta^-_j
-      row.insert(1+NumAttrib+j, data->standData[obs].X[j);
+      row.insert(1+NumAttrib+j, data->standTrainData[obs].X[j]);
 		for (j = 0; j < NumObs; ++j) 				// episilon
 			if (i==j)
         row.insert(1+2*NumAttrib+j, -1.0);
 
     matrix.appendRow(row);
     lowerRow[NumObs+i] = -inf;
-    upperRow[NumObs+i] = -data->standData[obs].y;
+    upperRow[NumObs+i] = -data->standTrainData[obs].y;
 	}
 
-  matrix.loadProblem(matrix, lowerColumn, upperColumn, objective,
+  model.loadProblem(matrix, lowerColumn, upperColumn, objective,
                      lowerRow, upperRow);
 
 	// Add variables to the model
@@ -507,7 +506,7 @@ void REPR::insertColumns() { //const int& GreedyLevel) {
     //col.clear();
     //constr = model.getConstrs();
 
-    double *columnValue = new double[NumRow];
+    double *columnValue = new double[numRows];
     for (int i = 0; i < NumObs; ++i) {
       obs = data->vecTrainData[i];
       if (vecIsCovered[i]==true) {
