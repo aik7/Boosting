@@ -9,13 +9,12 @@
 
 namespace boosting {
 
-///////////////////////// functions for LPB class /////////////////////////
 
   Boosting::Boosting(int& argc, char**& argv): rma(NULL), prma(NULL), parallel(false) {
 
-  #ifdef ACRO_HAVE_MPI
+#ifdef ACRO_HAVE_MPI
     uMPI::init(&argc, &argv, MPI_COMM_WORLD);
-  #endif // ACRO_HAVE_M
+#endif // ACRO_HAVE_M
 
     //cout << setprecision(6) << fixed;
 
@@ -33,14 +32,33 @@ namespace boosting {
       #endif //  ACRO_HAVE_MPI
     */
 
-    setupRMA(argc, argv);  // setup RMA
+    if (exactRMA()) setupPebblRMA(argc, argv);  // setup RMA
+
+    reset();
 
   }
 
 
-  void Boosting::setupRMA(int& argc, char**& argv) {
+  Boosting::~Boosting() {
+#ifdef ACRO_HAVE_MPI
+    if (parallel) {
+      CommonIO::end();
+      uMPI::done();
+    }
+#endif // ACRO_HAVE_MPI
+  };
 
-  #ifdef ACRO_HAVE_MPI
+
+  ///////////////////////// Set-up Boosting /////////////////////////
+
+  void Boosting::setData(int& argc, char**& argv) {
+    data = new data::DataBoost(argc, argv, (BaseRMA *) this, (arg::ArgBoost *) this);
+  }
+
+
+  void Boosting::setupPebblRMA(int& argc, char**& argv) {
+
+#ifdef ACRO_HAVE_MPI
     int nprocessors = uMPI::size;
     /// Do parallel optimization if MPI indicates that we're using more than one processor
     if (parallel_exec_test<parallelBranching>(argc, argv, nprocessors)) {
@@ -48,14 +66,14 @@ namespace boosting {
       CommonIO::begin();
       CommonIO::setIOFlush(1);
       parallel = true;
-      prma     = new parRMA(MPI_COMM_WORLD);
+      prma     = new pebblRMA::parRMA(MPI_COMM_WORLD);
       rma      = prma;
     } else {
-  #endif // ACRO_HAVE_MPI
-      rma = new RMA;
-  #ifdef ACRO_HAVE_MPI
+#endif // ACRO_HAVE_MPI
+      rma = new pebblRMA::RMA;
+#ifdef ACRO_HAVE_MPI
     }
-  #endif // ACRO_HAVE_MPI
+#endif // ACRO_HAVE_MPI
 
     rma->setParameters((BaseRMA *) this); // passing arguments
     rma->setData(data);
@@ -67,66 +85,84 @@ namespace boosting {
   }
 
 
-  void Boosting::solveRMA() {
-    if (BaseRMA::exactRMA()) {
-      if (BaseRMA::initGuess()) {
-        solveGreedyRMA();
-        //rma->setInitGreedySol();
-      }
-      solveExactRMA();
-    } else {
-      solveGreedyRMA();
+  void Boosting::reset() {
+
+    numBox     = 0;
+    numRMASols = 0;
+    NumObs     = data->numTrainObs;
+    NumAttrib  = data->numAttrib;
+
+    vecDual.resize(NumObs);
+    vecIsCovered.resize(NumObs);
+    if (exactRMA()) rma->incumbentValue = inf;
+
+    matIntLower.clear();
+    matIntUpper.clear();
+
+    matOrigLower.clear();
+    matOrigUpper.clear();
+
+    if (evalEachIter()) {
+      vecCoveredObsByBox.clear();
+      vecCoveredObsByBox.resize(data->numOrigObs);
     }
+
   }
 
 
-  void Boosting::solveGreedyRMA() {
-    grma = new GreedyRMA((BaseRMA *) this, (DataRMA *) data);
-    grma->runGreedyRangeSearch();
-  }
+  ///////////////////////// Training methods /////////////////////////
+
+  // train data using REPRoost
+  void Boosting::train(const bool& isOuter, const int& NumIter, const int& greedyLevel) {
+
+    curIter=-1;
+
+    setBoostingParameters();
+    flagDuplicate=false;
+
+    try {
+
+      data->setStandData(data->origTrainData, data->standTrainData);					// standadize data for L1 regularization
+      //data->integerizeData(data->origTrainData, data->intTrainData); 	// integerize features
+      if (exactRMA()) rma->setData(data);
+
+      setInitRMP();
+      solveRMP();  //solveInitialMaster();
+
+      for (curIter=0; curIter<NumIter; ++curIter) { // for each column generation iteration
+
+	//ucout << "\nColGen Iter: " << curIter << "\n";
+        setDataWts();
+
+        solveRMA();
+
+        if (isStoppingCondition()) break;
+
+        insertColumns(); // add RMA solutions and check duplicate
+
+	setOriginalBounds();  // map back from the discretized data into original
+
+	solveRMP();
+
+      } // end for each column generation iteration
+
+      printBoostingErr();
+
+      if ( evalFinalIter() && !(evalEachIter()) ) evaluateFinal();
+
+      // clean up GUROBI for the next crossvalidation set
+      //resetGurobi();
+
+    } catch(...) {
+      ucout << "Exception during training" << "\n";
+      return; // EXIT_FAILURE;
+    } // end try ... catch
+
+  } // trainData function
 
 
-  void Boosting::solveExactRMA() {
-
-  #ifdef ACRO_HAVE_MPI
-    if (parallel) {
-      prma->reset();
-      if (BaseRMA::printBBdetails()) prma->printConfiguration();
-      CommonIO::begin_tagging();
-    } else {
-  #endif //  ACRO_HAVE_MPI
-      rma->reset();
-  #ifdef ACRO_HAVE_MPI
-    }
-  #endif //  ACRO_HAVE_MPI
-
-    rma->mmapCachedCutPts.clear();
-    rma->workingSol.value = -inf;
-    rma->numDistObs       = data->numTrainObs;	    // only use training data
-    rma->setSortObsNum(data->vecTrainData);
-    //setDataWts();
-
-    rma->resetTimers();
-    InitializeTiming();
-    if (BaseRMA::printBBdetails()) rma->solve();  // print out B&B details
-    else                           rma->search();
-
-  #ifdef ACRO_HAVE_MPI
-    if (uMPI::rank==0) {
-  #endif //  ACRO_HAVE_MPI
-      rma->printSolutionTime();
-  #ifdef ACRO_HAVE_MPI
-    }
-  #endif //  ACRO_HAVE_MPI
-
-    // CommonIO::end();
-    // uMPI::done();
-
-  } // end function solveExactRMA()
-
-
-  // call GUROBI to solve Master Problems
-  void Boosting::solveMaster() {
+  // call CLP to solve Master Problems
+  void Boosting::solveRMP() {
 
     int i;
 
@@ -134,27 +170,27 @@ namespace boosting {
 
     tc.startTime();
 
-/*
+    /*
     // Create Packed Matrix
     CoinPackedMatrix matrix;
     int *lengths = NULL;
     matrix.assignMatrix(true, numberRows, numberColumns,
-                        2 * numberColumns, element, row, start, lengths);
+    2 * numberColumns, element, row, start, lengths);
     ClpNetworkMatrix network(matrix);
     // load model
 
-
     model.loadProblem(network,
-                      lowerColumn, upperColumn, objective,
-                      lower, upper);
+    lowerColumn, upperColumn, objective,
+    lower, upper);
 
     model.factorization()->maximumPivots(200 + model.numberRows() / 100);
     model.factorization()->maximumPivots(1000);
     //model.factorization()->maximumPivots(1);
 
     if (model.numberRows() < 50)
-         model.messageHandler()->setLogLevel(63);
-*/
+    model.messageHandler()->setLogLevel(63);
+    */
+
     model.dual();
     model.setOptimizationDirection(-1);
     //model.messageHandler()->setLogLevel(63);
@@ -162,26 +198,45 @@ namespace boosting {
     model.setOptimizationDirection(1);
     model.primal();
 
+    int    numRows    = model.numberRows();
+    double *rowPrimal = model.primalRowSolution();
+    double *rowDual   = model.dualRowSolution();
+
+    int iRow;
+
+    for (iRow=0;iRow<numRows;iRow++)
+      printf("Row %d, primal %g, dual %g\n",iRow,rowPrimal[iRow],rowDual[iRow]);
+
+    int    numColumns    = model.numberColumns();
+    double *columnPrimal = model.primalColumnSolution();
+    double *columnDual   = model.dualColumnSolution();
+
+    int iColumn;
+
+    for (iColumn=0;iColumn<numColumns;iColumn++)
+      printf("Column %d, primal %g, dual %g\n",iColumn,
+	     columnPrimal[iColumn],columnDual[iColumn]);
+
     /*
-    model.optimize();
+      model.optimize();
 
-    if (data->printBoost()) model.write("master.lp");
+      if (data->printBoost()) model.write("master.lp");
 
-    vars = model.getVars();
-    constr = model.getConstrs();
+      vars = model.getVars();
+      constr = model.getConstrs();
     */
 
     vecPrimal.resize(numCols);
     vecDual.resize(numRows);
 
     /*
-    if (model.get(GRB_IntAttr_Status) == GRB_OPTIMAL) {
+      if (model.get(GRB_IntAttr_Status) == GRB_OPTIMAL) {
       primalVal = model.get(GRB_DoubleAttr_ObjVal);
       for (i = 0; i < numCols; ++i)
-	vecPrimal[i] = vars[i].get(GRB_DoubleAttr_X);
+      vecPrimal[i] = vars[i].get(GRB_DoubleAttr_X);
       for (i = 0; i < numRows; ++i)
-	vecDual[i] = constr[i].get(GRB_DoubleAttr_Pi);
-    }
+      vecDual[i] = constr[i].get(GRB_DoubleAttr_Pi);
+      }
     */
 
 #ifdef ACRO_HAVE_MPI
@@ -207,6 +262,69 @@ namespace boosting {
   } // end function Boosting::solveMaster()
 
 
+  void Boosting::insertColumns() {
+    (greedyLevel==EXACT) ? insertExactColumns() : insertGreedyColumns();
+  }
+
+
+  void Boosting::solveRMA() {
+    if (exactRMA()) {
+      if (BaseRMA::initGuess()) {
+        solveGreedyRMA();
+        //rma->setInitGreedySol();
+      }
+      solveExactRMA();
+    } else {
+      solveGreedyRMA();
+    }
+  }
+
+
+  void Boosting::solveGreedyRMA() {
+    grma = new greedyRMA::GreedyRMA((BaseRMA *) this, (DataRMA *) data);
+    grma->runGreedyRangeSearch();
+  }
+
+
+  void Boosting::solveExactRMA() {
+
+#ifdef ACRO_HAVE_MPI
+    if (parallel) {
+      prma->reset();
+      if (BaseRMA::printBBdetails()) prma->printConfiguration();
+      CommonIO::begin_tagging();
+    } else {
+#endif //  ACRO_HAVE_MPI
+      rma->reset();
+#ifdef ACRO_HAVE_MPI
+    }
+#endif //  ACRO_HAVE_MPI
+
+    rma->mmapCachedCutPts.clear();
+    rma->workingSol.value = -inf;
+    rma->numDistObs       = data->numTrainObs;	    // only use training data
+    rma->setSortObsNum(data->vecTrainData);
+    //setDataWts();
+
+    rma->resetTimers();
+    InitializeTiming();
+    if (BaseRMA::printBBdetails()) rma->solve();  // print out B&B details
+    else                           rma->search();
+
+#ifdef ACRO_HAVE_MPI
+    if (uMPI::rank==0) {
+#endif //  ACRO_HAVE_MPI
+      rma->printSolutionTime();
+#ifdef ACRO_HAVE_MPI
+    }
+#endif //  ACRO_HAVE_MPI
+
+    // CommonIO::end();
+    // uMPI::done();
+
+  } // end function solveExactRMA()
+
+
   // set original lower and upper bounds matrices
   void Boosting::setOriginalBounds() {
 
@@ -230,10 +348,10 @@ namespace boosting {
 	  lower =  (tmpLower + tmpUpper) / 2.0;
 
 	  DEBUGPR(10, cout << "(k,j): (" << k << ", " << j
-		   << ") matIntLower[k][j]-1: " << matIntLower[k][j]-1
-		   << " LeastLower: " << tmpLower << "\n"
-		   << " matIntLower[k][j]: " << matIntLower[k][j]
-		   << " GreatestLower: " << tmpUpper << "\n");
+		  << ") matIntLower[k][j]-1: " << matIntLower[k][j]-1
+		  << " LeastLower: " << tmpLower << "\n"
+		  << " matIntLower[k][j]: " << matIntLower[k][j]
+		  << " GreatestLower: " << tmpUpper << "\n");
 
 	} else lower=-inf; // if matIntLower[k][j] < 0 and matIntLower[k][j] != rma->distFeat[j]
 
@@ -244,10 +362,10 @@ namespace boosting {
 	  upper = (tmpLower + tmpUpper) / 2.0;
 
 	  DEBUGPR(10, cout << "(k,j): (" << k << ", " << j
-		   << ") matIntUpper[k][j]: " << matIntUpper[k][j]
-		   << " LeastUpper: " << tmpLower << "\n"
-		   << " matIntUpper[k][j]+1: " << matIntUpper[k][j]+1
-		   << " GreatestUpper: " << tmpUpper << "\n");
+		  << ") matIntUpper[k][j]: " << matIntUpper[k][j]
+		  << " LeastUpper: " << tmpLower << "\n"
+		  << " matIntUpper[k][j]+1: " << matIntUpper[k][j]+1
+		  << " GreatestUpper: " << tmpUpper << "\n");
 
 	} else upper=inf; // if matIntUpper[k][j] < rma->distFeat[j] and matIntUpper[k][j] != 0
 
@@ -282,92 +400,38 @@ namespace boosting {
     return data->vecFeature[j].vecIntMinMax[boundVal+value].maxOrigVal;
   }
 
-/*
-  void Boosting::resetMaster() {
 
-    /*  GUROBI
-    for (int i=0; i<sizeRow; ++i)
-      model.remove(model.getConstrs()[i]);
-    //ucout << "Num var: " << sizeCol << endl;
-
-    for (int j=0; j<sizeCol; ++j)
-      model.remove(model.getVars()[j]);
-
-    model.reset();
-    model.update();
-
-
+  void Boosting::printIterInfo() {
+#ifdef ACRO_HAVE_MPI
+    if (uMPI::rank==0) {
+#endif //  ACRO_HAVE_MPI
+      if (isOuter) ucout << "Outer Iter: " << curIter+1;
+      else 				 ucout << "Inner Iter: " << curIter+1;
+#ifdef ACRO_HAVE_MPI
+    }
+#endif //  ACRO_HAVE_MPI
   }
-*/
 
 
-/*
-  // reset Gurobi for the next column generation iteration
-  void Boosting::resetGurobi() {
-
-    int sizeCol = vecPrimal.size();
-    int sizeRow = isLPBoost() ? NumObs+1 : 2*NumObs ;
-
-    for (int i=0; i<sizeRow; ++i)
-      model.remove(model.getConstrs()[i]);
-    //ucout << "Num var: " << sizeCol << endl;
-
-    for (int j=0; j<sizeCol; ++j)
-      model.remove(model.getVars()[j]);
-
-    model.reset();
-    model.update();
-
-  }
-*/
-
-  bool Boosting::isDuplicate() {
+  void Boosting::printBoostingErr() {
 
 #ifdef ACRO_HAVE_MPI
     if (uMPI::rank==0) {
 #endif //  ACRO_HAVE_MPI
-      if ( matIntUpper.size()==1 ) return false;
-
-      for (int j=0; j<NumAttrib; ++j)
-	if ( matIntLower[matIntLower.size()-2][j] != sl[0]->a[j]
-	     || matIntUpper[matIntUpper.size()-2][j] != sl[0]->b[j] )
-	  return false;
-      ucout << "Duplicate Solution Found!! \n" ;
-      flagDuplicate = true;
+      if (isOuter) ucout << "OutREPR ";
+      else         ucout << "InnREPR ";
+      ucout << curIter << ":\tTest/Train Errors: " << errTest << " " << errTrain << "\n";
 #ifdef ACRO_HAVE_MPI
     }
 #endif //  ACRO_HAVE_MPI
-    return true;
 
   }
-
-  /*
-    bool Boosting::isDuplicate() {
-
-    #ifdef ACRO_HAVE_MPI
-    if (uMPI::rank==0) {
-    #endif //  ACRO_HAVE_MPI
-    if ( matIntUpper.size()==1 ) return false;
-
-    for (int j=0; j<NumAttrib; ++j)
-    if ( matIntLower[matIntLower.size()-2][j] != grma->L[j]
-    || matIntUpper[matIntUpper.size()-2][j] != grma->U[j] )
-    return false;
-    ucout << "Duplicate Solution Found!! \n" ;
-    flagDuplicate = true;
-    #ifdef ACRO_HAVE_MPI
-    }
-    #endif //  ACRO_HAVE_MPI
-    return true;
-
-    }
-  */
 
   void Boosting::evaluateEach() {
 
     errTrain = evaluateEachIter(TRAIN, data->origTrainData);
     errTest  = evaluateEachIter(TEST,  data->origTestData);
-    if (isLPBoost() && printBoost()) printEachIterAllErrs();
+    //if (isLPBoost() && printBoost()) printEachIterAllErrs();
 
 #ifdef ACRO_HAVE_MPI
     if (uMPI::rank==0) {
@@ -477,6 +541,29 @@ namespace boosting {
     }
 
     os.close();
+  }
+
+  //////////////////////// Checking methods ///////////////////////
+
+  bool Boosting::isDuplicate() {
+
+#ifdef ACRO_HAVE_MPI
+    if (uMPI::rank==0) {
+#endif //  ACRO_HAVE_MPI
+      if ( matIntUpper.size()==1 ) return false;
+
+      for (int j=0; j<NumAttrib; ++j)
+	if ( matIntLower[matIntLower.size()-2][j] != sl[0]->a[j]
+	     || matIntUpper[matIntUpper.size()-2][j] != sl[0]->b[j] )
+	  return false;
+      ucout << "Duplicate Solution Found!! \n" ;
+      flagDuplicate = true;
+#ifdef ACRO_HAVE_MPI
+    }
+#endif //  ACRO_HAVE_MPI
+
+    return true;
+
   }
 
 

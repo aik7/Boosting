@@ -14,27 +14,15 @@
 #include <deque>
 #include <map>
 
-//#include "gurobi_c++.h"
-#include "Time.h"
-#include "argRMA.h"
-#include "dataRMA.h"
-#include "dataBoost.h"
-#include "baseRMA.h"
-//#include "baseBoost.h"
-//#include "driverRMA.h"
-#include "serRMA.h"
-#include "greedyRMA.h"
-
-/*
-#include "ClpSimplex.hpp"
-#include "ClpFactorization.hpp"
-#include "ClpNetworkMatrix.hpp"
-*/
-//*
 #include <ClpSimplex.hpp>
 #include <CoinPackedMatrix.hpp>
 #include <CoinPackedVector.hpp>
-//*/
+//#include "ClpSimplex.hpp"
+#include "CoinHelperFunctions.hpp"
+#include "CoinTime.hpp"
+#include "CoinBuild.hpp"
+#include "CoinModel.hpp"
+
 #include <pebbl_config.h>
 #include <pebbl/utilib/ParameterList.h>
 #include <pebbl/utilib/memdebug.h>
@@ -51,100 +39,80 @@ typedef void parRMA;
 #define IO(action) action;
 #endif // ACRO_HAVE_MPI
 
+#include "Time.h"
+#include "argRMA.h"
+#include "dataRMA.h"
+#include "dataBoost.h"
+#include "baseRMA.h"
+#include "serRMA.h"
+#include "greedyRMA.h"
 
+/*
 namespace base {
 
-  enum GreedyLevel   {EXACT, NotOptimal, Greedy};
-  //enum OuterInnerCV  {INNER, OUTER};
-  //enum TestTrainData {TRAIN, TEST, VALID};
-
-  struct IntMinMax { double minOrigVal, maxOrigVal; };
-
-  struct Feature {vector<IntMinMax> vecIntMinMax;};
-
 /////////////////////////  Boosting Base class /////////////////////////
-  class BaseBoost : public arg::ArgBoost, public BaseRMA, // {  //{ //, public ArgRMA,
-    virtual public pebbl::pebblParams,
-    virtual public pebbl::parallelPebblParams {
-  public:
-      BaseBoost() {}
-      ~BaseBoost() {};
-    };
+  class BaseBoost : public arg::ArgBoost, public BaseRMA {}; //, // {  //{ //, public ArgRMA,
+    //virtual public pebbl::pebblParams,
+    //virtual public pebbl::parallelPebblParams {};
 
 } // base namespace
-
+*/
 
 
 namespace boosting {
 
+  enum GreedyLevel   {EXACT, NotOptimal, Greedy};
+  //enum OuterInnerCV  {INNER, OUTER};
 
+  struct IntMinMax { double minOrigVal, maxOrigVal; };
+
+  struct Feature   {vector<IntMinMax> vecIntMinMax;};
   enum TestTrainData {TRAIN, TEST, VALID};
 
-  using namespace utilib;
-  using namespace pebbl;
-  using namespace std;
-  using namespace arg;
-  using namespace data;
-  using namespace base;
-  using namespace pebblRMA;
-  using namespace greedyRMA;
-
-
-  class Boosting : public BaseBoost { //public DriverRMA,
+  class Boosting : public arg::ArgBoost, public base::BaseRMA { //public base::BaseBoost { //public DriverRMA,
 
 public:
 
   Boosting(int& argc, char**& argv); //  rma(NULL), prma(NULL), parallel(false)  { }; //: DriverRMA{argc, argv} {};   //:  rma(NULL), prma(NULL), parallel(false) {}; //, model(env) {};
+  virtual ~Boosting();
 
-  // model.set(GRB_IntAttr_ModelSense,1); // minimization
-  virtual ~Boosting() {
-#ifdef ACRO_HAVE_MPI
-    if (parallel) {
-      CommonIO::end();
-      uMPI::done();
-    }
-#endif // ACRO_HAVE_MPI
-  };
-
-  void setData(int& argc, char**& argv) {
-    data = new DataBoost(argc, argv, (BaseRMA *) this, (ArgBoost *) this);
-  }
-
-  void setupRMA(int& argc, char**& argv);
-
-  virtual void initBoostingData() = 0;
+  void reset();
+  void setData(int& argc, char**& argv);
+  void setupPebblRMA(int& argc, char**& argv);
+  virtual void setBoostingParameters() = 0;
 
   //////////////////////// training data //////////////////////////////
-  virtual void trainData(const bool& isOuter, const int& iter,
-			                   const int & greedyLevel) = 0;
+  void train(const bool& isOuter, const int& iter, const int & greedyLevel);
+
   /////////////////void discretizeData();
-  virtual void setInitialMaster() = 0;
+  //// virtual void   resetMaster() = 0;
+  virtual void setInitRMP() = 0;
+  void         solveRMP();
   //void solveInitialMaster();
-  virtual void setDataWts() = 0;
+  virtual void setDataWts()      = 0;
 
-  void         solveRMA();
-  void         solveExactRMA();
-  void         solveGreedyRMA();
+  void   solveRMA();
+  void   solveExactRMA();
+  void   solveGreedyRMA();
 
-  virtual void insertColumns() = 0; //const int& GreedyLevel
-  void         solveMaster();
+  virtual bool isStoppingCondition() = 0;
+  void         insertColumns();
+  virtual void insertExactColumns()  = 0;
+  virtual void insertGreedyColumns() = 0;
 
   void   setOriginalBounds();
   double getLowerBound(int k, int j, int value, bool isUpper) ;
   double getUpperBound(int k, int j, int value, bool isUpper) ;
 
-  // virtual void   resetMaster() = 0;
-  //void   resetGurobi();
+  //////////////////////// Printing methods /////////////////////////////
 
   virtual void printRMPSolution() = 0;  		// restricted mater problem solution
   virtual void printRMAInfo()     = 0;		  // pritinc problem, RMA
+  //virtual void printEachIterAllErrs() = 0;
+  void         printIterInfo();
+  void         printBoostingErr();
 
-  //////////////////////// checking duplicate ///////////////////////
-  bool isDuplicate();
-  void checkObjValue(vector<DataXw> intData);
-  void checkObjValue(int k, vector<DataXw> intData);	// double-check objevtive value for (a, b)
-
-  //////////////////////// Evaluation  /////////////////////////////
+  //////////////////////// Evaluating methods /////////////////////////////
 
   void setCoveredTrainObs();
   void setCoveredTestObs();
@@ -155,22 +123,27 @@ public:
   virtual double evaluateEachIter(const int& isTest, vector<DataXy> origData) = 0;
   virtual double evaluateAtFinal(const int& isTest, vector<DataXy> origData)  = 0;
 
-  virtual void printEachIterAllErrs() = 0;
+  void    writePredictions(const int& isTest, vector<DataXy> origData); // write predictions
 
-  void writePredictions(const int& isTest, vector<DataXy> origData); // write predictions
+  //////////////////////// Checking methods ///////////////////////
+  bool isDuplicate();
+  void checkObjValue(vector<DataXw> intData);
+  void checkObjValue(int k, vector<DataXw> intData);	// double-check objevtive value for (a, b)
 
-  //private:
+protected:
 
-  int NumIter;	  // # of iterations, observation, features, and variables
-  int curIter;		// the current iteration number
+  ///////////////////// Boosting variables /////////////////////
 
-  int numRows;    // # of constraints / rows in the mater problem
-  int numCols;    // # of variables / columns in the mater problem
-  int numBox;     // # of total boxes entered so far
-  int numRMASols; // # of boxes entered in the current interaction
+  int  NumIter;	  // # of iterations, observation, features, and variables
+  int  curIter;		// the current iteration number
 
-  int NumObs;
-  int NumAttrib;
+  int  numRows;    // # of constraints / rows in the mater problem
+  int  numCols;    // # of variables / columns in the mater problem
+  int  numBox;     // # of total boxes entered so far
+  int  numRMASols; // # of boxes entered in the current interaction
+
+  int  NumObs;
+  int  NumAttrib;
 
   bool parallel;	// is parallel or not
   bool flagDuplicate;
@@ -182,38 +155,24 @@ public:
   CoinPackedVector row;
 
   double *dataWts;
-  double *objective;   //= new double[numberColumns];
-  double *lowerColumn; //= new double[numberColumns];
-  double *upperColumn; //= new double[numberColumns];
+  double *objective;
+  double *lowerColumn;
+  double *upperColumn;
   double *lowerRow;
   double *upperRow;
   int    *columnIndex;
-  //double       *element;     //= new double [2*numberColumns];
-  //CoinBigIndex *start;       // = new CoinBigIndex[numberColumns+1];
-  //int          *row;         // = new int[2*numberColumns];
-
-  /*
-  ///////////////////// GUROBI variables /////////////////////
-  GRBEnv      env;
-  GRBModel    model;
-  GRBLinExpr  lhs;
-  GRBConstr*  constr;
-  GRBVar*     vars;
-  GRBColumn   col;
-  GRBQuadExpr obj;
-  */
 
   // store solution infomation for the master problem
   vector<double> vecPrimal;  // dual variables
   vector<double> vecDual;    // primal variables
   double         primalVal;	 // primal solution value
 
-  deque<bool> vecIsCovered;	// each observation is covered or not
+  deque<bool>    vecIsCovered;	// each observation is covered or not
 
   ///////////////////// For RMA /////////////////////
 
-  BasicArray<solution*>    s;
-  BasicArray<rmaSolution*> sl;
+  BasicArray<pebbl::solution*>       s;
+  BasicArray<pebblRMA::rmaSolution*> sl;
 
   // store lower and upper bound of rules (boxes)
   vector<vector<int> >    matIntLower;
@@ -223,10 +182,10 @@ public:
 
   ///////////////////// For Evaluation /////////////////////
 
-  vector<bool> vecCoveredSign;  // size: m (originalObs) x |K'|
-  vector<vector<bool> > vecCoveredObsByBox;  // size: m (originalObs) x |K'|
-  vector<double> predTrain;  // predictions of training data by model
-  vector<double> predTest;   // predictions of testing data by model
+  vector<bool>            vecCoveredSign;     // size: m (originalObs) x |K'|
+  vector<vector<bool> >   vecCoveredObsByBox; // size: m (originalObs) x |K'|
+  vector<double>          predTrain;          // predictions of training data by model
+  vector<double>          predTest;           // predictions of testing data by model
 
   double errTrain;
   double errTest;
@@ -236,11 +195,12 @@ public:
 
   Time   tc;
 
-  DataBoost* data;
+  GreedyLevel           greedyLevel;
 
-  RMA*       rma;   // serial RMA instance
-  parRMA*    prma;  // parallel RMA instance
-  GreedyRMA* grma;  // greedy RMA instance
+  data::DataBoost*      data;
+  pebblRMA::RMA*        rma;   // serial RMA instance
+  pebblRMA::parRMA*     prma;  // parallel RMA instance
+  greedyRMA::GreedyRMA* grma;  // greedy RMA instance
 
 };
 

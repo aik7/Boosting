@@ -1,4 +1,3 @@
-\
 /*
  *  File name: allParams.cpp
  *  Author:    Ai Kagawa
@@ -15,16 +14,17 @@ using utilib::ParameterBounds;
 using utilib::ParameterNonnegative;
 
 ArgBoost::ArgBoost():
-
-    _delta(0),
-    _shrinkDelta(.95),
-    _limitInterval(inf),
-    _fixedSizeBin(-1),
+/*
 
     _outerCV(false),
     _innerCV(false),
     _validation(false),
 
+    _shuffleObs(true),
+    _readShuffledObs(false),
+    _writeShuffledObs(false),
+
+*/
     _isLPBoost(false),
     _isREPR(true),
     _iterations(1),
@@ -44,41 +44,17 @@ ArgBoost::ArgBoost():
     _coeffF(0),
 
     _SeqCoverValue(false),
-    //_greedyRMA(true),
-    //_exactRMA(true),
-    //_greedyExactRMA(false),
-
-    //_initGuess(true),
-    _randSeed(true),
+    _numLimitedObs(intInf),
 
     _evalEachIter(false),
     _evalFinalIter(false),
-    _compModels(false),
-    _compModelIters(100),
-    _writePredictions(false),
+    _writePredictions(false)
 
-    _shuffleObs(true),
-    _readShuffledObs(false),
-    _writeShuffledObs(false),
-    _numLimitedObs(intInf) //,
-
-    //debug_solver_params1(false)
-
+    //_compModels(false),
+    //_compModelIters(100),
     {
 
-///////////////////// Discretization parameters /////////////////////
-
-  create_categorized_parameter("delta", _delta, "<double>",
-    "0", "delta for recursive discretization", "Data");
-
-  create_categorized_parameter("shrinkDelta", _shrinkDelta, "<double>",
-    ".95", "shrink delta for recursive discretization", "Data");
-
-  create_categorized_parameter("limitInterval", _limitInterval, "<double>",
-    "inf", "limit Interval length of bouneded subproblems", "Data");
-
-  create_categorized_parameter("fixedSizeBin", _fixedSizeBin, "<int>",
-    "-1",	"integerized by the fixed size bin", "Data");
+/*
 
 ///////////////////// Corss Validation parameters /////////////////////
 
@@ -102,6 +78,7 @@ ArgBoost::ArgBoost():
   create_categorized_parameter("writeShuffledObs", _writeShuffledObs, "<bool>",
       "false", "Write shuffled observations", "CrossValidation");
 
+*/
   create_categorized_parameter("numLimitedObs", _numLimitedObs, "<int>",
       "inf", "limit number of observations to use", "CrossValidation");
 
@@ -159,30 +136,9 @@ ArgBoost::ArgBoost():
   create_categorized_parameter("f", _coeffF, "<double>",
       "1.0", "coefficient F", "REPR");
 
-///////////////////// RMA Greedy level parameters /////////////////////
-
-  //create_categorized_parameter("exactRMA", _exactRMA, "<bool>",
-  //    "true",	"Exact B&B", "GreedyRMA");
-
-  //create_categorized_parameter("greedyRMA", _greedyRMA, "<bool>",
-  //    "true",	"Greedy Range Search for RMA",
-  //    "GreedyRMA");
-
-  //create_categorized_parameter("greedyExactRMA", _greedyExactRMA, "<bool>",
-  //    "false",	"Greedy Range Search for RMA",
-  //    "GreedyRMA");
-
   create_categorized_parameter("SeqCoverValue", _SeqCoverValue, "<bool>",
       "false",	"Weighted Sequential Coering for Value ",
       "GreedyRMA");
-
-///////////////////// inititial guess for RMA /////////////////////
-
-  //create_categorized_parameter("initGuess", _initGuess, "<bool>",
-  //    "true", "enable the initial guess computation", "GreedyRMA");
-
-  create_categorized_parameter("randSeed", _randSeed, "<bool>",
-      "true", "random seed for tied solutions", "RMA");
 
 
 ///////////////////// Evaluation parameters /////////////////////
@@ -196,11 +152,13 @@ ArgBoost::ArgBoost():
   create_categorized_parameter("writePredictions", _writePredictions, "<bool>",
        "false", "Write predictions for each model ", "Boosting");
 
+/*
   create_categorized_parameter("compModels", _compModels, "<bool>",
        "false", "comparing our model with the other models", "Boosting");
 
   create_categorized_parameter("compModelIters", _compModelIters, "<int>",
       "100", "the nunmber of iteration or trees for compting models", "Boosting");
+      */
 
   }
 }

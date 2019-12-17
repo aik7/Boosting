@@ -37,46 +37,40 @@ typedef void parRMA;
 
 namespace boosting {
 
-using namespace utilib;
-using namespace std;
-using namespace arg;
-
-
 class REPR : public Boosting {
 
 public:
 
 	//REPR() {}
 	REPR(int argc, char** argv) : Boosting(argc, argv) {};
-	//REPR(int argc, char** argv, Data* d) ;
 	~REPR() {}
 
-	void initBoostingData();
+	//////////////////////// Training methods //////////////////////////////
+	//void train(const bool& isOuter, const int& iter, const int& greedyLevel);
 
-	//////////////////////// training data //////////////////////////////
-	void trainData(const bool& isOuter, const int& iter, const int& greedyLevel);
-	void setInitialMaster();
-	//void solveInitialMaster();
+	void setBoostingParameters();
+
+	void setInitRMP();
 	void setDataWts();
-	void insertColumns(); //const int& GreedyLevel
+
+	bool isStoppingCondition();
+	void insertExactColumns();
 	void insertGreedyColumns();
 
-	void printRMPSolution();	// restricted mater problem solution
-	void printRMAInfo();			// print RMA problem info
-
+	//////////////////////// Evaluating methods //////////////////////////////
 	double evaluateEachIter(const int& isTest, vector<DataXy> origData);
 	double evaluateAtFinal (const int& isTest, vector<DataXy> origData);
 
-	void printEachIterAllErrs() {}
+	//////////////////////// Printing methods //////////////////////////////
+	void printRMPSolution();	// restricted mater problem solution
+	void printRMAInfo();			// print RMA problem info
+	//void printEachIterAllErrs() {}
 
-//private:
+private:
 
 	// parameters for REPR
 	int P;
-	double C, E;
-	double D, F;
-
-	//GRBQuadExpr obj; //  GUROBI variables
+	double C, E, D, F;
 
 };
 

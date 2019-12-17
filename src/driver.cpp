@@ -6,14 +6,13 @@
 
 #include "repr.h"
 
-using namespace boosting;
-
 
 int main(int argc, char** argv) {
 
-	REPR repr(argc, argv);
-	//repr.setup();
-	//repr.run();
+	enum GreedyLevel   {EXACT, NotOptimal, Greedy}; // TODO: fix this later!
+
+	boosting::REPR repr(argc, argv);
+	repr.train(false, 10, EXACT); //isOuter=false, NumIter=10, greedyLevel=EXACT
 
 	return 0;
 
