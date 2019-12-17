@@ -8,7 +8,6 @@
 
 namespace boosting {
 
-
   ///////////////////////// Training methods /////////////////////////
 
   void REPR::setBoostingParameters() {
@@ -17,8 +16,8 @@ namespace boosting {
     E = getCoefficientE();
     F = 0; //getCoefficientF();
   }
-  
-  
+
+
   bool REPR::isStoppingCondition() {
     if (greedyLevel==EXACT) {
       if (rma->incumbentValue <= E + .00001) {return true;}
@@ -39,88 +38,85 @@ namespace boosting {
     DEBUGPR(10, cout << "Setup Initial Restricted Master Problem!" << "\n");
 
     int i, j, obs;
-    numCols = vecPrimal.size(); 2*NumObs; // 1+2*NumAttrib+NumObs;
+    numCols = 1+2*NumAttrib+NumObs; // vecPrimal.size();
     numRows = isLPBoost() ? NumObs+1 : 2*NumObs ; // //NumVar+1;	// +1 for constant term
 
-    objective   = new double[numCols];
+    objValue    = new double[numCols];
     lowerColumn = new double[numCols];
     upperColumn = new double[numCols];
     lowerRow    = new double[numRows];
     upperRow    = new double[numRows];
     dataWts     = new double[NumObs];
 
-    columnIndex = new int[numRows];
+    colIndex    = new int[numRows];
     rowIndex    = new int[numCols];
-    for (i=0; i<numRows; ++i) columnIndex[i] = i;
-    for (i=0; i<numCols; ++i) rowIndex[i]    = i;
+    for (i=0; i<numRows; ++i) colIndex[i] = i;
+    for (i=0; i<numCols; ++i) rowIndex[i] = i;
 
     //matrix.setDimensions(0, numCols);
-     
+
     model.setOptimizationDirection(1);               // maximization
-    model.setLogLevel(0); // to turn off some output, 0 gives nothing and each increase in value switches on more messages.
-    matrix.setDimensions(numRows, numCols); // setDimensions (int numrows, int numcols)
+    //model.setLogLevel(0); // to turn off some output, 0 gives nothing and each increase in value switches on more messages.
+    //matrix.setDimensions(numRows, numCols); // setDimensions (int numrows, int numcols)
+    model.resize(0, numCols);
 
     // model.getEnv().set(GRB_IntParam_Method, 0);
 
     for (i=0; i<numCols; ++i) {
-      lowerColumn[i] = 0;
-      upperColumn[i] = inf;
-      objective[i]   = 1.0;
-      row.insert(i, 1.0); // insert( int index, double element )
+      lowerColumn[i] = (i==0) ? -COIN_DBL_MAX : 0.0; // beta_0 is free variable
+      //lowerColumn[i] = 0.0;
+      upperColumn[i] = COIN_DBL_MAX; //inf;
+      objValue[i]    = 1.0;
+      model.setObjectiveCoefficient(colIndex[i], objValue[i]);
+      model.setColumnLower(i, lowerColumn[i]);
+      model.setColumnUpper(i, upperColumn[i]);
+      //row.insert(i, 1.0); // insert( int index, double element )
     }
-
-    lowerColumn[0] = -inf; // beta_0 is free variable
 
     CoinBuild buildObject;
-    
-    double *row = new double[numCols];
 
-    //*  	  
+    double *rowValue = new double[numCols];
+
+    //*
     // set constraits
     for (i = 0; i < NumObs; ++i) {
-      row.insert(0, 1.0);
+      rowValue[0] = 1.0;
       obs = data->vecTrainData[i];
       for (j = 0; j < NumAttrib; ++j)      // beta^+_j
-	row.insert(1+j, data->standTrainData[obs].X[j]);
+	       rowValue[1+j] = data->standTrainData[obs].X[j];
       for (j = 0; j < NumAttrib; ++j)      // beta^-_j
-	row.insert(1+NumAttrib+j, -data->standTrainData[obs].X[j]);
+	       rowValue[1+NumAttrib+j] = -data->standTrainData[obs].X[j];
       for (j = 0; j < NumObs; ++j) 	   // episilon
-	if (i==j)
-	  row.insert(1+2*NumAttrib+j, 1.0);
+ 	      if (i==j)
+	       rowValue[1+2*NumAttrib+j] = 1.0;
 
-      matrix.appendRow(row);
-      lowerRow[i] = -inf;
-      upperRow[i] = data->standTrainData[obs].y;
+      buildObject.addRow(numCols, rowIndex, rowValue, -inf, data->standTrainData[obs].y);
+      //matrix.appendRow(row);
+      //row.clear();
+      //lowerRow[i] = -inf;
+      //upperRow[i] = data->standTrainData[obs].y;
     }
 
     for (i = 0; i < NumObs; ++i) {
-      row.insert(0, -1.0);  // beta_0
+      rowValue[0] = -1.0;  // beta_0
       obs = data->vecTrainData[i];
       for (j = 0; j < NumAttrib; ++j)      // beta^+_j
-	row.insert(1+j, -data->standTrainData[obs].X[j]);
+	       rowValue[1+j] = -data->standTrainData[obs].X[j];
       for (j = 0; j < NumAttrib; ++j)      // beta^-_j
-	row.insert(1+NumAttrib+j, data->standTrainData[obs].X[j]);
+	       rowValue[1+NumAttrib+j] = data->standTrainData[obs].X[j];
       for (j = 0; j < NumObs; ++j) 				// episilon
-	if (i==j)
-	  row.insert(1+2*NumAttrib+j, -1.0);
+	     if (i==j)
+	      rowValue[1+2*NumAttrib+j] = -1.0;
 
+      buildObject.addRow(numCols, rowIndex, rowValue, -inf, data->standTrainData[obs].y);
       //matrix.appendRow(row);
-      row.clear();
-      lowerRow[NumObs+i] = -inf;
-      upperRow[NumObs+i] = -data->standTrainData[obs].y;
+      //row.clear();
+      //lowerRow[NumObs+i] = -inf;
+      //upperRow[NumObs+i] = -data->standTrainData[obs].y;
     }
-    */
-    
-    //*
-    //time1 = CoinCpuTime();
-    for (i = 0; k < numRows; k++) {
-      int row2Index[] = {0, 1, 2};
-      double row2Value[] = {1.0, -5.0, 1.0};
-      buildObject.addRow(numRows, row2Index, row2Value, 1.0, 1.0);
-    }
+
     model.addRows(buildObject);
-    //*/
-    
+
     //model.loadProblem(matrix, lowerColumn, upperColumn, objective,
     //		      lowerRow, upperRow);
 
@@ -229,7 +225,7 @@ namespace boosting {
 	  }
 	}
       }
-      model.addColumn(1, columnIndex, columnValue, 0.0, COIN_DBL_MAX, E);
+      model.addColumn(1, colIndex, columnValue, 0.0, COIN_DBL_MAX, E);
       //model.addVar(0.0, GRB_INFINITY, E, GRB_CONTINUOUS, col);
 
       //} // end if duplicate rules

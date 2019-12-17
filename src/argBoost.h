@@ -11,9 +11,6 @@
 #include <limits>
 #include "argRMA.h"
 
-using namespace std;
-//using namespace pebblRMA;
-
 
 namespace arg {
 
@@ -23,9 +20,6 @@ namespace arg {
 
 //  Boosting parameters class
 class ArgBoost :
-  //public ArgRMA,
-  //virtual public pebbl::pebblParams,
-  //virtual public pebbl::parallelPebblParams,
   virtual public utilib::ParameterSet,
   virtual public utilib::CommonIO {
 
@@ -33,21 +27,6 @@ public:
 
   ArgBoost();
   virtual ~ArgBoost(){};
-
-/*
-
-/////////////////// parameters for CrossValidation class ///////////////////
-
-  bool outerCV()    const {return _outerCV;}
-  bool innerCV()    const {return _innerCV;}
-  bool validation() const {return _validation;}
-
-  bool shuffleObs()       const {return _shuffleObs;}
-  bool readShuffledObs()  const {return _readShuffledObs;}
-  bool writeShuffledObs() const {return _writeShuffledObs;}
-
-*/
-  int getNumLimitedObs() const {return _numLimitedObs;}
 
   /////////////////// parameters for Boosting ///////////////////
 
@@ -76,11 +55,10 @@ public:
   /////////////////// Parameters for Greedy level of pricing problems ///////////////////
 
   bool SeqCoverValue() const {return _SeqCoverValue;}
+  int  getNumLimitedObs() const {return _numLimitedObs;}
 
   //////////////////////// Evaluation parameters ////////////////////////
 
-  //bool compModels()        const {return _compModels;}
-  //int  getCompModelIters() const {return _compModelIters;}
   bool evalEachIter()  const {return _evalEachIter;}
   bool evalFinalIter() const {return _evalFinalIter;}
   bool writePred()         const {return _writePredictions;}
@@ -123,6 +101,15 @@ public:
   bool _evalFinalIter;      // evaluate solutions in the final column generation
   bool _writePredictions;		// print prediction
 
+  };
+
+
+} // namespace arg
+
+#endif
+
+
+
   //bool _compModels;		      // compare out moredl to different models
   //int _ compModelIters;     // iterations or the number of trees for competing models
 
@@ -138,9 +125,16 @@ public:
   bool _writeShuffledObs;   // write shuffled observation indices to a file
 */
 
-  };
+/*
 
+/////////////////// parameters for CrossValidation class ///////////////////
 
-} // namespace arg
+  bool outerCV()    const {return _outerCV;}
+  bool innerCV()    const {return _innerCV;}
+  bool validation() const {return _validation;}
 
-#endif
+  bool shuffleObs()       const {return _shuffleObs;}
+  bool readShuffledObs()  const {return _readShuffledObs;}
+  bool writeShuffledObs() const {return _writeShuffledObs;}
+
+*/

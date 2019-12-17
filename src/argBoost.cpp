@@ -14,17 +14,7 @@ using utilib::ParameterBounds;
 using utilib::ParameterNonnegative;
 
 ArgBoost::ArgBoost():
-/*
 
-    _outerCV(false),
-    _innerCV(false),
-    _validation(false),
-
-    _shuffleObs(true),
-    _readShuffledObs(false),
-    _writeShuffledObs(false),
-
-*/
     _isLPBoost(false),
     _isREPR(true),
     _iterations(1),
@@ -45,42 +35,13 @@ ArgBoost::ArgBoost():
 
     _SeqCoverValue(false),
     _numLimitedObs(intInf),
+    _maxBoundedSP(10000000),
 
     _evalEachIter(false),
     _evalFinalIter(false),
     _writePredictions(false)
 
-    //_compModels(false),
-    //_compModelIters(100),
     {
-
-/*
-
-///////////////////// Corss Validation parameters /////////////////////
-
-  create_categorized_parameter("outerCV", _outerCV, "<bool>", "false",
-    "Do outer cross validation", "CrossValidation");
-
-  create_categorized_parameter("innerCV", _innerCV, "<bool>", "false",
-    "Do inner cross validation", "CrossValidation");
-
-  create_categorized_parameter("validation", _validation, "<bool>",
-     "false",	"using validation set for early stopping", "CrossValidation");
-
-///////////////////// Shuffle observation parameters /////////////////////
-
-  create_categorized_parameter("shuffleObs", _shuffleObs, "<bool>", "true",
-       "Shuffle Observations", "CrossValidation");
-
-  create_categorized_parameter("readShuffledObs", _readShuffledObs, "<bool>",
-      "false", "Read shuffled observations", "CrossValidation");
-
-  create_categorized_parameter("writeShuffledObs", _writeShuffledObs, "<bool>",
-      "false", "Write shuffled observations", "CrossValidation");
-
-*/
-  create_categorized_parameter("numLimitedObs", _numLimitedObs, "<int>",
-      "inf", "limit number of observations to use", "CrossValidation");
 
 ///////////////////// Boosting parameters /////////////////////
 
@@ -141,6 +102,9 @@ ArgBoost::ArgBoost():
       "GreedyRMA");
 
 
+  create_categorized_parameter("numLimitedObs", _numLimitedObs, "<int>",
+      "inf", "limit number of observations to use", "CrossValidation");
+
 ///////////////////// Evaluation parameters /////////////////////
 
   create_categorized_parameter("evalEachIter", _evalEachIter, "<bool>",
@@ -152,6 +116,37 @@ ArgBoost::ArgBoost():
   create_categorized_parameter("writePredictions", _writePredictions, "<bool>",
        "false", "Write predictions for each model ", "Boosting");
 
+  }
+}
+
+
+/*
+
+///////////////////// Corss Validation parameters /////////////////////
+
+  create_categorized_parameter("outerCV", _outerCV, "<bool>", "false",
+    "Do outer cross validation", "CrossValidation");
+
+  create_categorized_parameter("innerCV", _innerCV, "<bool>", "false",
+    "Do inner cross validation", "CrossValidation");
+
+  create_categorized_parameter("validation", _validation, "<bool>",
+     "false",	"using validation set for early stopping", "CrossValidation");
+
+///////////////////// Shuffle observation parameters /////////////////////
+
+  create_categorized_parameter("shuffleObs", _shuffleObs, "<bool>", "true",
+       "Shuffle Observations", "CrossValidation");
+
+  create_categorized_parameter("readShuffledObs", _readShuffledObs, "<bool>",
+      "false", "Read shuffled observations", "CrossValidation");
+
+  create_categorized_parameter("writeShuffledObs", _writeShuffledObs, "<bool>",
+      "false", "Write shuffled observations", "CrossValidation");
+
+*/
+
+
 /*
   create_categorized_parameter("compModels", _compModels, "<bool>",
        "false", "comparing our model with the other models", "Boosting");
@@ -160,5 +155,18 @@ ArgBoost::ArgBoost():
       "100", "the nunmber of iteration or trees for compting models", "Boosting");
       */
 
-  }
-}
+
+      /*
+
+          _outerCV(false),
+          _innerCV(false),
+          _validation(false),
+
+          _shuffleObs(true),
+          _readShuffledObs(false),
+          _writeShuffledObs(false),
+
+      */
+
+      //_compModels(false),
+      //_compModelIters(100),

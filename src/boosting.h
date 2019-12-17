@@ -155,12 +155,10 @@ protected:
   CoinPackedVector row;
 
   double *dataWts;
-  double *objective;
-  double *lowerColumn;
-  double *upperColumn;
-  double *lowerRow;
-  double *upperRow;
-  int    *columnIndex;
+  double *objValue;
+  double *lowerColumn, *upperColumn;
+  double *lowerRow,    *upperRow;
+  int    *colIndex,    *rowIndex;
 
   // store solution infomation for the master problem
   vector<double> vecPrimal;  // dual variables
