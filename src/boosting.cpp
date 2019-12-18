@@ -92,7 +92,7 @@ namespace boosting {
     NumObs     = data->numTrainObs;
     NumAttrib  = data->numAttrib;
 
-    vecDual.resize(NumObs);
+    //vecDual.resize(NumObs);
     vecIsCovered.resize(NumObs);
     if (exactRMA()) rma->incumbentValue = inf;
 
@@ -122,8 +122,10 @@ namespace boosting {
 
     try {
 
-      data->setStandData(data->origTrainData, data->standTrainData);					// standadize data for L1 regularization
+      //data->setStandDataY(data->origTrainData, data->standTrainData);					// standadize data for L1 regularization
+      //data->setStandDataX(data->origTrainData, data->standTrainData);
       //data->integerizeData(data->origTrainData, data->intTrainData); 	// integerize features
+      data->standTrainData = data->origTrainData;
       if (exactRMA()) rma->setData(data);
 
       setInitRMP();
@@ -131,7 +133,8 @@ namespace boosting {
 
       for (curIter=0; curIter<NumIter; ++curIter) { // for each column generation iteration
 
-	//ucout << "\nColGen Iter: " << curIter << "\n";
+	      //ucout << "\nColGen Iter: " << curIter << "\n";
+
         setDataWts();
 
         solveRMA();
@@ -140,9 +143,9 @@ namespace boosting {
 
         insertColumns(); // add RMA solutions and check duplicate
 
-	setOriginalBounds();  // map back from the discretized data into original
+	      //setOriginalBounds();  // map back from the discretized data into original
 
-	solveRMP();
+	      solveRMP();
 
       } // end for each column generation iteration
 
@@ -191,6 +194,8 @@ namespace boosting {
     model.messageHandler()->setLogLevel(63);
     */
 
+
+/*
     model.dual();
     model.setOptimizationDirection(-1);
     //model.messageHandler()->setLogLevel(63);
@@ -215,20 +220,16 @@ namespace boosting {
 
     for (iColumn=0;iColumn<numColumns;iColumn++)
       printf("Column %d, primal %g, dual %g\n",iColumn,
-	     columnPrimal[iColumn],columnDual[iColumn]);
+	            columnPrimal[iColumn],columnDual[iColumn]);
 
-    /*
-      model.optimize();
+    // vecPrimal.resize(numCols);
+    // vecDual.resize(numRows);
 
-      if (data->printBoost()) model.write("master.lp");
+    columnObjective = model.objective();
 
-      vars = model.getVars();
-      constr = model.getConstrs();
-    */
-
-    vecPrimal.resize(numCols);
-    vecDual.resize(numRows);
-
+    vecPrimal = model.primalColumnSolution();
+    vecDual   = model.dualRowSolution();
+  */
     /*
       if (model.get(GRB_IntAttr_Status) == GRB_OPTIMAL) {
       primalVal = model.get(GRB_DoubleAttr_ObjVal);
@@ -238,6 +239,8 @@ namespace boosting {
       vecDual[i] = constr[i].get(GRB_DoubleAttr_Pi);
       }
     */
+
+    //printCLPsolution();
 
 #ifdef ACRO_HAVE_MPI
     if (uMPI::rank==0) {
@@ -262,7 +265,62 @@ namespace boosting {
   } // end function Boosting::solveMaster()
 
 
+  void Boosting::printCLPsolution() {
+
+    // Print column solution
+    int numberColumns = model.numberColumns();
+
+    // Alternatively getColSolution()
+    double * columnPrimal = model.primalColumnSolution();
+    // Alternatively getReducedCost()
+    double * columnDual = model.dualColumnSolution();
+    // Alternatively getColLower()
+    double * columnLower = model.columnLower();
+    // Alternatively getColUpper()
+    double * columnUpper = model.columnUpper();
+    // Alternatively getObjCoefficients()
+    double * columnObjective = model.objective();
+
+    int iColumn;
+
+    std::cout << "               Primal          Dual         Lower         Upper          Cost"
+              << std::endl;
+
+    for (iColumn = 0; iColumn < numberColumns; iColumn++) {
+         double value;
+         std::cout << std::setw(6) << iColumn << " ";
+         value = columnPrimal[iColumn];
+         if (fabs(value) < 1.0e5)
+              std::cout << std::setiosflags(std::ios::fixed | std::ios::showpoint) << std::setw(14) << value;
+         else
+              std::cout << std::setiosflags(std::ios::scientific) << std::setw(14) << value;
+         value = columnDual[iColumn];
+         if (fabs(value) < 1.0e5)
+              std::cout << std::setiosflags(std::ios::fixed | std::ios::showpoint) << std::setw(14) << value;
+         else
+              std::cout << std::setiosflags(std::ios::scientific) << std::setw(14) << value;
+         value = columnLower[iColumn];
+         if (fabs(value) < 1.0e5)
+              std::cout << std::setiosflags(std::ios::fixed | std::ios::showpoint) << std::setw(14) << value;
+         else
+              std::cout << std::setiosflags(std::ios::scientific) << std::setw(14) << value;
+         value = columnUpper[iColumn];
+         if (fabs(value) < 1.0e5)
+              std::cout << std::setiosflags(std::ios::fixed | std::ios::showpoint) << std::setw(14) << value;
+         else
+              std::cout << std::setiosflags(std::ios::scientific) << std::setw(14) << value;
+         value = columnObjective[iColumn];
+         if (fabs(value) < 1.0e5)
+              std::cout << std::setiosflags(std::ios::fixed | std::ios::showpoint) << std::setw(14) << value;
+         else
+              std::cout << std::setiosflags(std::ios::scientific) << std::setw(14) << value;
+
+         std::cout << std::endl;
+    }
+  }
+
   void Boosting::insertColumns() {
+    greedyLevel=EXACT; // TODO: fix this later
     (greedyLevel==EXACT) ? insertExactColumns() : insertGreedyColumns();
   }
 

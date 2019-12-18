@@ -58,9 +58,96 @@ namespace boosting {
     model.setOptimizationDirection(1);               // maximization
     //model.setLogLevel(0); // to turn off some output, 0 gives nothing and each increase in value switches on more messages.
     //matrix.setDimensions(numRows, numCols); // setDimensions (int numrows, int numcols)
-    model.resize(0, numCols);
 
-    // model.getEnv().set(GRB_IntParam_Method, 0);
+    {
+
+      int k, obs;
+
+       // Create space for 3 columns and 10000 rows
+       //int numberRows = 10000;
+       //int numberColumns = 3;
+       // This is fully dense - but would not normally be so
+       int numberElements = numRows * numCols;
+       // Arrays will be set to default values
+       model.resize(numRows, numCols);
+       double * elements      = new double [numberElements];
+       CoinBigIndex * starts  = new CoinBigIndex [numCols+1];
+       int * rows             = new int [numberElements];;
+       int * lengths          = new int[numCols];
+       // Now fill in - totally unsafe but ....
+       // no need as defaults to 0.0 double * columnLower = model2.columnLower();
+       double * columnLower = model.columnLower();
+       double * columnUpper = model.columnUpper();
+       double * objective   = model.objective();
+       double * rowLower    = model.rowLower();
+       double * rowUpper    = model.rowUpper();
+
+       // Columns - objective was packed
+       for (k = 0; k < numCols; k++) {
+         if (k==0)                 objective[k] = 0.0;
+         else if (k<1+2*NumAttrib) objective[k] = C;
+         else                      objective[k] = 1.0;
+       }
+
+       for (k = 0; k < numCols; k++) {
+         columnLower[k] = (k==0) ? -COIN_DBL_MAX : lowerColumn[k];
+         columnUpper[k] = COIN_DBL_MAX; //upperColumn[k];
+       }
+
+       // Rows
+       for (k = 0; k < numRows; k++) {
+         if (k < NumObs) {
+           obs = data->vecTrainData[k];
+           rowLower[k] = -COIN_DBL_MAX; //-inf;
+           rowUpper[k] = data->standTrainData[obs].y;
+         } else {
+           obs = data->vecTrainData[k-NumObs];
+           rowLower[k] = -COIN_DBL_MAX; //-inf;
+           rowUpper[k] = -data->standTrainData[obs].y;
+         }
+       }
+
+       //double rowValue[] = {1.0, -5.0, 1.0};
+       CoinBigIndex put = 0;
+       for (i = 0; i < numCols; i++) {
+            starts[i] = put;
+            lengths[i]   = numRows;
+            for (int j = 0; j < numRows; j++) {
+                int index = (j <NumObs) ? j : j-NumObs;
+                 obs = data->vecTrainData[index];
+                 rows[put] = j;
+                 if (i==0)
+                    elements[put] = (i < NumObs) ? 1.0 : -1.0;
+                 else if (i<1+NumAttrib)
+                    elements[put] = (i < NumObs) ? data->standTrainData[obs].X[j]
+                                                 : -data->standTrainData[obs].X[j];
+                 else if (i<1+2*NumAttrib)
+                    elements[put] = (i < NumObs) ? -data->standTrainData[obs].X[j]
+                                                 : data->standTrainData[obs].X[j];
+                 else
+                    if (i-1-2*NumAttrib==index)  elements[put] = (i < NumObs) ? 1.0 : -1.0;
+                 put++;
+            }
+       }
+       starts[numCols] = put;
+       // assign to matrix
+       matrix = new CoinPackedMatrix(true, 0.0, 0.0);
+       matrix->assignMatrix(true, numRows, numCols, numberElements,
+                            elements, rows, starts, lengths);
+       //CoinPackedMatrix * matrix = new CoinPackedMatrix(true, 0.0, 0.0);
+       //matrix->assignMatrix(true, numRows, numCols, numberElements,
+        //                    elements, rows, starts, lengths);
+       ClpPackedMatrix *clpMatrix = new ClpPackedMatrix(matrix);
+       model.replaceMatrix(clpMatrix, true);
+       //printf("Time for 10000 addRow using hand written code is %g\n", CoinCpuTime() - time1);
+       // If matrix is really big could switch off creation of row copy
+       // model2.setSpecialOptions(256);
+    }
+    //model.dual();
+    model.writeMps("a.mps");
+
+/*
+    model.resize(0, numCols);
 
     for (i=0; i<numCols; ++i) {
       lowerColumn[i] = (i==0) ? -COIN_DBL_MAX : 0.0; // beta_0 is free variable
@@ -116,7 +203,7 @@ namespace boosting {
     }
 
     model.addRows(buildObject);
-
+*/
     //model.loadProblem(matrix, lowerColumn, upperColumn, objective,
     //		      lowerRow, upperRow);
 

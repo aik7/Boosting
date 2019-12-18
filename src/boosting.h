@@ -13,6 +13,8 @@
 #include <vector>
 #include <deque>
 #include <map>
+#include <iomanip>
+#include <cassert>
 
 #include <ClpSimplex.hpp>
 #include <CoinPackedMatrix.hpp>
@@ -62,12 +64,12 @@ namespace base {
 namespace boosting {
 
   enum GreedyLevel   {EXACT, NotOptimal, Greedy};
+  enum TestTrainData {TRAIN, TEST, VALID};
+
   //enum OuterInnerCV  {INNER, OUTER};
 
-  struct IntMinMax { double minOrigVal, maxOrigVal; };
-
-  struct Feature   {vector<IntMinMax> vecIntMinMax;};
-  enum TestTrainData {TRAIN, TEST, VALID};
+  //struct IntMinMax { double minOrigVal, maxOrigVal; };
+  //struct Feature   { vector<IntMinMax> vecIntMinMax; };
 
   class Boosting : public arg::ArgBoost, public base::BaseRMA { //public base::BaseBoost { //public DriverRMA,
 
@@ -111,6 +113,7 @@ public:
   //virtual void printEachIterAllErrs() = 0;
   void         printIterInfo();
   void         printBoostingErr();
+  void         printCLPsolution();
 
   //////////////////////// Evaluating methods /////////////////////////////
 
@@ -151,7 +154,7 @@ protected:
 
   ///////////////////// CLP variables /////////////////////
   ClpSimplex       model;
-  CoinPackedMatrix matrix;
+  CoinPackedMatrix *matrix;
   CoinPackedVector row;
 
   double *dataWts;
@@ -161,9 +164,10 @@ protected:
   int    *colIndex,    *rowIndex;
 
   // store solution infomation for the master problem
-  vector<double> vecPrimal;  // dual variables
-  vector<double> vecDual;    // primal variables
-  double         primalVal;	 // primal solution value
+  double *vecPrimal;  // dual variables
+  double *vecDual;    // primal variables
+  double primalVal;	 // primal solution value
+  double *columnObjective;
 
   deque<bool>    vecIsCovered;	// each observation is covered or not
 
