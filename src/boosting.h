@@ -17,13 +17,12 @@
 #include <cassert>
 
 #include <ClpSimplex.hpp>
+#include <CoinTime.hpp>
+#include <CoinBuild.hpp>
+#include <CoinModel.hpp>
 #include <CoinPackedMatrix.hpp>
 #include <CoinPackedVector.hpp>
-//#include "ClpSimplex.hpp"
-#include "CoinHelperFunctions.hpp"
-#include "CoinTime.hpp"
-#include "CoinBuild.hpp"
-#include "CoinModel.hpp"
+#include <CoinHelperFunctions.hpp>
 
 #include <pebbl_config.h>
 #include <pebbl/utilib/ParameterList.h>
@@ -49,27 +48,12 @@ typedef void parRMA;
 #include "serRMA.h"
 #include "greedyRMA.h"
 
-/*
-namespace base {
-
-/////////////////////////  Boosting Base class /////////////////////////
-  class BaseBoost : public arg::ArgBoost, public BaseRMA {}; //, // {  //{ //, public ArgRMA,
-    //virtual public pebbl::pebblParams,
-    //virtual public pebbl::parallelPebblParams {};
-
-} // base namespace
-*/
-
 
 namespace boosting {
 
   enum GreedyLevel   {EXACT, NotOptimal, Greedy};
   enum TestTrainData {TRAIN, TEST, VALID};
-
   //enum OuterInnerCV  {INNER, OUTER};
-
-  //struct IntMinMax { double minOrigVal, maxOrigVal; };
-  //struct Feature   { vector<IntMinMax> vecIntMinMax; };
 
   class Boosting : public arg::ArgBoost, public base::BaseRMA { //public base::BaseBoost { //public DriverRMA,
 
@@ -78,9 +62,9 @@ public:
   Boosting(int& argc, char**& argv); //  rma(NULL), prma(NULL), parallel(false)  { }; //: DriverRMA{argc, argv} {};   //:  rma(NULL), prma(NULL), parallel(false) {}; //, model(env) {};
   virtual ~Boosting();
 
-  void reset();
-  void setData(int& argc, char**& argv);
-  void setupPebblRMA(int& argc, char**& argv);
+  void         reset();
+  void         setData(int& argc, char**& argv);
+  void         setupPebblRMA(int& argc, char**& argv);
   virtual void setBoostingParameters() = 0;
 
   //////////////////////// training data //////////////////////////////
@@ -90,8 +74,9 @@ public:
   //// virtual void   resetMaster() = 0;
   virtual void setInitRMP() = 0;
   void         solveRMP();
-  //void solveInitialMaster();
   virtual void setDataWts()      = 0;
+
+  void   resetExactRMA();
 
   void   solveRMA();
   void   solveExactRMA();
@@ -186,6 +171,7 @@ protected:
 
   vector<bool>            vecCoveredSign;     // size: m (originalObs) x |K'|
   vector<vector<bool> >   vecCoveredObsByBox; // size: m (originalObs) x |K'|
+
   vector<double>          predTrain;          // predictions of training data by model
   vector<double>          predTest;           // predictions of testing data by model
 

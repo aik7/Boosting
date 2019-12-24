@@ -37,7 +37,7 @@ namespace boosting {
 
     DEBUGPR(10, cout << "Setup Initial Restricted Master Problem!" << "\n");
 
-    int i, j, obs;
+    int i, j, k, obs;
     numCols = 1+2*NumAttrib+NumObs; // vecPrimal.size();
     numRows = isLPBoost() ? NumObs+1 : 2*NumObs ; // //NumVar+1;	// +1 for constant term
 
@@ -56,95 +56,106 @@ namespace boosting {
     //matrix.setDimensions(0, numCols);
 
     model.setOptimizationDirection(1);               // maximization
-    //model.setLogLevel(0); // to turn off some output, 0 gives nothing and each increase in value switches on more messages.
+    model.setLogLevel(0); // to turn off some output, 0 gives nothing and each increase in value switches on more messages.
     //matrix.setDimensions(numRows, numCols); // setDimensions (int numrows, int numcols)
 
-    {
 
-      int k, obs;
+     // Create space for 3 columns and 10000 rows
+     //int numberRows = 10000;
+     //int numberColumns = 3;
+     // This is fully dense - but would not normally be so
+     int numberElements = numRows * numCols;
+     // Arrays will be set to default values
+     model.resize(numRows, numCols);
 
-       // Create space for 3 columns and 10000 rows
-       //int numberRows = 10000;
-       //int numberColumns = 3;
-       // This is fully dense - but would not normally be so
-       int numberElements = numRows * numCols;
-       // Arrays will be set to default values
-       model.resize(numRows, numCols);
-       double * elements      = new double [numberElements];
-       CoinBigIndex * starts  = new CoinBigIndex [numCols+1];
-       int * rows             = new int [numberElements];;
-       int * lengths          = new int[numCols];
-       // Now fill in - totally unsafe but ....
-       // no need as defaults to 0.0 double * columnLower = model2.columnLower();
-       double * columnLower = model.columnLower();
-       double * columnUpper = model.columnUpper();
-       double * objective   = model.objective();
-       double * rowLower    = model.rowLower();
-       double * rowUpper    = model.rowUpper();
+     double * elements      = new double [numberElements];
+     CoinBigIndex * starts  = new CoinBigIndex [numCols+1];
+     int * rows             = new int [numberElements];;
+     int * lengths          = new int[numCols];
+     // Now fill in - totally unsafe but ....
+     // no need as defaults to 0.0 double * columnLower = model2.columnLower();
+     double * columnLower = model.columnLower();
+     double * columnUpper = model.columnUpper();
+     double * objective   = model.objective();
+     double * rowLower    = model.rowLower();
+     double * rowUpper    = model.rowUpper();
 
-       // Columns - objective was packed
-       for (k = 0; k < numCols; k++) {
-         if (k==0)                 objective[k] = 0.0;
-         else if (k<1+2*NumAttrib) objective[k] = C;
-         else                      objective[k] = 1.0;
+     // Columns - objective was packed
+     for (k = 0; k < numCols; k++) {
+       if (k==0)                 objective[k] = 0.0;
+       else if (k<1+2*NumAttrib) objective[k] = C;
+       else                      objective[k] = 1.0;
+     }
+
+     for (k = 0; k < numCols; k++) {
+       columnLower[k] = (k==0) ? -COIN_DBL_MAX : lowerColumn[k];
+       columnUpper[k] = COIN_DBL_MAX; //upperColumn[k];
+     }
+
+     // Rows
+     for (k = 0; k < numRows; k++) {
+       if (k < NumObs) {
+         obs = data->vecTrainData[k];
+         rowLower[k] = -COIN_DBL_MAX; //-inf;
+         rowUpper[k] = data->standTrainData[obs].y;
+       } else {
+         obs = data->vecTrainData[k-NumObs];
+         rowLower[k] = -COIN_DBL_MAX; //-inf;
+         rowUpper[k] = -data->standTrainData[obs].y;
        }
+     }
 
-       for (k = 0; k < numCols; k++) {
-         columnLower[k] = (k==0) ? -COIN_DBL_MAX : lowerColumn[k];
-         columnUpper[k] = COIN_DBL_MAX; //upperColumn[k];
-       }
+     //double rowValue[] = {1.0, -5.0, 1.0};
+     CoinBigIndex put = 0;
+     for (j = 0; j < numCols; j++) { // for each column
+          starts[j]  = put;
+          lengths[j] = numRows;
+          for (int i = 0; i < numRows; ++i) { // for each row
+              int index = (i <NumObs) ? i : i-NumObs;
+              obs = data->vecTrainData[index];
+              rows[put] = i;
+              if (j==0)
+                elements[put] = (i < NumObs) ? 1.0 : -1.0;
+              else if (j<1+NumAttrib)
+                elements[put] = (i < NumObs) ? data->standTrainData[obs].X[j-1]
+                                             : -data->standTrainData[obs].X[j-1];
+              else if (j<1+2*NumAttrib)
+                elements[put] = (i < NumObs) ? -data->standTrainData[obs].X[j-1-NumAttrib]
+                                             : data->standTrainData[obs].X[j-1-NumAttrib];
+              else // episilon (error variable)
+                if (j-1-2*NumAttrib==index)  elements[put] = (j < NumObs) ? 1.0 : -1.0;
+                else                         elements[put] = 0;
+              put++;
+          } // end for each row
+     } // end for each column
+     starts[numCols] = put;
 
-       // Rows
-       for (k = 0; k < numRows; k++) {
-         if (k < NumObs) {
-           obs = data->vecTrainData[k];
-           rowLower[k] = -COIN_DBL_MAX; //-inf;
-           rowUpper[k] = data->standTrainData[obs].y;
-         } else {
-           obs = data->vecTrainData[k-NumObs];
-           rowLower[k] = -COIN_DBL_MAX; //-inf;
-           rowUpper[k] = -data->standTrainData[obs].y;
+     if (debug>=100) {
+       cout << "element:\n";
+       put = 0;
+       for (j = 0; j < numCols; j++) {
+         for (int i = 0; i < numRows; ++i) {
+           cout << elements[put] << " ";
+           put++;
          }
+         cout << endl;
        }
+       cout << "end element:\n";
+     }
 
-       //double rowValue[] = {1.0, -5.0, 1.0};
-       CoinBigIndex put = 0;
-       for (i = 0; i < numCols; i++) {
-            starts[i] = put;
-            lengths[i]   = numRows;
-            for (int j = 0; j < numRows; j++) {
-                int index = (j <NumObs) ? j : j-NumObs;
-                 obs = data->vecTrainData[index];
-                 rows[put] = j;
-                 if (i==0)
-                    elements[put] = (i < NumObs) ? 1.0 : -1.0;
-                 else if (i<1+NumAttrib)
-                    elements[put] = (i < NumObs) ? data->standTrainData[obs].X[j]
-                                                 : -data->standTrainData[obs].X[j];
-                 else if (i<1+2*NumAttrib)
-                    elements[put] = (i < NumObs) ? -data->standTrainData[obs].X[j]
-                                                 : data->standTrainData[obs].X[j];
-                 else
-                    if (i-1-2*NumAttrib==index)  elements[put] = (i < NumObs) ? 1.0 : -1.0;
-                 put++;
-            }
-       }
-       starts[numCols] = put;
-       // assign to matrix
-       matrix = new CoinPackedMatrix(true, 0.0, 0.0);
-       matrix->assignMatrix(true, numRows, numCols, numberElements,
-                            elements, rows, starts, lengths);
-       //CoinPackedMatrix * matrix = new CoinPackedMatrix(true, 0.0, 0.0);
-       //matrix->assignMatrix(true, numRows, numCols, numberElements,
-        //                    elements, rows, starts, lengths);
-       ClpPackedMatrix *clpMatrix = new ClpPackedMatrix(matrix);
-       model.replaceMatrix(clpMatrix, true);
-       //printf("Time for 10000 addRow using hand written code is %g\n", CoinCpuTime() - time1);
-       // If matrix is really big could switch off creation of row copy
-       // model2.setSpecialOptions(256);
-    }
-    //model.dual();
-    model.writeMps("a.mps");
+     // assign to matrix
+     matrix = new CoinPackedMatrix(true, 0.0, 0.0);
+     matrix->assignMatrix(true, numRows, numCols, numberElements,
+                          elements, rows, starts, lengths);
+     //CoinPackedMatrix * matrix = new CoinPackedMatrix(true, 0.0, 0.0);
+     //matrix->assignMatrix(true, numRows, numCols, numberElements,
+      //                    elements, rows, starts, lengths);
+     ClpPackedMatrix *clpMatrix = new ClpPackedMatrix(matrix);
+     model.replaceMatrix(clpMatrix, true);
+     //printf("Time for 10000 addRow using hand written code is %g\n", CoinCpuTime() - time1);
+     // If matrix is really big could switch off creation of row copy
+     // model2.setSpecialOptions(256);
+
 
 /*
     model.resize(0, numCols);
@@ -225,7 +236,6 @@ namespace boosting {
   }
 
 
-
   // insert columns in each column iteration
   void REPR::insertExactColumns() { //const int& GreedyLevel) {
 
@@ -278,11 +288,11 @@ namespace boosting {
       } // end for each observation, i
 
       if (sl[k]->isPosIncumb) {
-	DEBUGPR(1, cout << "Positive Box\n");
-	vecCoveredSign[numBox+numRMASols] = true;
-      } else {
-	DEBUGPR(1, cout << "Negative Box\n");
-	vecCoveredSign[numBox+numRMASols] = false;
+      	DEBUGPR(1, cout << "Positive Box\n");
+      	vecCoveredSign[numBox+numRMASols] = true;
+            } else {
+      	DEBUGPR(1, cout << "Negative Box\n");
+      	vecCoveredSign[numBox+numRMASols] = false;
       }
 
       matIntLower[matIntLower.size()-s.size()+k] = sl[k]->a;
@@ -291,28 +301,28 @@ namespace boosting {
 
       DEBUGPR(1, cout << "vecIsCovered: " << vecIsCovered << "\n" );
 
-      // add columns using GUROBI/CLP
-      //col.clear();
-      //constr = model.getConstrs();
+      // add columns using CLP
 
       double *columnValue = new double[numRows];
+      for (int i = 0; i < numRows; ++i) columnValue[i] = 0;
+
       for (int i = 0; i < NumObs; ++i) {
-	obs = data->vecTrainData[i];
-	if (vecIsCovered[i]==true) {
-	  if (sl[k]->isPosIncumb) {
-	    columnValue[i]        = 1;
-	    columnValue[NumObs+i] = -1;
-	    //col.addTerm(1, constr[i]);
-	    //col.addTerm(-1, constr[i+NumObs]);
-	  } else {
-	    columnValue[i]        = -1;
-	    columnValue[NumObs+i] = 1;
-	    //col.addTerm(-1, constr[i]);
-	    //col.addTerm(1, constr[i+NumObs]);
-	  }
-	}
+      	obs = data->vecTrainData[i];
+      	if (vecIsCovered[i]==true) {
+      	  if (sl[k]->isPosIncumb) {
+      	    columnValue[i]        = 1;
+      	    columnValue[NumObs+i] = -1;
+      	  } else {
+      	    columnValue[i]        = -1;
+      	    columnValue[NumObs+i] = 1;
+      	  }
+      	}
       }
-      model.addColumn(1, colIndex, columnValue, 0.0, COIN_DBL_MAX, E);
+
+      //colIndex = colIndex + numBox;
+
+      //numCols+numBox+k
+      model.addColumn(numRows, colIndex, columnValue, 0.0, COIN_DBL_MAX, E);
       //model.addVar(0.0, GRB_INFINITY, E, GRB_CONTINUOUS, col);
 
       //} // end if duplicate rules
@@ -597,45 +607,45 @@ namespace boosting {
       int i,j, obs;
 
       if (C != 0) {
-	for (j = 1; j < NumAttrib+1; ++j)
-	  sumPrimal += C*vecPrimal[j];
+      	for (j = 1; j < NumAttrib+1; ++j) sumPrimal += C*vecPrimal[j];
       }
       for (j = NumAttrib+1; j < numCols; ++j) {
-	if (P==1)
-	  sumPrimal += vecPrimal[j];
-	else if (P==2)
-	  sumPrimal += vecPrimal[j]*vecPrimal[j];
+      	if (P==1)   	 sumPrimal += vecPrimal[j];
+      	else if (P==2) sumPrimal += vecPrimal[j]*vecPrimal[j];
       }
+
       if (D != 0) {
-	for (j = 1; j < NumAttrib+1; ++j)	// for linear square coefficients
-	  sumPrimal += D*vecPrimal[j]*vecPrimal[j];
+      	for (j = 1; j < NumAttrib+1; ++j)	// for linear square coefficients
+      	  sumPrimal += D*vecPrimal[j]*vecPrimal[j];
       }
 
       double sumDual=0, sumCheck=0;
       vector<double> checkConst(NumAttrib);
       for (i=0; i<NumObs; i++)  {
-	obs = data->vecTrainData[i];
-	sumDual += data->standTrainData[obs].y * ( vecDual[i] - vecDual[NumObs+i] );
-	if (P==2)  sumDual -= pow( ( vecDual[i] - vecDual[NumObs+i] ), 2 ) / 4.0 ;
-	sumCheck += ( vecDual[i] - vecDual[NumObs+i] );
+      	obs = data->vecTrainData[i];
+      	sumDual += data->standTrainData[obs].y * ( vecDual[i] - vecDual[NumObs+i] );
+      	if (P==2)  sumDual -= pow( ( vecDual[i] - vecDual[NumObs+i] ), 2 ) / 4.0 ;
+      	sumCheck += ( vecDual[i] - vecDual[NumObs+i] );
 
-	DEBUGPR(10, cout << "mu: " << vecDual[i] << " nu:" << vecDual[NumObs+i]
-		<< " eps: " << vecPrimal[2*NumAttrib+i+1] << "\n" );
+      	DEBUGPR(1, cout << "mu: " << vecDual[i] << " nu:" << vecDual[NumObs+i]
+      		<< " eps: " << vecPrimal[2*NumAttrib+i+1] << "\n" );
       }
 
       for (j=0; j<NumAttrib; ++j) {
-	for (i=0; i<NumObs; ++i)  {
-	  obs = data->vecTrainData[i];
-	  checkConst[j] += ( vecDual[i] - vecDual[NumObs+i] )
-	    * data->standTrainData[obs].X[j] ;
-	}
+      	for (i=0; i<NumObs; ++i)  {
+      	  obs = data->vecTrainData[i];
+      	  checkConst[j] += ( vecDual[i] - vecDual[NumObs+i] )
+      	                 * data->standTrainData[obs].X[j] ;
+      	}
       }
 
       DEBUGPR(1, cout << "vecPrimal: " << vecPrimal
 	      << " PrimalObj:" << sumPrimal << "\n" );
-      DEBUGPR(1, cout << "vecDual: " << vecDual
+      DEBUGPR(1, for (i=0; i<numCols; ++i) cout << vecPrimal[i] << " "; );
+      DEBUGPR(1, cout << "\nvecDual: " << vecDual
 	      << " DualObj:" << sumDual << "\n" );
-      DEBUGPR(1, cout << "sumCheck: " << sumCheck << "\n" );  // sum has to be 1
+      DEBUGPR(1, for (i=0; i<numRows; ++i) cout << vecDual[i] << " "; );
+      DEBUGPR(1, cout << "\nsumCheck: " << sumCheck << "\n" );  // sum has to be 1
       DEBUGPR(1, cout << "checkCons: " << checkConst << "\n" );
 #ifdef ACRO_HAVE_MPI
     }

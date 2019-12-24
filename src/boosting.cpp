@@ -51,11 +51,13 @@ namespace boosting {
 
   ///////////////////////// Set-up Boosting /////////////////////////
 
+  // set data for Boosting class
   void Boosting::setData(int& argc, char**& argv) {
     data = new data::DataBoost(argc, argv, (BaseRMA *) this, (arg::ArgBoost *) this);
   }
 
 
+  // set up PEBBL RMA
   void Boosting::setupPebblRMA(int& argc, char**& argv) {
 
 #ifdef ACRO_HAVE_MPI
@@ -85,6 +87,7 @@ namespace boosting {
   }
 
 
+  // reset Boosting variables
   void Boosting::reset() {
 
     numBox     = 0;
@@ -112,7 +115,7 @@ namespace boosting {
 
   ///////////////////////// Training methods /////////////////////////
 
-  // train data using REPRoost
+  // training process of boosting
   void Boosting::train(const bool& isOuter, const int& NumIter, const int& greedyLevel) {
 
     curIter=-1;
@@ -173,6 +176,16 @@ namespace boosting {
 
     tc.startTime();
 
+    model.dual();
+    if (debug>=1) model.writeMps("a.mps");
+
+    vecPrimal = model.primalColumnSolution();
+    vecDual   = model.dualRowSolution();
+
+    DEBUGPR(10,
+      for (i=0; i<numCols; ++i) cout << vecPrimal[i];
+      for (i=0; i<numRows; ++i) cout << vecDual[i]; );
+
     /*
     // Create Packed Matrix
     CoinPackedMatrix matrix;
@@ -193,7 +206,6 @@ namespace boosting {
     if (model.numberRows() < 50)
     model.messageHandler()->setLogLevel(63);
     */
-
 
 /*
     model.dual();
@@ -230,25 +242,21 @@ namespace boosting {
     vecPrimal = model.primalColumnSolution();
     vecDual   = model.dualRowSolution();
   */
-    /*
-      if (model.get(GRB_IntAttr_Status) == GRB_OPTIMAL) {
-      primalVal = model.get(GRB_DoubleAttr_ObjVal);
-      for (i = 0; i < numCols; ++i)
-      vecPrimal[i] = vars[i].get(GRB_DoubleAttr_X);
-      for (i = 0; i < numRows; ++i)
-      vecDual[i] = constr[i].get(GRB_DoubleAttr_Pi);
-      }
-    */
 
+    primalVal = model.objectiveValue();
     //printCLPsolution();
 
 #ifdef ACRO_HAVE_MPI
     if (uMPI::rank==0) {
 #endif //  ACRO_HAVE_MPI
+
       DEBUGPR(0, cout << " Master Solution: " << primalVal << "\t");
-      printRMPSolution();
+
       tc.endCPUTime();
-      DEBUGPR(2, cout << tc.endWallTime() << "\n";);
+      DEBUGPR(0, cout << tc.endWallTime() << "\n";);
+
+      printRMPSolution();
+
 #ifdef ACRO_HAVE_MPI
     }
 #endif //  ACRO_HAVE_MPI
@@ -265,6 +273,7 @@ namespace boosting {
   } // end function Boosting::solveMaster()
 
 
+  // print function for CLP solutions
   void Boosting::printCLPsolution() {
 
     // Print column solution
@@ -319,6 +328,7 @@ namespace boosting {
     }
   }
 
+  // call insert column in sub-class
   void Boosting::insertColumns() {
     greedyLevel=EXACT; // TODO: fix this later
     (greedyLevel==EXACT) ? insertExactColumns() : insertGreedyColumns();
@@ -327,8 +337,13 @@ namespace boosting {
 
   void Boosting::solveRMA() {
     if (exactRMA()) {
+
+      resetExactRMA();
+
       if (BaseRMA::initGuess()) {
         solveGreedyRMA();
+        rma->setInitialGuess(grma->isPosIncumb, grma->maxObjValue,
+                             grma->L, grma->U);
         //rma->setInitGreedySol();
       }
       solveExactRMA();
@@ -338,18 +353,19 @@ namespace boosting {
   }
 
 
+  // TODO: make reset function for GreedyRMA
   void Boosting::solveGreedyRMA() {
     grma = new greedyRMA::GreedyRMA((BaseRMA *) this, (DataRMA *) data);
     grma->runGreedyRangeSearch();
   }
 
 
-  void Boosting::solveExactRMA() {
+  void Boosting::resetExactRMA() {
 
 #ifdef ACRO_HAVE_MPI
     if (parallel) {
       prma->reset();
-      if (BaseRMA::printBBdetails()) prma->printConfiguration();
+      if (printBBdetails()) prma->printConfiguration();
       CommonIO::begin_tagging();
     } else {
 #endif //  ACRO_HAVE_MPI
@@ -362,7 +378,11 @@ namespace boosting {
     rma->workingSol.value = -inf;
     rma->numDistObs       = data->numTrainObs;	    // only use training data
     rma->setSortObsNum(data->vecTrainData);
-    //setDataWts();
+
+  }
+
+
+  void Boosting::solveExactRMA() {
 
     rma->resetTimers();
     InitializeTiming();

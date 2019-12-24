@@ -7,10 +7,6 @@
 #ifndef REPR_h
 #define REPR_h
 
-//*
-#include <pebbl_config.h>
-#include <pebbl/utilib/ParameterList.h>
-#include <pebbl/utilib/memdebug.h>
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -18,10 +14,9 @@
 #include <deque>
 #include <map>
 
-//#include "gurobi_c++.h"
-#include "Time.h"
-//#include "baseBoost.h"
-#include "boosting.h"
+#include <pebbl_config.h>
+#include <pebbl/utilib/ParameterList.h>
+#include <pebbl/utilib/memdebug.h>
 
 #ifdef ACRO_HAVE_MPI
 #include <pebbl/pbb/parBranching.h>
@@ -33,6 +28,9 @@ typedef void parRMA;
 #define outstream cout
 #define IO(action) action;
 #endif // ACRO_HAVE_MPI
+
+#include "Time.h"
+#include "boosting.h"
 
 
 namespace boosting {
@@ -46,7 +44,6 @@ public:
 	~REPR() {}
 
 	//////////////////////// Training methods //////////////////////////////
-	//void train(const bool& isOuter, const int& iter, const int& greedyLevel);
 
 	void setBoostingParameters();
 
@@ -58,10 +55,12 @@ public:
 	void insertGreedyColumns();
 
 	//////////////////////// Evaluating methods //////////////////////////////
+
 	double evaluateEachIter(const int& isTest, vector<DataXy> origData);
 	double evaluateAtFinal (const int& isTest, vector<DataXy> origData);
 
 	//////////////////////// Printing methods //////////////////////////////
+
 	void printRMPSolution();	// restricted mater problem solution
 	void printRMAInfo();			// print RMA problem info
 	//void printEachIterAllErrs() {}
