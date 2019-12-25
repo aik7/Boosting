@@ -251,9 +251,7 @@ namespace boosting {
 #endif //  ACRO_HAVE_MPI
 
       DEBUGPR(0, cout << " Master Solution: " << primalVal << "\t");
-
-      tc.endCPUTime();
-      DEBUGPR(0, cout << tc.endWallTime() << "\n";);
+      DEBUGPR(0, cout << tc.getWallTime() << "\n";);
 
       printRMPSolution();
 
@@ -376,8 +374,8 @@ namespace boosting {
 
     rma->mmapCachedCutPts.clear();
     rma->workingSol.value = -inf;
-    rma->numDistObs       = data->numTrainObs;	    // only use training data
-    rma->setSortObsNum(data->vecTrainData);
+    //rma->numDistObs       = data->numTrainObs;	    // only use training data
+    rma->setSortedObsIdx(data->vecTrainData);
 
   }
 
@@ -397,7 +395,7 @@ namespace boosting {
 #endif //  ACRO_HAVE_MPI
       tc.getCPUTime();
       tc.getWallTime();
-      printSolutionTime();
+      printRMASolutionTime();
 #ifdef ACRO_HAVE_MPI
     }
 #endif //  ACRO_HAVE_MPI
@@ -484,7 +482,7 @@ namespace boosting {
   }
 
 
-  void DriverRMA::printSolutionTime() {
+  void Boosting::printRMASolutionTime() {
     ucout << "ERMA Solution: " << rma->workingSol.value
           << "\tCPU time: "    << tc.getCPUTime() << "\n";
   }
