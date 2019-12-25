@@ -12,25 +12,19 @@ namespace boosting {
 
   Boosting::Boosting(int& argc, char**& argv): rma(NULL), prma(NULL), parallel(false) {
 
-#ifdef ACRO_HAVE_MPI
-    uMPI::init(&argc, &argv, MPI_COMM_WORLD);
-#endif // ACRO_HAVE_M
+    #ifdef ACRO_HAVE_MPI
+        uMPI::init(&argc, &argv, MPI_COMM_WORLD);
+    #endif // ACRO_HAVE_M
 
-    //cout << setprecision(6) << fixed;
+        setup(argc, argv);     // setup all paramaters
 
-    setup(argc, argv);     // setup all paramaters
-
-    /*
-      #ifdef ACRO_HAVE_MPI
-      if (uMPI::rank==0) {
-      #endif //  ACRO_HAVE_MPI
-    */
-    setData(argc, argv);   // set data
-    /*
-      #ifdef ACRO_HAVE_MPI
-      }
-      #endif //  ACRO_HAVE_MPI
-    */
+    #ifdef ACRO_HAVE_MPI
+    if (uMPI::rank==0) {
+    #endif //  ACRO_HAVE_MPI
+        setData(argc, argv);   // set data
+    #ifdef ACRO_HAVE_MPI
+    }
+    #endif //  ACRO_HAVE_MPI
 
     if (exactRMA()) setupPebblRMA(argc, argv);  // setup RMA
 
@@ -77,12 +71,20 @@ namespace boosting {
     }
 #endif // ACRO_HAVE_MPI
 
-    rma->setParameters((BaseRMA *) this); // passing arguments
-    rma->setData(data);
+    rma->setParameters(this); // passing arguments
 
-    exception_mngr::set_stack_trace(false);
+#ifdef ACRO_HAVE_MPI
+if (uMPI::rank==0) {
+#endif //  ACRO_HAVE_MPI
+    rma->setData(data);
+    rma->setSortedObsIdx(data->vecTrainData);
+#ifdef ACRO_HAVE_MPI
+}
+#endif //  ACRO_HAVE_MPI
+
+    //exception_mngr::set_stack_trace(false);
     rma->setup(argc,argv);
-    exception_mngr::set_stack_trace(true);
+    //exception_mngr::set_stack_trace(true);
 
   }
 
@@ -128,19 +130,32 @@ namespace boosting {
       //data->setStandDataY(data->origTrainData, data->standTrainData);					// standadize data for L1 regularization
       //data->setStandDataX(data->origTrainData, data->standTrainData);
       //data->integerizeData(data->origTrainData, data->intTrainData); 	// integerize features
+#ifdef ACRO_HAVE_MPI
+if (uMPI::rank==0) {
+#endif //  ACRO_HAVE_MPI
       data->standTrainData = data->origTrainData;
       if (exactRMA()) rma->setData(data);
-
       setInitRMP();
       solveRMP();  //solveInitialMaster();
+#ifdef ACRO_HAVE_MPI
+}
+#endif //  ACRO_HAVE_MPI
 
       for (curIter=0; curIter<NumIter; ++curIter) { // for each column generation iteration
 
 	      //ucout << "\nColGen Iter: " << curIter << "\n";
-
+#ifdef ACRO_HAVE_MPI
+if (uMPI::rank==0) {
+#endif //  ACRO_HAVE_MPI
         setDataWts();
-
+#ifdef ACRO_HAVE_MPI
+}
+#endif //  ACRO_HAVE_MPI
         solveRMA();
+
+#ifdef ACRO_HAVE_MPI
+if (uMPI::rank==0) {
+#endif //  ACRO_HAVE_MPI
 
         if (isStoppingCondition()) break;
 
@@ -150,11 +165,15 @@ namespace boosting {
 
 	      solveRMP();
 
+#ifdef ACRO_HAVE_MPI
+}
+#endif //  ACRO_HAVE_MPI
+
       } // end for each column generation iteration
 
-      printBoostingErr();
+      //printBoostingErr();
 
-      if ( evalFinalIter() && !(evalEachIter()) ) evaluateFinal();
+      //if ( evalFinalIter() && !(evalEachIter()) ) evaluateFinal();
 
       // clean up GUROBI for the next crossvalidation set
       //resetGurobi();
@@ -250,8 +269,8 @@ namespace boosting {
     if (uMPI::rank==0) {
 #endif //  ACRO_HAVE_MPI
 
-      DEBUGPR(0, cout << " Master Solution: " << primalVal << "\t");
-      DEBUGPR(0, cout << tc.getWallTime() << "\n";);
+      ucout << " Master Solution: " << primalVal << "\t"
+            << " CPU Time: " << tc.getCPUTime() << "\n";
 
       printRMPSolution();
 
@@ -334,19 +353,31 @@ namespace boosting {
 
 
   void Boosting::solveRMA() {
+
     if (exactRMA()) {
 
       resetExactRMA();
 
       if (BaseRMA::initGuess()) {
-        solveGreedyRMA();
-        rma->setInitialGuess(grma->isPosIncumb, grma->maxObjValue,
-                             grma->L, grma->U);
-        //rma->setInitGreedySol();
+  #ifdef ACRO_HAVE_MPI
+  if (uMPI::rank==0) {
+  #endif //  ACRO_HAVE_MPI
+  	       solveGreedyRMA();
+           rma->setInitialGuess(grma->isPosIncumb, grma->maxObjValue,
+                                grma->L, grma->U);
+  #ifdef ACRO_HAVE_MPI
+  }
+  #endif //  ACRO_HAVE_MPI
       }
       solveExactRMA();
     } else {
-      solveGreedyRMA();
+      #ifdef ACRO_HAVE_MPI
+      if (uMPI::rank==0) {
+      #endif //  ACRO_HAVE_MPI
+            solveGreedyRMA();
+      #ifdef ACRO_HAVE_MPI
+      }
+      #endif //  ACRO_HAVE_MPI
     }
   }
 
@@ -375,7 +406,7 @@ namespace boosting {
     rma->mmapCachedCutPts.clear();
     rma->workingSol.value = -inf;
     //rma->numDistObs       = data->numTrainObs;	    // only use training data
-    rma->setSortedObsIdx(data->vecTrainData);
+    //rma->setSortedObsIdx(data->vecTrainData);
 
   }
 
@@ -386,7 +417,7 @@ namespace boosting {
     InitializeTiming();
 
     tc.startTime();
-    
+
     if (BaseRMA::printBBdetails()) rma->solve();  // print out B&B details
     else                           rma->search();
 
