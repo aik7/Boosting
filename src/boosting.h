@@ -96,6 +96,7 @@ public:
   virtual void printRMPSolution() = 0;  		// restricted mater problem solution
   virtual void printRMAInfo()     = 0;		  // pritinc problem, RMA
   //virtual void printEachIterAllErrs() = 0;
+  void         printRMASolutionTime();
   void         printIterInfo();
   void         printBoostingErr();
   void         printCLPsolution();
@@ -177,9 +178,6 @@ protected:
 
   double errTrain;
   double errTest;
-
-  double timeWall;
-  double timeCPU;
 
   Time   tc;
 

@@ -386,13 +386,18 @@ namespace boosting {
 
     rma->resetTimers();
     InitializeTiming();
+
+    tc.startTime();
+    
     if (BaseRMA::printBBdetails()) rma->solve();  // print out B&B details
     else                           rma->search();
 
 #ifdef ACRO_HAVE_MPI
     if (uMPI::rank==0) {
 #endif //  ACRO_HAVE_MPI
-      rma->printSolutionTime();
+      tc.getCPUTime();
+      tc.getWallTime();
+      printSolutionTime();
 #ifdef ACRO_HAVE_MPI
     }
 #endif //  ACRO_HAVE_MPI
@@ -478,6 +483,11 @@ namespace boosting {
     return data->vecFeature[j].vecIntMinMax[boundVal+value].maxOrigVal;
   }
 
+
+  void DriverRMA::printSolutionTime() {
+    ucout << "ERMA Solution: " << rma->workingSol.value
+          << "\tCPU time: "    << tc.getCPUTime() << "\n";
+  }
 
   void Boosting::printIterInfo() {
 #ifdef ACRO_HAVE_MPI
