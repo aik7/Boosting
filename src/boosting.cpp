@@ -123,6 +123,9 @@ if (uMPI::rank==0) {
     setBoostingParameters();
     flagDuplicate=false;
 
+    vecERMA.resize(NumIter);
+    vecGRMA.resize(NumIter);
+
     try {
 
       //data->setStandDataY(data->origTrainData, data->standTrainData);					// standadize data for L1 regularization
@@ -145,6 +148,9 @@ if (uMPI::rank==0) {
 
         setDataWts();
         solveRMA();
+
+        vecERMA[curIter] = rma->workingSol.value;
+        vecGRMA[curIter] = grma->maxObjValue;
 
 #ifdef ACRO_HAVE_MPI
 if (uMPI::rank==0) {
@@ -188,12 +194,29 @@ if (uMPI::rank==0) {
       // clean up GUROBI for the next crossvalidation set
       //resetGurobi();
 
+      writeGERMA();
+
     } catch(...) {
       ucout << "Exception during training" << "\n";
       return; // EXIT_FAILURE;
     } // end try ... catch
 
   } // trainData function
+
+
+  void Boosting::writeGERMA() {
+
+    stringstream s;
+    s << "GERMA" << '_' << problemName;
+    ofstream os(s.str().c_str());
+
+    os << "iter\tGRMA\tERMA\n";
+    for (int i=0; i<getIterations(); ++i )
+      os << i << "\t" << vecGRMA[i] << "\t" << vecERMA[i] << "\n" ;
+
+    os.close();
+
+  }
 
 
   // call CLP to solve Master Problems

@@ -101,6 +101,8 @@ public:
   void         printBoostingErr();
   void         printCLPsolution();
 
+  void         writeGERMA();
+
   //////////////////////// Evaluating methods /////////////////////////////
 
   void setCoveredTrainObs();
@@ -175,6 +177,9 @@ protected:
 
   vector<double>          predTrain;          // predictions of training data by model
   vector<double>          predTest;           // predictions of testing data by model
+
+  vector<double> vecERMA;
+  vector<double> vecGRMA;
 
   double errTrain;
   double errTest;
