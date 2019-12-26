@@ -24,8 +24,9 @@ namespace boosting {
     }
     if (greedyLevel==Greedy) {
       if (curIter>0 && grma->L == matIntLower[curIter-1] &&
-	  grma->U == matIntUpper[curIter-1] ) {
-	return true;
+    	   grma->U == matIntUpper[curIter-1] ) {
+           ucout << "Stopping Condition!\n";
+    	     return true;
       }
     }
     return false;
@@ -59,7 +60,6 @@ namespace boosting {
     model.setLogLevel(0); // to turn off some output, 0 gives nothing and each increase in value switches on more messages.
     //matrix.setDimensions(numRows, numCols); // setDimensions (int numrows, int numcols)
 
-
      // Create space for 3 columns and 10000 rows
      //int numberRows = 10000;
      //int numberColumns = 3;
@@ -88,7 +88,7 @@ namespace boosting {
      }
 
      for (k = 0; k < numCols; k++) {
-       columnLower[k] = (k==0) ? -COIN_DBL_MAX : lowerColumn[k];
+       columnLower[k] = (k==0) ? -COIN_DBL_MAX : 0.0;
        columnUpper[k] = COIN_DBL_MAX; //upperColumn[k];
      }
 
@@ -156,68 +156,6 @@ namespace boosting {
      // If matrix is really big could switch off creation of row copy
      // model2.setSpecialOptions(256);
 
-
-/*
-    model.resize(0, numCols);
-
-    for (i=0; i<numCols; ++i) {
-      lowerColumn[i] = (i==0) ? -COIN_DBL_MAX : 0.0; // beta_0 is free variable
-      //lowerColumn[i] = 0.0;
-      upperColumn[i] = COIN_DBL_MAX; //inf;
-      objValue[i]    = 1.0;
-      model.setObjectiveCoefficient(colIndex[i], objValue[i]);
-      model.setColumnLower(i, lowerColumn[i]);
-      model.setColumnUpper(i, upperColumn[i]);
-      //row.insert(i, 1.0); // insert( int index, double element )
-    }
-
-    CoinBuild buildObject;
-
-    double *rowValue = new double[numCols];
-
-    //*
-    // set constraits
-    for (i = 0; i < NumObs; ++i) {
-      rowValue[0] = 1.0;
-      obs = data->vecTrainData[i];
-      for (j = 0; j < NumAttrib; ++j)      // beta^+_j
-	       rowValue[1+j] = data->standTrainData[obs].X[j];
-      for (j = 0; j < NumAttrib; ++j)      // beta^-_j
-	       rowValue[1+NumAttrib+j] = -data->standTrainData[obs].X[j];
-      for (j = 0; j < NumObs; ++j) 	   // episilon
- 	      if (i==j)
-	       rowValue[1+2*NumAttrib+j] = 1.0;
-
-      buildObject.addRow(numCols, rowIndex, rowValue, -inf, data->standTrainData[obs].y);
-      //matrix.appendRow(row);
-      //row.clear();
-      //lowerRow[i] = -inf;
-      //upperRow[i] = data->standTrainData[obs].y;
-    }
-
-    for (i = 0; i < NumObs; ++i) {
-      rowValue[0] = -1.0;  // beta_0
-      obs = data->vecTrainData[i];
-      for (j = 0; j < NumAttrib; ++j)      // beta^+_j
-	       rowValue[1+j] = -data->standTrainData[obs].X[j];
-      for (j = 0; j < NumAttrib; ++j)      // beta^-_j
-	       rowValue[1+NumAttrib+j] = data->standTrainData[obs].X[j];
-      for (j = 0; j < NumObs; ++j) 				// episilon
-	     if (i==j)
-	      rowValue[1+2*NumAttrib+j] = -1.0;
-
-      buildObject.addRow(numCols, rowIndex, rowValue, -inf, data->standTrainData[obs].y);
-      //matrix.appendRow(row);
-      //row.clear();
-      //lowerRow[NumObs+i] = -inf;
-      //upperRow[NumObs+i] = -data->standTrainData[obs].y;
-    }
-
-    model.addRows(buildObject);
-*/
-    //model.loadProblem(matrix, lowerColumn, upperColumn, objective,
-    //		      lowerRow, upperRow);
-
   }  // end function REPR::setInitialMaster()
 
 
@@ -225,13 +163,44 @@ namespace boosting {
 
     int obs;
 
-    DEBUGPR(1, cout << "wt: ");
+#ifdef ACRO_HAVE_MPI
+if (uMPI::rank==0) {
+#endif //  ACRO_HAVE_MPI
     for (int i=0; i < NumObs ; ++i) {
       obs = data->vecTrainData[i];
-      data->intTrainData[obs].w = (vecDual[i]-vecDual[NumObs+i]);
-      DEBUGPR(1, cout << data->intTrainData[obs].w << ", ");
+      data->intTrainData[obs].w = vecDual[i]-vecDual[NumObs+i];
     }
-    DEBUGPR(1, cout << "\n");
+#ifdef ACRO_HAVE_MPI
+}
+#endif //  ACRO_HAVE_MPI
+
+#ifdef ACRO_HAVE_MPI
+  int i, k;
+  for (i = 0; i < data->numTrainObs; ++i) {
+
+    if ((uMPI::rank==0)) {
+
+      // If we are the root process, send our data to everyone
+      for (k = 0; k < uMPI::size; ++k)
+        if (k != 0)
+          MPI_Send(&data->intTrainData[i].w, 1, MPI_DOUBLE, k, 0, MPI_COMM_WORLD);
+
+    } else {
+
+      // If we are a receiver process, receive the data from the root
+      MPI_Recv(&data->intTrainData[i].w, 1, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD,
+               MPI_STATUS_IGNORE);
+    }
+  }
+#endif //  ACRO_H
+
+    DEBUGPR(1, ucout << "wt: ");
+    DEBUGPR(1,
+    for (int i=0; i < NumObs ; ++i) {
+      obs = data->vecTrainData[i];
+      ucout << data->intTrainData[obs].w << ", ";
+    });
+    DEBUGPR(1, ucout << "\n");
 
   }
 
@@ -274,17 +243,17 @@ namespace boosting {
       //if (k==0 && !isDuplicate()) { // if this rule is not duplicates
 
       for (int i=0; i< NumObs; ++i) { // for each observation
-	obs = data->vecTrainData[i];
-	for (int j=0; j< NumAttrib; ++j) { // for each attribute
-	  if ( sl[k]->a[j] <=  data->intTrainData[obs].X[j] &&
-	       data->intTrainData[obs].X[j] <= sl[k]->b[j] ) {
-	    if ( j==NumAttrib-1)
-	      vecIsCovered[i]= true;
-	  } else {
-	    vecIsCovered[i]= false;
-	    break;
-	  }
-	} // end for each attribute, j
+      	obs = data->vecTrainData[i];
+      	for (int j=0; j< NumAttrib; ++j) { // for each attribute
+      	  if ( sl[k]->a[j] <=  data->intTrainData[obs].X[j] &&
+      	       data->intTrainData[obs].X[j] <= sl[k]->b[j] ) {
+      	    if ( j==NumAttrib-1)
+      	      vecIsCovered[i]= true;
+      	  } else {
+      	    vecIsCovered[i]= false;
+      	    break;
+      	  }
+      	} // end for each attribute, j
       } // end for each observation, i
 
       if (sl[k]->isPosIncumb) {

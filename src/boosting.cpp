@@ -12,19 +12,15 @@ namespace boosting {
 
   Boosting::Boosting(int& argc, char**& argv): rma(NULL), prma(NULL), parallel(false) {
 
-    #ifdef ACRO_HAVE_MPI
-        uMPI::init(&argc, &argv, MPI_COMM_WORLD);
-    #endif // ACRO_HAVE_M
+#ifdef ACRO_HAVE_MPI
+    uMPI::init(&argc, &argv, MPI_COMM_WORLD);
+#endif // ACRO_HAVE_M
 
-        setup(argc, argv);     // setup all paramaters
+    greedyLevel=EXACT;
 
-    #ifdef ACRO_HAVE_MPI
-    if (uMPI::rank==0) {
-    #endif //  ACRO_HAVE_MPI
-        setData(argc, argv);   // set data
-    #ifdef ACRO_HAVE_MPI
-    }
-    #endif //  ACRO_HAVE_MPI
+    setup(argc, argv);     // setup all paramaters
+
+    setData(argc, argv);   // set data
 
     if (exactRMA()) setupPebblRMA(argc, argv);  // setup RMA
 
@@ -72,11 +68,11 @@ namespace boosting {
 #endif // ACRO_HAVE_MPI
 
     rma->setParameters(this); // passing arguments
+    rma->setData(data);
 
 #ifdef ACRO_HAVE_MPI
 if (uMPI::rank==0) {
 #endif //  ACRO_HAVE_MPI
-    rma->setData(data);
     rma->setSortedObsIdx(data->vecTrainData);
 #ifdef ACRO_HAVE_MPI
 }
@@ -120,6 +116,8 @@ if (uMPI::rank==0) {
   // training process of boosting
   void Boosting::train(const bool& isOuter, const int& NumIter, const int& greedyLevel) {
 
+    int flagStop = 0;
+
     curIter=-1;
 
     setBoostingParameters();
@@ -134,7 +132,7 @@ if (uMPI::rank==0) {
 if (uMPI::rank==0) {
 #endif //  ACRO_HAVE_MPI
       data->standTrainData = data->origTrainData;
-      if (exactRMA()) rma->setData(data);
+      // if (exactRMA()) rma->setData(data);
       setInitRMP();
       solveRMP();  //solveInitialMaster();
 #ifdef ACRO_HAVE_MPI
@@ -144,26 +142,38 @@ if (uMPI::rank==0) {
       for (curIter=0; curIter<NumIter; ++curIter) { // for each column generation iteration
 
 	      //ucout << "\nColGen Iter: " << curIter << "\n";
-#ifdef ACRO_HAVE_MPI
-if (uMPI::rank==0) {
-#endif //  ACRO_HAVE_MPI
+
         setDataWts();
-#ifdef ACRO_HAVE_MPI
-}
-#endif //  ACRO_HAVE_MPI
         solveRMA();
 
 #ifdef ACRO_HAVE_MPI
 if (uMPI::rank==0) {
 #endif //  ACRO_HAVE_MPI
 
-        if (isStoppingCondition()) break;
+        if (isStoppingCondition()) flagStop = 1;
+
+        // If we are the root process, send our data to everyone
+        for (int k = 0; k < uMPI::size; ++k)
+          if (k != 0)
+            MPI_Send(&flagStop, 1, MPI_INT, k, 0, MPI_COMM_WORLD);
+
+        if (flagStop==1)  break;
 
         insertColumns(); // add RMA solutions and check duplicate
 
 	      //setOriginalBounds();  // map back from the discretized data into original
 
 	      solveRMP();
+
+#ifdef ACRO_HAVE_MPI
+} else {
+#endif //  ACRO_HAVE_MPI
+
+      if ((uMPI::rank!=0)) {
+        // If we are a receiver process, receive the data from the root
+        MPI_Recv(&flagStop, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        if (flagStop==1) break;
+      }
 
 #ifdef ACRO_HAVE_MPI
 }
@@ -205,63 +215,6 @@ if (uMPI::rank==0) {
       for (i=0; i<numCols; ++i) cout << vecPrimal[i];
       for (i=0; i<numRows; ++i) cout << vecDual[i]; );
 
-    /*
-    // Create Packed Matrix
-    CoinPackedMatrix matrix;
-    int *lengths = NULL;
-    matrix.assignMatrix(true, numberRows, numberColumns,
-    2 * numberColumns, element, row, start, lengths);
-    ClpNetworkMatrix network(matrix);
-    // load model
-
-    model.loadProblem(network,
-    lowerColumn, upperColumn, objective,
-    lower, upper);
-
-    model.factorization()->maximumPivots(200 + model.numberRows() / 100);
-    model.factorization()->maximumPivots(1000);
-    //model.factorization()->maximumPivots(1);
-
-    if (model.numberRows() < 50)
-    model.messageHandler()->setLogLevel(63);
-    */
-
-/*
-    model.dual();
-    model.setOptimizationDirection(-1);
-    //model.messageHandler()->setLogLevel(63);
-    model.primal();
-    model.setOptimizationDirection(1);
-    model.primal();
-
-    int    numRows    = model.numberRows();
-    double *rowPrimal = model.primalRowSolution();
-    double *rowDual   = model.dualRowSolution();
-
-    int iRow;
-
-    for (iRow=0;iRow<numRows;iRow++)
-      printf("Row %d, primal %g, dual %g\n",iRow,rowPrimal[iRow],rowDual[iRow]);
-
-    int    numColumns    = model.numberColumns();
-    double *columnPrimal = model.primalColumnSolution();
-    double *columnDual   = model.dualColumnSolution();
-
-    int iColumn;
-
-    for (iColumn=0;iColumn<numColumns;iColumn++)
-      printf("Column %d, primal %g, dual %g\n",iColumn,
-	            columnPrimal[iColumn],columnDual[iColumn]);
-
-    // vecPrimal.resize(numCols);
-    // vecDual.resize(numRows);
-
-    columnObjective = model.objective();
-
-    vecPrimal = model.primalColumnSolution();
-    vecDual   = model.dualRowSolution();
-  */
-
     primalVal = model.objectiveValue();
     //printCLPsolution();
 
@@ -269,10 +222,10 @@ if (uMPI::rank==0) {
     if (uMPI::rank==0) {
 #endif //  ACRO_HAVE_MPI
 
-      ucout << " Master Solution: " << primalVal << "\t"
+      ucout << "Master Solution: " << primalVal << "\t"
             << " CPU Time: " << tc.getCPUTime() << "\n";
 
-      printRMPSolution();
+      //printRMPSolution();
 
 #ifdef ACRO_HAVE_MPI
     }
@@ -280,8 +233,8 @@ if (uMPI::rank==0) {
 
     if (evalEachIter()) {
       for (i=numBox-numRMASols; i<numBox; ++i) {
-	setCoveredTrainObs();
-	setCoveredTestObs();
+      	setCoveredTrainObs();
+      	setCoveredTestObs();
       }
       //ucout << "Iter: " << curIter+1 << "\t";
       evaluateEach();
@@ -344,6 +297,7 @@ if (uMPI::rank==0) {
          std::cout << std::endl;
     }
   }
+
 
   // call insert column in sub-class
   void Boosting::insertColumns() {
