@@ -52,7 +52,7 @@ Please read the user guide about how to use parameters for the Boosting solver.
 
 <p align="center">
 
-<img src="https://github.com/aik7/Boosting/blob/devel/figures/boosting_class_org.png" width="400">
+<img src="https://github.com/aik7/Boosting/blob/devel/figures/Boosting_class_org.png" width="400">
 
 ## Source files at src directory
 
