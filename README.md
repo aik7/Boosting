@@ -48,6 +48,29 @@ mpirun -np 4 ./boosting <data_filename>
 
 Please read the user guide about how to use parameters for the Boosting solver.
 
+## Class Diagram
+
+<p align="center">
+
+<img src="https://github.com/aik7/Boosting/blob/devel/figures/boosting_class_org.png" width="400">
+
+## Source files at src directory
+
+```
+├── argBoost.cpp     : a file contains Boosting argument class
+├── argBoost.h
+├── argBoost.o
+├── boosting.cpp     : a file contains Boosting driver class
+├── boosting.h
+├── dataBoost.cpp    : a file contains Boosting data class
+├── dataBoost.h
+├── driver.cpp       : a driver file
+├── lpbr.cpp         : a file contains LPBR class
+├── lpbr.h
+├── repr.cpp         : a file contains REPR class
+└── repr.h
+```
+
 ## Reference
 
 ```

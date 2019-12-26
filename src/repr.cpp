@@ -51,8 +51,10 @@ namespace boosting {
 
     colIndex    = new int[numRows];
     rowIndex    = new int[numCols];
-    for (i=0; i<numRows; ++i) colIndex[i] = i;
-    for (i=0; i<numCols; ++i) rowIndex[i] = i;
+    for (i=0; i<numRows; ++i)
+      colIndex[i] = i;
+    for (i=0; i<numCols; ++i)
+      rowIndex[i] = i;
 
     //matrix.setDimensions(0, numCols);
 
@@ -64,7 +66,7 @@ namespace boosting {
      //int numberRows = 10000;
      //int numberColumns = 3;
      // This is fully dense - but would not normally be so
-     int numberElements = numRows * numCols;
+     unsigned long long int numberElements = numRows * numCols;
      // Arrays will be set to default values
      model.resize(numRows, numCols);
 
