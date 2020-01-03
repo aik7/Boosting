@@ -8,12 +8,12 @@
 
 
 int main(int argc, char** argv) {
-
-	enum GreedyLevel   {EXACT, NotOptimal, Greedy}; // TODO: fix this later!
-
-	boosting::REPR repr(argc, argv);
-	repr.train(true, repr.getIterations(), EXACT); //isOuter=false, NumIter=10, greedyLevel=EXACT
-
-	return 0;
-
+  
+  enum GreedyLevel   {EXACT, NotOptimal, Greedy}; // TODO: fix this later!
+  
+  boosting::REPR repr(argc, argv);
+  repr.train(true, repr.getIterations(), EXACT); //isOuter=false, NumIter=10, greedyLevel=EXACT
+  
+  return 0;
+  
 }

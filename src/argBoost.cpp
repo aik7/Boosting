@@ -9,12 +9,12 @@
 
 namespace arg {
 
-using utilib::ParameterLowerBound;
-using utilib::ParameterBounds;
-using utilib::ParameterNonnegative;
-
-ArgBoost::ArgBoost():
-
+  using utilib::ParameterLowerBound;
+  using utilib::ParameterBounds;
+  using utilib::ParameterNonnegative;
+  
+  ArgBoost::ArgBoost():
+    
     _isLPBoost(false),
     _isREPR(true),
     _iterations(1),
@@ -43,7 +43,7 @@ ArgBoost::ArgBoost():
 
     {
 
-///////////////////// Boosting parameters /////////////////////
+      ///////////////////// Boosting parameters /////////////////////
 
   create_categorized_parameter("lpboost", _isLPBoost, "<bool>",
       "false",	"Run LPBoost", "LPBoost");
@@ -118,55 +118,3 @@ ArgBoost::ArgBoost():
 
   }
 }
-
-
-/*
-
-///////////////////// Corss Validation parameters /////////////////////
-
-  create_categorized_parameter("outerCV", _outerCV, "<bool>", "false",
-    "Do outer cross validation", "CrossValidation");
-
-  create_categorized_parameter("innerCV", _innerCV, "<bool>", "false",
-    "Do inner cross validation", "CrossValidation");
-
-  create_categorized_parameter("validation", _validation, "<bool>",
-     "false",	"using validation set for early stopping", "CrossValidation");
-
-///////////////////// Shuffle observation parameters /////////////////////
-
-  create_categorized_parameter("shuffleObs", _shuffleObs, "<bool>", "true",
-       "Shuffle Observations", "CrossValidation");
-
-  create_categorized_parameter("readShuffledObs", _readShuffledObs, "<bool>",
-      "false", "Read shuffled observations", "CrossValidation");
-
-  create_categorized_parameter("writeShuffledObs", _writeShuffledObs, "<bool>",
-      "false", "Write shuffled observations", "CrossValidation");
-
-*/
-
-
-/*
-  create_categorized_parameter("compModels", _compModels, "<bool>",
-       "false", "comparing our model with the other models", "Boosting");
-
-  create_categorized_parameter("compModelIters", _compModelIters, "<int>",
-      "100", "the nunmber of iteration or trees for compting models", "Boosting");
-      */
-
-
-      /*
-
-          _outerCV(false),
-          _innerCV(false),
-          _validation(false),
-
-          _shuffleObs(true),
-          _readShuffledObs(false),
-          _writeShuffledObs(false),
-
-      */
-
-      //_compModels(false),
-      //_compModelIters(100),

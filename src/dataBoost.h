@@ -14,28 +14,28 @@ namespace data {
 
   using namespace std;
   using namespace arg;
-
+  
   class DataBoost : public DataRMA {
-
-public:
-
+    
+  public:
+    
     DataBoost() {}
     //DataBoost(int& argc, char**& argv, ArgBoost *args);
-    DataBoost(int& argc, char**& argv, ArgRMA *args_rma, ArgBoost *args_boost) :
-      DataRMA(argc, argv, args_rma) {
-        numTestObs = numOrigObs;
-        vecTestData.resize(numTestObs);
+  DataBoost(int& argc, char**& argv, ArgRMA *args_rma, ArgBoost *args_boost) :
+    DataRMA(argc, argv, args_rma) {
+      numTestObs = numOrigObs;
+      vecTestData.resize(numTestObs);
     }
-
-//private:
+    
+    //private:
     int numTestObs;                    // # of testing observations
     vector<int>     vecTestData;       // contains only testing dataset observations
     vector<DataXy>  origTestData;      // original datasets X and y
     vector<DataXw>  intTestData;       // discretized data X abd w (weight)
     vector<DataXy>  standTestData;
-
+    
   };
-
+  
 } // end nemespace data
 
 #endif // end DATA_BOOST_H

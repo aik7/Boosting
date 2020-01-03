@@ -16,125 +16,93 @@ namespace arg {
 
   // static double inf = numeric_limits<double>::infinity();
   static int intInf = numeric_limits<int>::max();
+  
+  
+  //  Boosting parameters class
+  class ArgBoost :
+    virtual public utilib::ParameterSet,
+    virtual public utilib::CommonIO {
+      
+  public:
+      
+      ArgBoost();
+      virtual ~ArgBoost(){};
+    
+      /////////////////// parameters for Boosting ///////////////////
 
+      bool isLPBoost()     const {return _isLPBoost;}
+      bool isREPR()        const {return _isREPR;}
+      int  getIterations() const {return _iterations;}
+      int  getExponentP()  const {return _exponentP;}
+      bool printBoost()    const {return _printBoost;}
 
-//  Boosting parameters class
-class ArgBoost :
-  virtual public utilib::ParameterSet,
-  virtual public utilib::CommonIO {
+      /////////////////// parameters for LPBR class ///////////////////
 
-public:
+      double getCoefficientD() const {return _coeffD;}
+      double getNu()           const {return _nu;}
+      bool   getNoSoftMargin() const {return _noSoftMargin; }
+      double getLowerRho()     const {return _lowerRho; }
+      double getUpperRho()     const {return _upperRho;}
+      bool   initRules()       const {return _initRules; }
+      bool   init1DRules()     const {return _init1DRules; }
 
-  ArgBoost();
-  virtual ~ArgBoost(){};
+      /////////////////// parameters for REPR class ///////////////////
 
-  /////////////////// parameters for Boosting ///////////////////
+      double getCoefficientC() const {return _coeffC;}
+      double getCoefficientE() const {return _coeffE;}
+      double getCoefficientF() const {return _coeffF;}
 
-  bool isLPBoost()     const {return _isLPBoost;}
-  bool isREPR()        const {return _isREPR;}
-  int  getIterations() const {return _iterations;}
-  int  getExponentP()  const {return _exponentP;}
-  bool printBoost()    const {return _printBoost;}
+      /////////////////// Parameters for Greedy level of pricing problems ///////////////////
 
-  /////////////////// parameters for LPBR class ///////////////////
+      bool SeqCoverValue() const {return _SeqCoverValue;}
+      int  getNumLimitedObs() const {return _numLimitedObs;}
 
-  double getCoefficientD() const {return _coeffD;}
-  double getNu()           const {return _nu;}
-  bool   getNoSoftMargin() const {return _noSoftMargin; }
-  double getLowerRho()     const {return _lowerRho; }
-  double getUpperRho()     const {return _upperRho;}
-  bool   initRules()       const {return _initRules; }
-  bool   init1DRules()     const {return _init1DRules; }
+      //////////////////////// Evaluation parameters ////////////////////////
 
-  /////////////////// parameters for REPR class ///////////////////
+      bool evalEachIter()  const {return _evalEachIter;}
+      bool evalFinalIter() const {return _evalFinalIter;}
+      bool writePred()         const {return _writePredictions;}
 
-  double getCoefficientC() const {return _coeffC;}
-  double getCoefficientE() const {return _coeffE;}
-  double getCoefficientF() const {return _coeffF;}
+  protected:
 
-  /////////////////// Parameters for Greedy level of pricing problems ///////////////////
+      /////////////////// Parameters for Boosting ///////////////////
 
-  bool SeqCoverValue() const {return _SeqCoverValue;}
-  int  getNumLimitedObs() const {return _numLimitedObs;}
+      bool _isLPBoost;
+      bool _isREPR;
+      int  _iterations;					// the number of iterations in column generation
+      int  _exponentP;	// exponent of residuals
+      bool _printBoost; // print out more details for boosting
 
-  //////////////////////// Evaluation parameters ////////////////////////
+      /////////////////// Parameters for LPBoost class ///////////////////
 
-  bool evalEachIter()  const {return _evalEachIter;}
-  bool evalFinalIter() const {return _evalFinalIter;}
-  bool writePred()         const {return _writePredictions;}
+      double _coeffD;	// coefficients parameters
+      double _nu;     // D = 1 / (m * nu)
+      bool   _noSoftMargin;
+      bool   _initRules;
+      bool   _init1DRules;
+      double _lowerRho;
+      double _upperRho;
 
- protected:
+      /////////////////// Parameters for LPBoost class ///////////////////
 
-  /////////////////// Parameters for Boosting ///////////////////
+      double _coeffC;	// coefficients parameters
+      double _coeffE;	// coefficients parameters
+      double _coeffF;	// coefficients parameters
 
-  bool _isLPBoost;
-  bool _isREPR;
-  int  _iterations;					// the number of iterations in column generation
-  int  _exponentP;	// exponent of residuals
-  bool _printBoost; // print out more details for boosting
+      /////////////////// Parameters for Greedy level of pricing problems ///////////////////
 
-  /////////////////// Parameters for LPBoost class ///////////////////
+      bool _SeqCoverValue;
+      int  _numLimitedObs;
+      int  _maxBoundedSP;				// set a maximum number of bounded subproblems to check
 
-  double _coeffD;	// coefficients parameters
-  double _nu;     // D = 1 / (m * nu)
-  bool   _noSoftMargin;
-  bool   _initRules;
-  bool   _init1DRules;
-  double _lowerRho;
-  double _upperRho;
+      //////////////////////// Evaluation parameters ////////////////////////
 
-  /////////////////// Parameters for LPBoost class ///////////////////
+      bool _evalEachIter;   		// evaluate solutions in each iteration
+      bool _evalFinalIter;      // evaluate solutions in the final column generation
+      bool _writePredictions;		// print prediction
 
-  double _coeffC;	// coefficients parameters
-  double _coeffE;	// coefficients parameters
-  double _coeffF;	// coefficients parameters
-
-  /////////////////// Parameters for Greedy level of pricing problems ///////////////////
-
-  bool _SeqCoverValue;
-  int  _numLimitedObs;
-  int  _maxBoundedSP;				// set a maximum number of bounded subproblems to check
-
-  //////////////////////// Evaluation parameters ////////////////////////
-
-  bool _evalEachIter;   		// evaluate solutions in each iteration
-  bool _evalFinalIter;      // evaluate solutions in the final column generation
-  bool _writePredictions;		// print prediction
-
-  };
-
+    };
 
 } // namespace arg
 
 #endif
-
-
-
-  //bool _compModels;		      // compare out moredl to different models
-  //int _ compModelIters;     // iterations or the number of trees for competing models
-
-/*
-  /////////////////// Parameters for CrossValidation class ///////////////////
-
-  bool _outerCV;						// enable outer crossvalitaion
-  bool _innerCV; 						// enable inner cross valitaion (outerCV must be enabled)
-  bool _validation;
-
-  bool _shuffleObs;					// shuffle observations to choose test and train observations
-  bool _readShuffledObs;    // read shuffled observation indices from a file
-  bool _writeShuffledObs;   // write shuffled observation indices to a file
-*/
-
-/*
-
-/////////////////// parameters for CrossValidation class ///////////////////
-
-  bool outerCV()    const {return _outerCV;}
-  bool innerCV()    const {return _innerCV;}
-  bool validation() const {return _validation;}
-
-  bool shuffleObs()       const {return _shuffleObs;}
-  bool readShuffledObs()  const {return _readShuffledObs;}
-  bool writeShuffledObs() const {return _writeShuffledObs;}
-
-*/

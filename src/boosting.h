@@ -50,150 +50,150 @@ typedef void parRMA;
 
 
 namespace boosting {
-
+  
   enum GreedyLevel   {EXACT, NotOptimal, Greedy};
   enum TestTrainData {TRAIN, TEST, VALID};
   //enum OuterInnerCV  {INNER, OUTER};
-
+  
   class Boosting : public arg::ArgBoost, public base::BaseRMA { //public base::BaseBoost { //public DriverRMA,
+    
+  public:
+    
+    Boosting(int& argc, char**& argv); //  rma(NULL), prma(NULL), parallel(false)  { }; //: DriverRMA{argc, argv} {};   //:  rma(NULL), prma(NULL), parallel(false) {}; //, model(env) {};
+    virtual ~Boosting();
 
-public:
+    void         reset();
+    void         setData(int& argc, char**& argv);
+    void         setupPebblRMA(int& argc, char**& argv);
+    virtual void setBoostingParameters() = 0;
 
-  Boosting(int& argc, char**& argv); //  rma(NULL), prma(NULL), parallel(false)  { }; //: DriverRMA{argc, argv} {};   //:  rma(NULL), prma(NULL), parallel(false) {}; //, model(env) {};
-  virtual ~Boosting();
+    //////////////////////// training data //////////////////////////////
+    void train(const bool& isOuter, const int& iter, const int & greedyLevel);
 
-  void         reset();
-  void         setData(int& argc, char**& argv);
-  void         setupPebblRMA(int& argc, char**& argv);
-  virtual void setBoostingParameters() = 0;
+    /////////////////void discretizeData();
+    //// virtual void   resetMaster() = 0;
+    virtual void setInitRMP() = 0;
+    void         solveRMP();
+    virtual void setDataWts()      = 0;
 
-  //////////////////////// training data //////////////////////////////
-  void train(const bool& isOuter, const int& iter, const int & greedyLevel);
+    void   resetExactRMA();
 
-  /////////////////void discretizeData();
-  //// virtual void   resetMaster() = 0;
-  virtual void setInitRMP() = 0;
-  void         solveRMP();
-  virtual void setDataWts()      = 0;
+    void   solveRMA();
+    void   solveExactRMA();
+    void   solveGreedyRMA();
 
-  void   resetExactRMA();
+    virtual bool isStoppingCondition() = 0;
+    void         insertColumns();
+    virtual void insertExactColumns()  = 0;
+    virtual void insertGreedyColumns() = 0;
 
-  void   solveRMA();
-  void   solveExactRMA();
-  void   solveGreedyRMA();
+    void   setOriginalBounds();
+    double getLowerBound(int k, int j, int value, bool isUpper) ;
+    double getUpperBound(int k, int j, int value, bool isUpper) ;
 
-  virtual bool isStoppingCondition() = 0;
-  void         insertColumns();
-  virtual void insertExactColumns()  = 0;
-  virtual void insertGreedyColumns() = 0;
+    //////////////////////// Printing methods /////////////////////////////
 
-  void   setOriginalBounds();
-  double getLowerBound(int k, int j, int value, bool isUpper) ;
-  double getUpperBound(int k, int j, int value, bool isUpper) ;
+    virtual void printRMPSolution() = 0;  		// restricted mater problem solution
+    virtual void printRMAInfo()     = 0;		  // pritinc problem, RMA
+    //virtual void printEachIterAllErrs() = 0;
+    void         printRMASolutionTime();
+    void         printIterInfo();
+    void         printBoostingErr();
+    void         printCLPsolution();
 
-  //////////////////////// Printing methods /////////////////////////////
+    void         writeGERMA();
 
-  virtual void printRMPSolution() = 0;  		// restricted mater problem solution
-  virtual void printRMAInfo()     = 0;		  // pritinc problem, RMA
-  //virtual void printEachIterAllErrs() = 0;
-  void         printRMASolutionTime();
-  void         printIterInfo();
-  void         printBoostingErr();
-  void         printCLPsolution();
+    //////////////////////// Evaluating methods /////////////////////////////
 
-  void         writeGERMA();
+    void setCoveredTrainObs();
+    void setCoveredTestObs();
 
-  //////////////////////// Evaluating methods /////////////////////////////
+    void evaluateEach();
+    void evaluateFinal();
 
-  void setCoveredTrainObs();
-  void setCoveredTestObs();
+    virtual double evaluateEachIter(const int& isTest, vector<DataXy> origData) = 0;
+    virtual double evaluateAtFinal(const int& isTest, vector<DataXy> origData)  = 0;
 
-  void evaluateEach();
-  void evaluateFinal();
+    void    writePredictions(const int& isTest, vector<DataXy> origData); // write predictions
 
-  virtual double evaluateEachIter(const int& isTest, vector<DataXy> origData) = 0;
-  virtual double evaluateAtFinal(const int& isTest, vector<DataXy> origData)  = 0;
+    //////////////////////// Checking methods ///////////////////////
+    bool isDuplicate();
+    void checkObjValue(vector<DataXw> intData);
+    void checkObjValue(int k, vector<DataXw> intData);	// double-check objevtive value for (a, b)
 
-  void    writePredictions(const int& isTest, vector<DataXy> origData); // write predictions
+  protected:
 
-  //////////////////////// Checking methods ///////////////////////
-  bool isDuplicate();
-  void checkObjValue(vector<DataXw> intData);
-  void checkObjValue(int k, vector<DataXw> intData);	// double-check objevtive value for (a, b)
+    ///////////////////// Boosting variables /////////////////////
 
-protected:
+    int  NumIter;	  // # of iterations, observation, features, and variables
+    int  curIter;		// the current iteration number
 
-  ///////////////////// Boosting variables /////////////////////
+    int  numRows;    // # of constraints / rows in the mater problem
+    int  numCols;    // # of variables / columns in the mater problem
+    int  numBox;     // # of total boxes entered so far
+    int  numRMASols; // # of boxes entered in the current interaction
 
-  int  NumIter;	  // # of iterations, observation, features, and variables
-  int  curIter;		// the current iteration number
+    int  NumObs;
+    int  NumAttrib;
 
-  int  numRows;    // # of constraints / rows in the mater problem
-  int  numCols;    // # of variables / columns in the mater problem
-  int  numBox;     // # of total boxes entered so far
-  int  numRMASols; // # of boxes entered in the current interaction
+    bool parallel;	// is parallel or not
+    bool flagDuplicate;
+    bool isOuter;
 
-  int  NumObs;
-  int  NumAttrib;
+    ///////////////////// CLP variables /////////////////////
+    ClpSimplex       model;
+    CoinPackedMatrix *matrix;
+    CoinPackedVector row;
 
-  bool parallel;	// is parallel or not
-  bool flagDuplicate;
-  bool isOuter;
+    double *dataWts;
+    double *objValue;
+    double *lowerColumn, *upperColumn;
+    double *lowerRow,    *upperRow;
+    int    *colIndex,    *rowIndex;
 
-  ///////////////////// CLP variables /////////////////////
-  ClpSimplex       model;
-  CoinPackedMatrix *matrix;
-  CoinPackedVector row;
+    // store solution infomation for the master problem
+    double *vecPrimal;  // dual variables
+    double *vecDual;    // primal variables
+    double primalVal;	 // primal solution value
+    double *columnObjective;
 
-  double *dataWts;
-  double *objValue;
-  double *lowerColumn, *upperColumn;
-  double *lowerRow,    *upperRow;
-  int    *colIndex,    *rowIndex;
+    deque<bool>    vecIsCovered;	// each observation is covered or not
 
-  // store solution infomation for the master problem
-  double *vecPrimal;  // dual variables
-  double *vecDual;    // primal variables
-  double primalVal;	 // primal solution value
-  double *columnObjective;
+    ///////////////////// For RMA /////////////////////
 
-  deque<bool>    vecIsCovered;	// each observation is covered or not
+    BasicArray<pebbl::solution*>       s;
+    BasicArray<pebblRMA::rmaSolution*> sl;
 
-  ///////////////////// For RMA /////////////////////
+    // store lower and upper bound of rules (boxes)
+    vector<vector<int> >    matIntLower;
+    vector<vector<int> >    matIntUpper;
+    vector<vector<double> > matOrigLower;
+    vector<vector<double> > matOrigUpper;
 
-  BasicArray<pebbl::solution*>       s;
-  BasicArray<pebblRMA::rmaSolution*> sl;
+    ///////////////////// For Evaluation /////////////////////
 
-  // store lower and upper bound of rules (boxes)
-  vector<vector<int> >    matIntLower;
-  vector<vector<int> >    matIntUpper;
-  vector<vector<double> > matOrigLower;
-  vector<vector<double> > matOrigUpper;
+    vector<bool>            vecCoveredSign;     // size: m (originalObs) x |K'|
+    vector<vector<bool> >   vecCoveredObsByBox; // size: m (originalObs) x |K'|
 
-  ///////////////////// For Evaluation /////////////////////
+    vector<double>          predTrain;          // predictions of training data by model
+    vector<double>          predTest;           // predictions of testing data by model
 
-  vector<bool>            vecCoveredSign;     // size: m (originalObs) x |K'|
-  vector<vector<bool> >   vecCoveredObsByBox; // size: m (originalObs) x |K'|
+    vector<double> vecERMA;
+    vector<double> vecGRMA;
 
-  vector<double>          predTrain;          // predictions of training data by model
-  vector<double>          predTest;           // predictions of testing data by model
+    double errTrain;
+    double errTest;
 
-  vector<double> vecERMA;
-  vector<double> vecGRMA;
+    Time   tc;
 
-  double errTrain;
-  double errTest;
+    GreedyLevel           greedyLevel;
 
-  Time   tc;
+    data::DataBoost*      data;
+    pebblRMA::RMA*        rma;   // serial RMA instance
+    pebblRMA::parRMA*     prma;  // parallel RMA instance
+    greedyRMA::GreedyRMA* grma;  // greedy RMA instance
 
-  GreedyLevel           greedyLevel;
-
-  data::DataBoost*      data;
-  pebblRMA::RMA*        rma;   // serial RMA instance
-  pebblRMA::parRMA*     prma;  // parallel RMA instance
-  greedyRMA::GreedyRMA* grma;  // greedy RMA instance
-
-};
+  };
 
 } // namespace boosting
 

@@ -38,70 +38,70 @@ typedef void parRMA;
 namespace boosting {
 
 
-using namespace utilib;
-using namespace std;
+  using namespace utilib;
+  using namespace std;
+  
+  
+  struct SimpleRule {
+  public:
+    vector<double> vecLower;
+    vector<double> vecUpper;
+  };
 
 
-struct SimpleRule {
-public:
-	vector<double> vecLower;
-	vector<double> vecUpper;
-};
+  class LPBR : public Boosting {
 
+  public:
 
-class LPBR : public Boosting {
+    LPBR() {}
+    LPBR(int argc, char** argv, Data* d) ;
+    ~LPBR() {}
 
-public:
+    void initBoostingData();
 
-	LPBR() {}
-	LPBR(int argc, char** argv, Data* d) ;
-	~LPBR() {}
+    //////////////////////// training data //////////////////////////////
+    void trainData(const bool& isOuter, const int& iter, const int& greedyLevel);
+    void setInitialMaster();
+    void setDataWts();
+    void insertColumns();
+    void insertGreedyColumns();
 
-	void initBoostingData();
+    void set1DRules();
+    void setOriginal1DRule(const int& j, const int& l, const int& u) ;
+    double getLowerBound1D(int j, int value, bool isUpper) ;
+    double getUpperBound1D(int j, int value, bool isUpper) ;
 
-	//////////////////////// training data //////////////////////////////
-	void trainData(const bool& isOuter, const int& iter, const int& greedyLevel);
-	void setInitialMaster();
-	void setDataWts();
-	void insertColumns();
-	void insertGreedyColumns();
+    void setSimpleRules();
+    bool isCoveredBySR(const int& obs, const int& j);
+    void setOriginalRule();
+    double getLowerBoundSR(int k, int j, int value, bool isUpper);
+    double getUpperBoundSR(int k, int j, int value, bool isUpper);
 
-	void set1DRules();
-	void setOriginal1DRule(const int& j, const int& l, const int& u) ;
-	double getLowerBound1D(int j, int value, bool isUpper) ;
-	double getUpperBound1D(int j, int value, bool isUpper) ;
+    void printRMPSolution();	// print restricted mater problem solution
+    void printRMAInfo();			// print RMA problem info
 
-	void setSimpleRules();
-	bool isCoveredBySR(const int& obs, const int& j);
-	void setOriginalRule();
-	double getLowerBoundSR(int k, int j, int value, bool isUpper);
-	double getUpperBoundSR(int k, int j, int value, bool isUpper);
+    double evaluateEachIter(const int& isTest);
+    double evaluateAtFinal(const int& isTest);
 
-	void printRMPSolution();	// print restricted mater problem solution
-	void printRMAInfo();			// print RMA problem info
+    void printEachIterAllErrs();
 
-	double evaluateEachIter(const int& isTest);
-	double evaluateAtFinal(const int& isTest);
+    //private:
 
-	void printEachIterAllErrs();
+    double D;	     // LPBR parameter
+    double alpha;  // dual variable alpha
+    int P;
 
-//private:
+    vector<double> unknownRate;
+    vector<double> preAdjErr;
 
-	double D;	     // LPBR parameter
-	double alpha;  // dual variable alpha
-	int P;
+    vector<SimpleRule> vecSimpleRule;
 
-	vector<double> unknownRate;
-	vector<double> preAdjErr;
+    vector<bool> vecSMIsPositive;
+    vector<double> vec1DRuleLower;
+    vector<double> vec1DRuleUpper;
+    vector<vector<bool> > vecCoveredObsBySimpleRule;  // size: m x n
 
-	vector<SimpleRule> vecSimpleRule;
-
-	vector<bool> vecSMIsPositive;
-	vector<double> vec1DRuleLower;
-	vector<double> vec1DRuleUpper;
-	vector<vector<bool> > vecCoveredObsBySimpleRule;  // size: m x n
-
-};
+  };
 
 
 } // namespace LPBR

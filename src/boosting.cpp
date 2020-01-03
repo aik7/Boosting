@@ -11,13 +11,13 @@ namespace boosting {
 
 
   Boosting::Boosting(int& argc, char**& argv): rma(NULL), prma(NULL), parallel(false) {
-
+    
 #ifdef ACRO_HAVE_MPI
     uMPI::init(&argc, &argv, MPI_COMM_WORLD);
 #endif // ACRO_HAVE_M
-
+    
     greedyLevel=EXACT;
-
+    
     setup(argc, argv);     // setup all paramaters
 
     setData(argc, argv);   // set data
@@ -71,11 +71,11 @@ namespace boosting {
     rma->setData(data);
 
 #ifdef ACRO_HAVE_MPI
-if (uMPI::rank==0) {
+    if (uMPI::rank==0) {
 #endif //  ACRO_HAVE_MPI
-    rma->setSortedObsIdx(data->vecTrainData);
+      rma->setSortedObsIdx(data->vecTrainData);
 #ifdef ACRO_HAVE_MPI
-}
+    }
 #endif //  ACRO_HAVE_MPI
 
     //exception_mngr::set_stack_trace(false);
@@ -132,19 +132,19 @@ if (uMPI::rank==0) {
       //data->setStandDataX(data->origTrainData, data->standTrainData);
       //data->integerizeData(data->origTrainData, data->intTrainData); 	// integerize features
 #ifdef ACRO_HAVE_MPI
-if (uMPI::rank==0) {
+      if (uMPI::rank==0) {
 #endif //  ACRO_HAVE_MPI
-      data->standTrainData = data->origTrainData;
-      // if (exactRMA()) rma->setData(data);
-      setInitRMP();
-      solveRMP();  //solveInitialMaster();
+	data->standTrainData = data->origTrainData;
+	// if (exactRMA()) rma->setData(data);
+	setInitRMP();
+	solveRMP();  //solveInitialMaster();
 #ifdef ACRO_HAVE_MPI
-}
+      }
 #endif //  ACRO_HAVE_MPI
 
       for (curIter=0; curIter<NumIter; ++curIter) { // for each column generation iteration
 
-	      //ucout << "\nColGen Iter: " << curIter << "\n";
+	//ucout << "\nColGen Iter: " << curIter << "\n";
 
         setDataWts();
         solveRMA();
@@ -153,36 +153,36 @@ if (uMPI::rank==0) {
         vecGRMA[curIter] = grma->maxObjValue;
 
 #ifdef ACRO_HAVE_MPI
-if (uMPI::rank==0) {
+	if (uMPI::rank==0) {
 #endif //  ACRO_HAVE_MPI
 
-        if (isStoppingCondition()) flagStop = 1;
+	  if (isStoppingCondition()) flagStop = 1;
 
-        // If we are the root process, send our data to everyone
-        for (int k = 0; k < uMPI::size; ++k)
-          if (k != 0)
-            MPI_Send(&flagStop, 1, MPI_INT, k, 0, MPI_COMM_WORLD);
+	  // If we are the root process, send our data to everyone
+	  for (int k = 0; k < uMPI::size; ++k)
+	    if (k != 0)
+	      MPI_Send(&flagStop, 1, MPI_INT, k, 0, MPI_COMM_WORLD);
 
-        if (flagStop==1)  break;
+	  if (flagStop==1)  break;
 
-        insertColumns(); // add RMA solutions and check duplicate
+	  insertColumns(); // add RMA solutions and check duplicate
 
-	      //setOriginalBounds();  // map back from the discretized data into original
+	  //setOriginalBounds();  // map back from the discretized data into original
 
-	      solveRMP();
+	  solveRMP();
 
 #ifdef ACRO_HAVE_MPI
-} else {
+	} else {
 #endif //  ACRO_HAVE_MPI
 
-      if ((uMPI::rank!=0)) {
-        // If we are a receiver process, receive the data from the root
-        MPI_Recv(&flagStop, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-        if (flagStop==1) break;
-      }
+	  if ((uMPI::rank!=0)) {
+	    // If we are a receiver process, receive the data from the root
+	    MPI_Recv(&flagStop, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+	    if (flagStop==1) break;
+	  }
 
 #ifdef ACRO_HAVE_MPI
-}
+	}
 #endif //  ACRO_HAVE_MPI
 
       } // end for each column generation iteration
@@ -235,8 +235,8 @@ if (uMPI::rank==0) {
     vecDual   = model.dualRowSolution();
 
     DEBUGPR(10,
-      for (i=0; i<numCols; ++i) cout << vecPrimal[i];
-      for (i=0; i<numRows; ++i) cout << vecDual[i]; );
+	    for (i=0; i<numCols; ++i) cout << vecPrimal[i];
+	    for (i=0; i<numRows; ++i) cout << vecDual[i]; );
 
     primalVal = model.objectiveValue();
     //printCLPsolution();
@@ -289,35 +289,35 @@ if (uMPI::rank==0) {
               << std::endl;
 
     for (iColumn = 0; iColumn < numberColumns; iColumn++) {
-         double value;
-         std::cout << std::setw(6) << iColumn << " ";
-         value = columnPrimal[iColumn];
-         if (fabs(value) < 1.0e5)
-              std::cout << std::setiosflags(std::ios::fixed | std::ios::showpoint) << std::setw(14) << value;
-         else
-              std::cout << std::setiosflags(std::ios::scientific) << std::setw(14) << value;
-         value = columnDual[iColumn];
-         if (fabs(value) < 1.0e5)
-              std::cout << std::setiosflags(std::ios::fixed | std::ios::showpoint) << std::setw(14) << value;
-         else
-              std::cout << std::setiosflags(std::ios::scientific) << std::setw(14) << value;
-         value = columnLower[iColumn];
-         if (fabs(value) < 1.0e5)
-              std::cout << std::setiosflags(std::ios::fixed | std::ios::showpoint) << std::setw(14) << value;
-         else
-              std::cout << std::setiosflags(std::ios::scientific) << std::setw(14) << value;
-         value = columnUpper[iColumn];
-         if (fabs(value) < 1.0e5)
-              std::cout << std::setiosflags(std::ios::fixed | std::ios::showpoint) << std::setw(14) << value;
-         else
-              std::cout << std::setiosflags(std::ios::scientific) << std::setw(14) << value;
-         value = columnObjective[iColumn];
-         if (fabs(value) < 1.0e5)
-              std::cout << std::setiosflags(std::ios::fixed | std::ios::showpoint) << std::setw(14) << value;
-         else
-              std::cout << std::setiosflags(std::ios::scientific) << std::setw(14) << value;
+      double value;
+      std::cout << std::setw(6) << iColumn << " ";
+      value = columnPrimal[iColumn];
+      if (fabs(value) < 1.0e5)
+	std::cout << std::setiosflags(std::ios::fixed | std::ios::showpoint) << std::setw(14) << value;
+      else
+	std::cout << std::setiosflags(std::ios::scientific) << std::setw(14) << value;
+      value = columnDual[iColumn];
+      if (fabs(value) < 1.0e5)
+	std::cout << std::setiosflags(std::ios::fixed | std::ios::showpoint) << std::setw(14) << value;
+      else
+	std::cout << std::setiosflags(std::ios::scientific) << std::setw(14) << value;
+      value = columnLower[iColumn];
+      if (fabs(value) < 1.0e5)
+	std::cout << std::setiosflags(std::ios::fixed | std::ios::showpoint) << std::setw(14) << value;
+      else
+	std::cout << std::setiosflags(std::ios::scientific) << std::setw(14) << value;
+      value = columnUpper[iColumn];
+      if (fabs(value) < 1.0e5)
+	std::cout << std::setiosflags(std::ios::fixed | std::ios::showpoint) << std::setw(14) << value;
+      else
+	std::cout << std::setiosflags(std::ios::scientific) << std::setw(14) << value;
+      value = columnObjective[iColumn];
+      if (fabs(value) < 1.0e5)
+	std::cout << std::setiosflags(std::ios::fixed | std::ios::showpoint) << std::setw(14) << value;
+      else
+	std::cout << std::setiosflags(std::ios::scientific) << std::setw(14) << value;
 
-         std::cout << std::endl;
+      std::cout << std::endl;
     }
   }
 
@@ -336,25 +336,25 @@ if (uMPI::rank==0) {
       resetExactRMA();
 
       if (BaseRMA::initGuess()) {
-  #ifdef ACRO_HAVE_MPI
-  if (uMPI::rank==0) {
-  #endif //  ACRO_HAVE_MPI
-  	       solveGreedyRMA();
-           rma->setInitialGuess(grma->isPosIncumb, grma->maxObjValue,
-                                grma->L, grma->U);
-  #ifdef ACRO_HAVE_MPI
-  }
-  #endif //  ACRO_HAVE_MPI
+#ifdef ACRO_HAVE_MPI
+	if (uMPI::rank==0) {
+#endif //  ACRO_HAVE_MPI
+	  solveGreedyRMA();
+	  rma->setInitialGuess(grma->isPosIncumb, grma->maxObjValue,
+			       grma->L, grma->U);
+#ifdef ACRO_HAVE_MPI
+	}
+#endif //  ACRO_HAVE_MPI
       }
       solveExactRMA();
     } else {
-      #ifdef ACRO_HAVE_MPI
+#ifdef ACRO_HAVE_MPI
       if (uMPI::rank==0) {
-      #endif //  ACRO_HAVE_MPI
-            solveGreedyRMA();
-      #ifdef ACRO_HAVE_MPI
+#endif //  ACRO_HAVE_MPI
+	solveGreedyRMA();
+#ifdef ACRO_HAVE_MPI
       }
-      #endif //  ACRO_HAVE_MPI
+#endif //  ACRO_HAVE_MPI
     }
   }
 

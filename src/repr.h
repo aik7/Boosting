@@ -35,43 +35,43 @@ typedef void parRMA;
 
 namespace boosting {
 
-class REPR : public Boosting {
+  class REPR : public Boosting {
+    
+  public:
+    
+    //REPR() {}
+  REPR(int argc, char** argv) : Boosting(argc, argv) {};
+    ~REPR() {}
 
-public:
+    //////////////////////// Training methods //////////////////////////////
 
-	//REPR() {}
-	REPR(int argc, char** argv) : Boosting(argc, argv) {};
-	~REPR() {}
+    void setBoostingParameters();
 
-	//////////////////////// Training methods //////////////////////////////
+    void setInitRMP();
+    void setDataWts();
 
-	void setBoostingParameters();
+    bool isStoppingCondition();
+    void insertExactColumns();
+    void insertGreedyColumns();
 
-	void setInitRMP();
-	void setDataWts();
+    //////////////////////// Evaluating methods //////////////////////////////
 
-	bool isStoppingCondition();
-	void insertExactColumns();
-	void insertGreedyColumns();
+    double evaluateEachIter(const int& isTest, vector<DataXy> origData);
+    double evaluateAtFinal (const int& isTest, vector<DataXy> origData);
 
-	//////////////////////// Evaluating methods //////////////////////////////
+    //////////////////////// Printing methods //////////////////////////////
 
-	double evaluateEachIter(const int& isTest, vector<DataXy> origData);
-	double evaluateAtFinal (const int& isTest, vector<DataXy> origData);
+    void printRMPSolution();	// restricted mater problem solution
+    void printRMAInfo();			// print RMA problem info
+    //void printEachIterAllErrs() {}
 
-	//////////////////////// Printing methods //////////////////////////////
+  private:
 
-	void printRMPSolution();	// restricted mater problem solution
-	void printRMAInfo();			// print RMA problem info
-	//void printEachIterAllErrs() {}
+    // parameters for REPR
+    int P;
+    double C, E, D, F;
 
-private:
-
-	// parameters for REPR
-	int P;
-	double C, E, D, F;
-
-};
+  };
 
 
 } // namespace boosting
