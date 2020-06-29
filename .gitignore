@@ -1,0 +1,6 @@
+Makefile
+
+*.o
+*.data
+
+boosting

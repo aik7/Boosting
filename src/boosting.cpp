@@ -15,8 +15,10 @@ namespace boosting {
 #ifdef ACRO_HAVE_MPI
     uMPI::init(&argc, &argv, MPI_COMM_WORLD);
 #endif // ACRO_HAVE_M
+
+    cout << "exact RMA" << exactRMA();
     
-    greedyLevel=EXACT;
+    (exactRMA()) ? greedyLevel=EXACT : greedyLevel=Greedy;
     
     setup(argc, argv);     // setup all paramaters
 
@@ -149,7 +151,7 @@ namespace boosting {
         setDataWts();
         solveRMA();
 
-        vecERMA[curIter] = rma->workingSol.value;
+        if (exactRMA()) vecERMA[curIter] = rma->workingSol.value;
         vecGRMA[curIter] = grma->maxObjValue;
 
 #ifdef ACRO_HAVE_MPI
@@ -324,7 +326,7 @@ namespace boosting {
 
   // call insert column in sub-class
   void Boosting::insertColumns() {
-    greedyLevel=EXACT; // TODO: fix this later
+    // greedyLevel=EXACT; // TODO: fix this later
     (greedyLevel==EXACT) ? insertExactColumns() : insertGreedyColumns();
   }
 
@@ -492,7 +494,9 @@ namespace boosting {
 
   void Boosting::printRMASolutionTime() {
     ucout << "ERMA Solution: " << rma->workingSol.value
-          << "\tCPU time: "    << tc.getCPUTime() << "\n";
+          << "\tCPU time: "    << tc.getCPUTime()
+          << "\tNum of Nodes: " << rma->subCount[2]  
+          << "\n";
   }
 
   void Boosting::printIterInfo() {

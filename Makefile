@@ -2,11 +2,11 @@
 
 CXX=mpicxx
 
-RMA_DIR=/home/kagawa/Projects/thesis/code/RMA
-BOOST_DIR=/home/kagawa/Projects/thesis/code/Boosting
-PEBBL_DIR=/home/kagawa/Projects/thesis/code/pebbl/installpebbl
-CLP_DIR=/home/kagawa/Projects/thesis/code/coinbrew/Clp #Projects/thesis/code/coinbrew/Clp #coin-Clp
-CUTIL_DIR=/home/kagawa/Projects/thesis/code/coinbrew/CoinUtils/CoinUtils
+RMA_DIR=/home/aik/RMA
+BOOST_DIR=/home/aik/Boosting
+PEBBL_DIR=/home/aik/installpebbl
+CLP_DIR=/home/aik/coinbrew/Clp #Projects/thesis/code/coinbrew/Clp #coin-Clp
+CUTIL_DIR=/home/aik/coinbrew/CoinUtils/CoinUtils
 MPI_DIR=/usr/lib/x86_64-linux-gnu/openmpi
 
 ######################################### SYMBOLS ########################################
@@ -15,14 +15,17 @@ DEFSYMBOLS=$(patsubst %, -D%, $(SYMBOLS))
 
 ######################################## INCLUDES ##########################################
 HEADERDIRS=$(RMA_DIR)/src $(BOOST_DIR)/src $(PEBBL_DIR)/include \
-           /home/kagawa/Projects/thesis/code/coinbrew/Clp/include/coin \
-	         /home/kagawa/Projects/thesis/code/coinbrew/CoinUtils/CoinUtils/src \
+           /home/aik/coinbrew/Clp/include/coin \
+	   /home/aik/coinbrew/CoinUtils/CoinUtils/src \
+	   /home/aik/coinbrew/Clp/Clp/src \
+           /home/aik/coinbrew/build/Clp/1.17.6/src/ \
+           /home/aik/coinbrew/build/CoinUtils/2.11.4/src/ \
            $(CLP_DIR)/include/coin $(CUTIL_DIR)/src $(MPI_DIR)/include
 INCLUDES=$(patsubst %,-I%,$(HEADERDIRS))
 
 ######################################### LIB ############################################
 LIBDIRS=$(PEBBL_DIR)/lib $(MPI_DIR)/lib $(CLP_DIR)/lib  \
-        /home/kagawa/Projects/thesis/code/coinbrew/Clp/lib
+        /home/aik/coinbrew/Clp/lib /home/aik/coinbrew/lib
 LIBLOCATIONS=$(patsubst %,-L%,$(LIBDIRS))
 LIBS=pebbl mpi mpi_cxx open-rte open-pal Clp CoinUtils
 LIBSPECS=$(patsubst %,-l%,$(LIBS))

@@ -121,6 +121,8 @@ namespace boosting {
     void checkObjValue(vector<DataXw> intData);
     void checkObjValue(int k, vector<DataXw> intData);	// double-check objevtive value for (a, b)
 
+    GreedyLevel greedyLevel;
+    
   protected:
 
     ///////////////////// Boosting variables /////////////////////
@@ -185,8 +187,6 @@ namespace boosting {
     double errTest;
 
     Time   tc;
-
-    GreedyLevel           greedyLevel;
 
     data::DataBoost*      data;
     pebblRMA::RMA*        rma;   // serial RMA instance
