@@ -16,18 +16,18 @@ namespace arg {
 
   // static double inf = numeric_limits<double>::infinity();
   static int intInf = numeric_limits<int>::max();
-  
-  
+
+
   //  Boosting parameters class
   class ArgBoost :
     virtual public utilib::ParameterSet,
     virtual public utilib::CommonIO {
-      
+
   public:
-      
+
       ArgBoost();
       virtual ~ArgBoost(){};
-    
+
       /////////////////// parameters for Boosting ///////////////////
 
       bool isLPBoost()     const {return _isLPBoost;}
@@ -61,7 +61,8 @@ namespace arg {
 
       bool evalEachIter()  const {return _evalEachIter;}
       bool evalFinalIter() const {return _evalFinalIter;}
-      bool writePred()         const {return _writePredictions;}
+      bool saveWts()       const {return _saveWts;}
+      bool writePred()     const {return _writePredictions;}
 
   protected:
 
@@ -99,6 +100,7 @@ namespace arg {
 
       bool _evalEachIter;   		// evaluate solutions in each iteration
       bool _evalFinalIter;      // evaluate solutions in the final column generation
+      bool _saveWts;            // save weights for each boosting iteration
       bool _writePredictions;		// print prediction
 
     };

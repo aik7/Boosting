@@ -16,8 +16,8 @@ namespace boosting {
     E = getCoefficientE();
     F = 0; //getCoefficientF();
   }
-  
-  
+
+
   bool REPR::isStoppingCondition() {
     if (greedyLevel==EXACT) {
       if (rma->incumbentValue <= E + .00001) {return true;}
@@ -31,11 +31,11 @@ namespace boosting {
     }
     return false;
   }
-  
-  
+
+
   // set up for the initial master problem
   void REPR::setInitRMP() {
-    
+
     DEBUGPR(10, cout << "Setup Initial Restricted Master Problem!" << "\n");
 
     int i, j, k, obs;
@@ -169,8 +169,8 @@ namespace boosting {
     if (uMPI::rank==0) {
 #endif //  ACRO_HAVE_MPI
       for (int i=0; i < NumObs ; ++i) {
-	obs = data->vecTrainData[i];
-	data->intTrainData[obs].w = vecDual[i]-vecDual[NumObs+i];
+      	obs = data->vecTrainData[i];
+      	data->intTrainData[obs].w = vecDual[i]-vecDual[NumObs+i];
       }
 #ifdef ACRO_HAVE_MPI
     }
@@ -186,14 +186,13 @@ namespace boosting {
 	for (k = 0; k < uMPI::size; ++k)
 	  if (k != 0)
 	    MPI_Send(&data->intTrainData[i].w, 1, MPI_DOUBLE, k, 0, MPI_COMM_WORLD);
+    } else {
 
-      } else {
-
-	// If we are a receiver process, receive the data from the root
-	MPI_Recv(&data->intTrainData[i].w, 1, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD,
-		 MPI_STATUS_IGNORE);
-      }
+    	// If we are a receiver process, receive the data from the root
+    	MPI_Recv(&data->intTrainData[i].w, 1, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD,
+		           MPI_STATUS_IGNORE);
     }
+  }
 #endif //  ACRO_H
 
     DEBUGPR(1, ucout << "wt: ");
@@ -319,7 +318,7 @@ namespace boosting {
   void REPR::insertGreedyColumns() { //const int& GreedyLevel) {
 
     int obs;
-    numRMASols=1;
+    numRMASols=0;
 
     ///////////////////////////// constraints /////////////////////////////
     vecCoveredSign.resize(vecCoveredSign.size()+1);
@@ -353,6 +352,7 @@ namespace boosting {
 
     DEBUGPR(1, cout << "vecIsCovered: " << vecIsCovered );
 
+    /*
     // add columns using GUROBI
     //col.clear();
     //constr = model.getConstrs();
@@ -368,7 +368,26 @@ namespace boosting {
 	}
       }
     }
+    */
     //model.addVar(0.0, GRB_INFINITY, E, GRB_CONTINUOUS, col);
+
+    double *columnValue = new double[numRows];
+    for (int i = 0; i < numRows; ++i) columnValue[i] = 0;
+
+    for (int i = 0; i < NumObs; ++i) {
+    	obs = data->vecTrainData[i];
+    	if (vecIsCovered[i]==true) {
+    	  if (grma->isPosIncumb) {
+    	    columnValue[i]        = 1;
+    	    columnValue[NumObs+i] = -1;
+    	  } else {
+    	    columnValue[i]        = -1;
+    	    columnValue[NumObs+i] = 1;
+    	  }
+    	}
+    }
+
+    model.addColumn(numRows, colIndex, columnValue, 0.0, COIN_DBL_MAX, E);
 
     ++numBox;
     ++numCols;

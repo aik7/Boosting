@@ -12,9 +12,9 @@ namespace arg {
   using utilib::ParameterLowerBound;
   using utilib::ParameterBounds;
   using utilib::ParameterNonnegative;
-  
+
   ArgBoost::ArgBoost():
-    
+
     _isLPBoost(false),
     _isREPR(true),
     _iterations(1),
@@ -39,6 +39,7 @@ namespace arg {
 
     _evalEachIter(false),
     _evalFinalIter(false),
+    _saveWts(false),
     _writePredictions(false)
 
     {
@@ -112,6 +113,9 @@ namespace arg {
 
   create_categorized_parameter("evalFinalIter", _evalFinalIter, "<bool>",
       "false", "evaluate model in the final iteration ", "Boosting");
+
+  create_categorized_parameter("saveWts", _writePredictions, "<bool>",
+       "false", "Write weights for each boosting iteration ", "Boosting");
 
   create_categorized_parameter("writePredictions", _writePredictions, "<bool>",
        "false", "Write predictions for each model ", "Boosting");

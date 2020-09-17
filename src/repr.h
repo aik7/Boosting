@@ -36,11 +36,11 @@ typedef void parRMA;
 namespace boosting {
 
   class REPR : public Boosting {
-    
+
   public:
-    
+
     //REPR() {}
-  REPR(int argc, char** argv) : Boosting(argc, argv) {};
+    REPR(int argc, char** argv) : Boosting(argc, argv) {};
     ~REPR() {}
 
     //////////////////////// Training methods //////////////////////////////

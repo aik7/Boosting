@@ -2,11 +2,10 @@
 
 CXX=mpicxx
 
-RMA_DIR=/home/aik/RMA
-BOOST_DIR=/home/aik/Boosting
-PEBBL_DIR=/home/aik/installpebbl
-CLP_DIR=/home/aik/coinbrew/Clp #Projects/thesis/code/coinbrew/Clp #coin-Clp
-CUTIL_DIR=/home/aik/coinbrew/CoinUtils/CoinUtils
+RMA_DIR=/home/kagawa/Projects/thesis/code/RMA
+BOOST_DIR=/home/kagawa/Projects/thesis/code/Boosting
+PEBBL_DIR=/home/kagawa/Projects/thesis/code/pebbl
+COIN_DIR=/home/kagawa/Projects/thesis/code/coinbrew
 MPI_DIR=/usr/lib/x86_64-linux-gnu/openmpi
 
 ######################################### SYMBOLS ########################################
@@ -14,24 +13,21 @@ SYMBOLS=HAVE_CONFIG_H ANSI_HDRS ANSI_NAMESPACES
 DEFSYMBOLS=$(patsubst %, -D%, $(SYMBOLS))
 
 ######################################## INCLUDES ##########################################
-HEADERDIRS=$(RMA_DIR)/src $(BOOST_DIR)/src $(PEBBL_DIR)/include \
-           /home/aik/coinbrew/Clp/include/coin \
-	   /home/aik/coinbrew/CoinUtils/CoinUtils/src \
-	   /home/aik/coinbrew/Clp/Clp/src \
-           /home/aik/coinbrew/build/Clp/1.17.6/src/ \
-           /home/aik/coinbrew/build/CoinUtils/2.11.4/src/ \
-           $(CLP_DIR)/include/coin $(CUTIL_DIR)/src $(MPI_DIR)/include
+HEADERDIRS=$(RMA_DIR)/src $(BOOST_DIR)/src $(PEBBL_DIR)/build/src $(PEBBL_DIR)/src \
+           $(COIN_DIR)/CoinUtils/src $(COIN_DIR)/Clp/src \
+           $(COIN_DIR)/build/Clp/master/src/ \
+           $(COIN_DIR)/build/CoinUtils/master/src/ \
+           $(MPI_DIR)/include
 INCLUDES=$(patsubst %,-I%,$(HEADERDIRS))
 
 ######################################### LIB ############################################
-LIBDIRS=$(PEBBL_DIR)/lib $(MPI_DIR)/lib $(CLP_DIR)/lib  \
-        /home/aik/coinbrew/Clp/lib /home/aik/coinbrew/lib
+LIBDIRS=$(PEBBL_DIR)/build/src/pebbl $(MPI_DIR)/lib $(COIN_DIR)/dist/lib
 LIBLOCATIONS=$(patsubst %,-L%,$(LIBDIRS))
 LIBS=pebbl mpi mpi_cxx open-rte open-pal Clp CoinUtils
 LIBSPECS=$(patsubst %,-l%,$(LIBS))
 
 ########################################## FLAGS ##########################################
-DEBUGFLAGS=-g -fpermissive -O0
+DEBUGFLAGS= -O3 #-g -fpermissive -O0
 MISCCXXFLAGS= -std=c++11  #98
 
 # include
@@ -46,9 +42,9 @@ SRCDIRBOOST=$(BOOST_DIR)/src
 OBJDIRRMA=$(RMA_DIR)/obj
 OBJDIRBOOST=$(BOOST_DIR)/src
 _HEADERSRMA=Time.h argRMA.h dataRMA.h serRMA.h parRMA.h greedyRMA.h baseRMA.h #driverRMA.h
-_HEADERSBOOST=argBoost.h dataBoost.h baseBoost.h boosting.h repr.h # lpbr.h
+_HEADERSBOOST=argBoost.h dataBoost.h baseBoost.h boosting.h repr.h lpbr.h
 _SOURCESRMA=argRMA.cpp dataRMA.cpp serRMA.cpp parRMA.cpp greedyRMA.cpp baseRMA.cpp #driverRMA.cpp  #
-_SOURCESBOOST=driver.cpp argBoost.cpp dataBoost.cpp boosting.cpp repr.cpp #lpbr.cpp baseBoost.cpp
+_SOURCESBOOST=driver.cpp argBoost.cpp dataBoost.cpp boosting.cpp repr.cpp # lpbr.cpp # baseBoost.cpp
 
 _OBJECTSRMA=$(_SOURCESRMA:.cpp=.o)
 _OBJECTSBOOST=$(_SOURCESBOOST:.cpp=.o)
@@ -74,4 +70,3 @@ $(OBJDIR)/%.o:  $(SRCDIRRMA)/%.cpp $(SRCDIRBOOST)/%.cpp $(HEADERDIRS)
 
 .PHONY: clean
 clean:
-	rm $(OBJDIRBOOST)/*.o $(EXECUTABLE) #$(OBJDIRRMA)/*.o

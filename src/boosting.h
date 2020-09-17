@@ -7,6 +7,8 @@
 #ifndef Boosting1_h
 #define Boosting1_h
 
+//#include <direct.h>
+
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -50,15 +52,15 @@ typedef void parRMA;
 
 
 namespace boosting {
-  
+
   enum GreedyLevel   {EXACT, NotOptimal, Greedy};
   enum TestTrainData {TRAIN, TEST, VALID};
   //enum OuterInnerCV  {INNER, OUTER};
-  
+
   class Boosting : public arg::ArgBoost, public base::BaseRMA { //public base::BaseBoost { //public DriverRMA,
-    
+
   public:
-    
+
     Boosting(int& argc, char**& argv); //  rma(NULL), prma(NULL), parallel(false)  { }; //: DriverRMA{argc, argv} {};   //:  rma(NULL), prma(NULL), parallel(false) {}; //, model(env) {};
     virtual ~Boosting();
 
@@ -114,6 +116,7 @@ namespace boosting {
     virtual double evaluateEachIter(const int& isTest, vector<DataXy> origData) = 0;
     virtual double evaluateAtFinal(const int& isTest, vector<DataXy> origData)  = 0;
 
+    void    writeWts(const int& curIter);
     void    writePredictions(const int& isTest, vector<DataXy> origData); // write predictions
 
     //////////////////////// Checking methods ///////////////////////
@@ -122,7 +125,7 @@ namespace boosting {
     void checkObjValue(int k, vector<DataXw> intData);	// double-check objevtive value for (a, b)
 
     GreedyLevel greedyLevel;
-    
+
   protected:
 
     ///////////////////// Boosting variables /////////////////////
