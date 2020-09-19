@@ -13,11 +13,16 @@ LPBR is a two-class classification algorithm using LPBoost and RMA.
 REPR is a prediction algorithm using linear regression with both linear and boxed-based rule variables.
 
 ## Software Requirement:
+* CMake
 * C++ compiler
-* [PEBBL](https://software.sandia.gov/trac/acro/wiki/Example/Building/acro-pebbl)
-* [Gurobi](http://www.gurobi.com/)
 * MPI
-* R with RuleFit, randomForest, gbm, and fastAdaboost packages
+* [PEBBL](https://software.sandia.gov/trac/acro/wiki/Example/Building/acro-pebbl)
+* [RMA](https://github.com/aik7/RMA)
+* [Coin-OR/CLP](https://github.com/coin-or/Clp)
+* gfortran
+* BLAS and LAPACK packages
+* (Optional): [Gurobi](http://www.gurobi.com/)
+* (Optional): R with RuleFit, randomForest, gbm, and fastAdaboost packages
 
 ## The description and user guide of Boosting algorithms
 * [Presentation](https://github.com/aik7/Boosting/blob/master/Boosting.pdf)
@@ -28,7 +33,7 @@ REPR is a prediction algorithm using linear regression with both linear and boxe
 
 * Clone or download this Boosting repository
 ```
-git clone https://github.com/aik7/Boosting.git
+git clone --recursive https://github.com/aik7/Boosting.git
 ```
 * Build Boosting along with PEBBL, RMA, and Coin-OR CLP
 ```
