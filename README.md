@@ -1,5 +1,7 @@
 # Boosting
 
+[![Build Status](https://travis-ci.com/aik7/Boosting.svg?branch=cmake)](https://travis-ci.com/aik7/Boosting)
+
 We implemented both classification and regression algorithms using rectangular maximum agreement problem (RMA) as a subproblem.
 
 ## LPBR (LPBoost with RMA)
