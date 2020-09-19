@@ -16,12 +16,15 @@ addons:
       # fortran
       - gfortran
 
+       # math libraries
+      - libblas-dev
+      - liblapack-dev
+
 # Handle git submodules
 git:
     submodules: true
 
 install:
-  - apt-get install libblas-dev liblapack-dev
   - sh scripts/build.sh
 
 script:
