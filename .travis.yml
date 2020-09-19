@@ -21,6 +21,7 @@ git:
     submodules: true
 
 install:
+  - apt-get install libblas-dev liblapack-dev
   - sh scripts/build.sh
 
 script:
