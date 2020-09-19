@@ -28,22 +28,22 @@ REPR is a prediction algorithm using linear regression with both linear and boxe
 ```
 git clone https://github.com/aik7/Boosting.git
 ```
-* Run the following command for compiling and building applications after chaning the file directories in "Makefile"
+* Build Boosting along with PEBBL, RMA, and Coin-OR CLP
 ```
 cd Boosting
-make
+sh scripts/build.sh
 ```
 
 ## Example commands to run RMA:
 
 ### Serial implementation
 ```
-./boosting <data_filename>
+./build/boosting <data_filename>
 ```
 
 ### Parallel implementation
 ```
-mpirun -np 4 ./boosting <data_filename>
+mpirun -np 4 ./build/boosting <data_filename>
 ```
 
 Please read the user guide about how to use parameters for the Boosting solver.
