@@ -1,0 +1,23 @@
+sudo: required
+language: cpp
+
+os: linux
+dist: bionic
+compiler: gcc
+
+addons:
+  apt:
+    packages:
+      # OpenMPI
+      - openmpi-bin
+      - libopenmpi-dev
+
+# Handle git submodules
+git:
+    submodules: true
+
+install:
+  - sh scripts/build.sh
+
+script:
+  - ./boosting ../data/indian.dat
