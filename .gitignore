@@ -1,6 +1,8 @@
 Makefile
 
-*.o
-*.data
+readme.txt
 
-boosting
+build/
+
+external/coin
+external/RMA

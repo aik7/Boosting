@@ -1,5 +1,7 @@
 # Boosting
 
+[![Build Status](https://travis-ci.com/aik7/Boosting.svg?branch=cmake)](https://travis-ci.com/aik7/Boosting)
+
 We implemented both classification and regression algorithms using rectangular maximum agreement problem (RMA) as a subproblem.
 
 ## LPBR (LPBoost with RMA)
@@ -11,11 +13,16 @@ LPBR is a two-class classification algorithm using LPBoost and RMA.
 REPR is a prediction algorithm using linear regression with both linear and boxed-based rule variables.
 
 ## Software Requirement:
+* CMake
 * C++ compiler
-* [PEBBL](https://software.sandia.gov/trac/acro/wiki/Example/Building/acro-pebbl)
-* [Gurobi](http://www.gurobi.com/)
 * MPI
-* R with RuleFit, randomForest, gbm, and fastAdaboost packages
+* [PEBBL](https://software.sandia.gov/trac/acro/wiki/Example/Building/acro-pebbl)
+* [RMA](https://github.com/aik7/RMA)
+* [Coin-OR/CLP](https://github.com/coin-or/Clp)
+* gfortran
+* BLAS and LAPACK packages
+* (Optional): [Gurobi](http://www.gurobi.com/)
+* (Optional): R with RuleFit, randomForest, gbm, and fastAdaboost packages
 
 ## The description and user guide of Boosting algorithms
 * [Presentation](https://github.com/aik7/Boosting/blob/master/Boosting.pdf)
@@ -26,24 +33,24 @@ REPR is a prediction algorithm using linear regression with both linear and boxe
 
 * Clone or download this Boosting repository
 ```
-git clone https://github.com/aik7/Boosting.git
+git clone --recursive https://github.com/aik7/Boosting.git
 ```
-* Run the following command for compiling and building applications after chaning the file directories in "Makefile"
+* Build Boosting along with PEBBL, RMA, and Coin-OR CLP
 ```
 cd Boosting
-make
+sh scripts/build.sh
 ```
 
 ## Example commands to run RMA:
 
 ### Serial implementation
 ```
-./boosting <data_filename>
+./build/boosting <data_filename>
 ```
 
 ### Parallel implementation
 ```
-mpirun -np 4 ./boosting <data_filename>
+mpirun -np 4 ./build/boosting <data_filename>
 ```
 
 Please read the user guide about how to use parameters for the Boosting solver.

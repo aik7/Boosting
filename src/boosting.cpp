@@ -11,18 +11,16 @@ namespace boosting {
 
 
   Boosting::Boosting(int& argc, char**& argv): rma(NULL), prma(NULL), parallel(false) {
-    
+
 #ifdef ACRO_HAVE_MPI
     uMPI::init(&argc, &argv, MPI_COMM_WORLD);
 #endif // ACRO_HAVE_M
 
-    cout << "exact RMA" << exactRMA();
-    
-    (exactRMA()) ? greedyLevel=EXACT : greedyLevel=Greedy;
-    
     setup(argc, argv);     // setup all paramaters
 
     setData(argc, argv);   // set data
+
+    (exactRMA()) ? greedyLevel=EXACT : greedyLevel=Greedy;
 
     if (exactRMA()) setupPebblRMA(argc, argv);  // setup RMA
 
@@ -149,6 +147,9 @@ namespace boosting {
 	//ucout << "\nColGen Iter: " << curIter << "\n";
 
         setDataWts();
+        //if (saveWts())  // TODO: fix this later
+        writeWts(curIter);
+
         solveRMA();
 
         if (exactRMA()) vecERMA[curIter] = rma->workingSol.value;
@@ -495,7 +496,7 @@ namespace boosting {
   void Boosting::printRMASolutionTime() {
     ucout << "ERMA Solution: " << rma->workingSol.value
           << "\tCPU time: "    << tc.getCPUTime()
-          << "\tNum of Nodes: " << rma->subCount[2]  
+          << "\tNum of Nodes: " << rma->subCount[2]
           << "\n";
   }
 
@@ -617,6 +618,25 @@ namespace boosting {
   } // setCoveredTestObs function
 
 
+  void Boosting::writeWts(const int& curIter) {
+
+    int obs;
+
+    //mkdir("./wts")
+
+    stringstream s;
+    s << "./wts/wt_" << problemName << "_" << curIter;
+
+    ofstream os(s.str().c_str());
+    for (int i=0; i < NumObs ; ++i) {
+      obs = data->vecTrainData[i];
+      os << data->intTrainData[obs].w << ", ";
+    }
+
+  }
+
+
+
   void Boosting::writePredictions(const int& isTest, vector<DataXy> origData) {
 
     stringstream s;
@@ -631,7 +651,7 @@ namespace boosting {
 
     os << "ActY \t Boosting  \n";
 
-    (isTest) ? obs = data->vecTestData.size() : obs = data->vecTrainData.size();
+    (isTest) ? size = data->vecTestData.size() : size = data->vecTrainData.size();
     for (int i=0; i < size; ++i) {
       (isTest) ? obs = data->vecTestData[i] : obs = data->vecTrainData[i];
       if (isTest) os << origData[obs].y << " " << predTest[i] << "\n";

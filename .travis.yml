@@ -1,0 +1,31 @@
+sudo: required
+language: cpp
+
+os: linux
+dist: bionic
+compiler: gcc
+
+addons:
+  apt:
+    packages:
+
+      # OpenMPI
+      - openmpi-bin
+      - libopenmpi-dev
+
+      # fortran
+      - gfortran
+
+       # math libraries
+      - libblas-dev
+      - liblapack-dev
+
+# Handle git submodules
+git:
+    submodules: true
+
+install:
+  - sh scripts/build.sh
+
+script:
+  - ./build/boosting ./data/indian.dat

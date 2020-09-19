@@ -1,0 +1,3 @@
+[submodule "external/RMA"]
+	path = external/RMA
+	url = https://github.com/aik7/RMA.git
