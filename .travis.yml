@@ -9,11 +9,12 @@ addons:
   apt:
     packages:
 
-      - gfortran-9
-      
       # OpenMPI
       - openmpi-bin
       - libopenmpi-dev
+
+      # fortran
+      - gfortran
 
 # Handle git submodules
 git:
