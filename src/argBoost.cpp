@@ -26,15 +26,15 @@ namespace arg {
     _noSoftMargin(false),
     _initRules(false),
     _init1DRules(false),
-    _lowerRho(-inf),
-    _upperRho(inf),
+    _lowerRho(-getInf()),
+    _upperRho(getInf()),
 
     _coeffC(1),
     _coeffE(1),
     _coeffF(0),
 
     _SeqCoverValue(false),
-    _numLimitedObs(intInf),
+    _numLimitedObs(getIntInf()),
     _maxBoundedSP(10000000),
 
     _evalEachIter(false),

@@ -177,13 +177,12 @@ namespace boosting {
 #endif //  ACRO_HAVE_MPI
 
 #ifdef ACRO_HAVE_MPI
-    int i, k;
-    for (i = 0; i < data->numTrainObs; ++i) {
+    for (unsigned int i = 0; i < data->numTrainObs; ++i) {
 
       if ((uMPI::rank==0)) {
 
 	// If we are the root process, send our data to everyone
-	for (k = 0; k < uMPI::size; ++k)
+	for (int k = 0; k < uMPI::size; ++k)
 	  if (k != 0)
 	    MPI_Send(&data->intTrainData[i].w, 1, MPI_DOUBLE, k, 0, MPI_COMM_WORLD);
     } else {
@@ -216,11 +215,11 @@ namespace boosting {
     rma->getAllSolutions(s);
     sl.resize(s.size());
 
-    for (int k=0; k<s.size(); ++k)
+    for (unsigned int k=0; k<s.size(); ++k)
       sl[k] = dynamic_cast<pebblRMA::rmaSolution*>(s[k]);
 
     if ( curIter!=0 )
-      for (int k=0; k<s.size(); ++k)
+      for (unsigned int k=0; k<s.size(); ++k)
 	if ( vecCoveredSign[numBox-1]==sl[k]->isPosIncumb
 	     && matIntLower[matIntLower.size()-1] == sl[k]->a
 	     && matIntUpper[matIntUpper.size()-1] == sl[k]->b ) {
@@ -239,7 +238,7 @@ namespace boosting {
     matIntUpper.resize(matIntUpper.size()+s.size());
     matIntLower.resize(matIntLower.size()+s.size());
 
-    for (int k=0; k<s.size(); ++k) { // for each solution
+    for (unsigned int k=0; k<s.size(); ++k) { // for each solution
 
       //if (k==0 && !isDuplicate()) { // if this rule is not duplicates
 
@@ -308,7 +307,7 @@ namespace boosting {
       vecCoveredSign.resize(vecCoveredSign.size()-(s.size()-numRMASols));
     }
 
-    for (int k=0; k<s.size(); ++k)
+    for (unsigned int k=0; k<s.size(); ++k)
       sl[k]->dispose();
 
   }
@@ -423,7 +422,7 @@ namespace boosting {
       DEBUGPR(20, cout << "obs: " << obs << " linearReg expY: " << expY
 	      <<  " features: " << origData[obs].X );
 
-      for (int k=0; k<matOrigLower.size(); ++k) { // for each box solution
+      for (unsigned int k=0; k<matOrigLower.size(); ++k) { // for each box solution
 	if (!(vecPrimal[data->numTrainObs+2*NumAttrib+k+1] ==0) ) {	//if (vecPrimal[numVar+2*k]!=0) {
 	  if ( vecCoveredObsByBox[obs][k] ) { // if this observation is covered
 	    if (vecCoveredSign[k])
@@ -504,7 +503,7 @@ namespace boosting {
       DEBUGPR(20, cout << "obs: " << obs << " linearReg expY: " << expY
 	      <<  " features: " << origData[obs].X );
 
-      for (int k=0; k<matOrigLower.size(); ++k) { // for each box solution
+      for (unsigned int k=0; k<matOrigLower.size(); ++k) { // for each box solution
 
 	// if the coefficients (gamma^+-gamma^-)=0 for the box[k] is not 0
 	// if the coefficients for the box[k] is not 0

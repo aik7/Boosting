@@ -10,12 +10,13 @@
 #include <pebbl/utilib/ParameterSet.h>
 #include <limits>
 #include "argRMA.h"
+#include "utilRMA.h"
 
 
 namespace arg {
 
-  static double inf = numeric_limits<double>::infinity();
-  static int intInf = numeric_limits<int>::max();
+  // double inf = numeric_limits<double>::infinity();
+  // int intInf = numeric_limits<int>::max();
 
 
   //  Boosting parameters class
