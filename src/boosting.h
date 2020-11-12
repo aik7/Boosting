@@ -170,8 +170,8 @@ namespace boosting {
     BasicArray<pebblRMA::rmaSolution*> sl;
 
     // store lower and upper bound of rules (boxes)
-    vector<vector<int> >    matIntLower;
-    vector<vector<int> >    matIntUpper;
+    vector<vector<unsigned int> >    matIntLower;
+    vector<vector<unsigned int> >    matIntUpper;
     vector<vector<double> > matOrigLower;
     vector<vector<double> > matOrigUpper;
 

@@ -14,7 +14,7 @@
 
 namespace arg {
 
-  // static double inf = numeric_limits<double>::infinity();
+  static double inf = numeric_limits<double>::infinity();
   static int intInf = numeric_limits<int>::max();
 
 
