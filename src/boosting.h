@@ -136,12 +136,11 @@ namespace boosting {
     int  numRows;    // # of constraints / rows in the mater problem
     int  numCols;    // # of variables / columns in the mater problem
     int  numBox;     // # of total boxes entered so far
-    int  numRMASols; // # of boxes entered in the current interaction
+    unsigned int  numRMASols; // # of boxes entered in the current interaction
 
     int  NumObs;
     int  NumAttrib;
 
-    bool parallel;	// is parallel or not
     bool flagDuplicate;
     bool isOuter;
 
@@ -170,8 +169,8 @@ namespace boosting {
     BasicArray<pebblRMA::rmaSolution*> sl;
 
     // store lower and upper bound of rules (boxes)
-    vector<vector<int> >    matIntLower;
-    vector<vector<int> >    matIntUpper;
+    vector<vector<unsigned int> >    matIntLower;
+    vector<vector<unsigned int> >    matIntUpper;
     vector<vector<double> > matOrigLower;
     vector<vector<double> > matOrigUpper;
 
@@ -195,6 +194,8 @@ namespace boosting {
     pebblRMA::RMA*        rma;   // serial RMA instance
     pebblRMA::parRMA*     prma;  // parallel RMA instance
     greedyRMA::GreedyRMA* grma;  // greedy RMA instance
+
+    bool isParallel;	// is parallel or not
 
   };
 

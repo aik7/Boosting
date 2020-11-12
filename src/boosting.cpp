@@ -10,7 +10,7 @@
 namespace boosting {
 
 
-  Boosting::Boosting(int& argc, char**& argv): rma(NULL), prma(NULL), parallel(false) {
+  Boosting::Boosting(int& argc, char**& argv): rma(NULL), prma(NULL), isParallel(false) {
 
 #ifdef ACRO_HAVE_MPI
     uMPI::init(&argc, &argv, MPI_COMM_WORLD);
@@ -31,7 +31,7 @@ namespace boosting {
 
   Boosting::~Boosting() {
 #ifdef ACRO_HAVE_MPI
-    if (parallel) {
+    if (isParallel) {
       CommonIO::end();
       uMPI::done();
     }
@@ -57,7 +57,7 @@ namespace boosting {
       /// Manage parallel I/O explicitly with the utilib::CommonIO tools
       CommonIO::begin();
       CommonIO::setIOFlush(1);
-      parallel = true;
+      isParallel = true;
       prma     = new pebblRMA::parRMA(MPI_COMM_WORLD);
       rma      = prma;
     } else {
@@ -95,7 +95,7 @@ namespace boosting {
 
     //vecDual.resize(NumObs);
     vecIsCovered.resize(NumObs);
-    if (exactRMA()) rma->incumbentValue = inf;
+    if (exactRMA()) rma->incumbentValue = getInf();
 
     matIntLower.clear();
     matIntUpper.clear();
@@ -372,7 +372,7 @@ namespace boosting {
   void Boosting::resetExactRMA() {
 
 #ifdef ACRO_HAVE_MPI
-    if (parallel) {
+    if (isParallel) {
       prma->reset();
       if (printBBdetails()) prma->printConfiguration();
       CommonIO::begin_tagging();
@@ -384,7 +384,7 @@ namespace boosting {
 #endif //  ACRO_HAVE_MPI
 
     rma->mmapCachedCutPts.clear();
-    rma->workingSol.value = -inf;
+    rma->workingSol.value = -getInf();
     //rma->numDistObs       = data->numTrainObs;	    // only use training data
     //rma->setSortedObsIdx(data->vecTrainData);
 
@@ -425,7 +425,7 @@ namespace boosting {
     matOrigLower.resize(matIntLower.size());
     matOrigUpper.resize(matIntUpper.size());
 
-    for (int k = matIntLower.size()-numRMASols; k<matIntLower.size(); ++k) {
+    for (unsigned int k = matIntLower.size()-numRMASols; k<matIntLower.size(); ++k) {
 
       matOrigLower[k].resize(NumAttrib);
       matOrigUpper[k].resize(NumAttrib);
@@ -445,7 +445,7 @@ namespace boosting {
 		  << " matIntLower[k][j]: " << matIntLower[k][j]
 		  << " GreatestLower: " << tmpUpper << "\n");
 
-	} else lower=-inf; // if matIntLower[k][j] < 0 and matIntLower[k][j] != rma->distFeat[j]
+	} else lower=-getInf(); // if matIntLower[k][j] < 0 and matIntLower[k][j] != rma->distFeat[j]
 
 	if ( matIntUpper[k][j] < data->distFeat[j] ) { // upperBound
 
@@ -459,7 +459,7 @@ namespace boosting {
 		  << " matIntUpper[k][j]+1: " << matIntUpper[k][j]+1
 		  << " GreatestUpper: " << tmpUpper << "\n");
 
-	} else upper=inf; // if matIntUpper[k][j] < rma->distFeat[j] and matIntUpper[k][j] != 0
+	} else upper=getInf(); // if matIntUpper[k][j] < rma->distFeat[j] and matIntUpper[k][j] != 0
 
 	// store values
 	matOrigLower[k][j]=lower;
@@ -478,7 +478,8 @@ namespace boosting {
 
 
   double Boosting::getLowerBound(int k, int j, int value, bool isUpper) {
-    int boundVal; double min = inf;
+    int boundVal;
+    // double min = getInf();
     if (isUpper) boundVal = matIntUpper[k][j];
     else         boundVal = matIntLower[k][j];
     return data->vecFeature[j].vecIntMinMax[boundVal+value].minOrigVal;
@@ -486,7 +487,8 @@ namespace boosting {
 
 
   double Boosting::getUpperBound(int k, int j, int value, bool isUpper)  {
-    int boundVal; double max = -inf;
+    int boundVal;
+    // double max = -getInf();
     if (isUpper) boundVal = matIntUpper[k][j];
     else         boundVal = matIntLower[k][j];
     return data->vecFeature[j].vecIntMinMax[boundVal+value].maxOrigVal;
@@ -570,7 +572,7 @@ namespace boosting {
   void Boosting::setCoveredTrainObs() {
     int obs;
     if (printBoost()) ucout << "vecCoveredObsByBox Train:\n";
-    for (int i=0; i<data->vecTrainData.size(); ++i) {
+    for (unsigned int i=0; i<data->vecTrainData.size(); ++i) {
       obs = data->vecTrainData[i];
       vecCoveredObsByBox[obs].resize(numBox);
       vecCoveredObsByBox[obs][numBox-1] = vecIsCovered[i];
@@ -589,7 +591,7 @@ namespace boosting {
 
     int obs;
     if (printBoost()) ucout << "\nvecCoveredObsByBox Test:\n";
-    for (int i=0; i<data->vecTestData.size(); ++i) { // for each test dataset
+    for (unsigned int i=0; i<data->vecTestData.size(); ++i) { // for each test dataset
       obs = data->vecTestData[i];
       vecCoveredObsByBox[obs].resize(numBox);
 
