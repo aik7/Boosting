@@ -21,12 +21,12 @@ REPR is a prediction algorithm using linear regression with both linear and boxe
 * Fortran compiler (gfortran)
 * BLAS and LAPACK packages (libblas-dev, liblapack-dev)
 
-### The following packages are install by running scripts/build.sh as described below
+### The following packages are installed by running scripts/build.sh as described below
 * [PEBBL](https://software.sandia.gov/trac/acro/wiki/Example/Building/acro-pebbl)
 * [RMA](https://github.com/aik7/RMA)
 * [Coin-OR/CLP](https://github.com/coin-or/Clp)
 
-### Optionals
+### Optional packages
 * (Optional): [Gurobi](http://www.gurobi.com/)
 * (Optional): R with RuleFit, randomForest, gbm, and fastAdaboost packages
 
