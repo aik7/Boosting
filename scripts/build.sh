@@ -8,7 +8,7 @@ sh scripts/build.sh
 # Build Coin-OR
 
 cd ../
-sh build.sh
+sh build_clp.sh
 
 # build Boosting
 cd ../

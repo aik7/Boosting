@@ -22,7 +22,7 @@ REPR is a prediction algorithm using linear regression with both linear and boxe
 * BLAS and LAPACK packages (libblas-dev, liblapack-dev)
 
 ### The following packages are installed by running scripts/build.sh as described below
-* [PEBBL](https://software.sandia.gov/trac/acro/wiki/Example/Building/acro-pebbl)
+* [PEBBL](https://github.com/PEBBL/pebbl)
 * [RMA](https://github.com/aik7/RMA)
 * [Coin-OR/CLP](https://github.com/coin-or/Clp)
 

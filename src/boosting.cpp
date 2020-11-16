@@ -248,7 +248,9 @@ namespace boosting {
     if (uMPI::rank==0) {
 #endif //  ACRO_HAVE_MPI
 
-      ucout << "Master Solution: " << primalVal << "\t"
+      std::cout << std::fixed << std::setprecision(4)
+            << "Master Solution: " << primalVal << "\t";
+      std::cout << std::fixed << std::setprecision(2)
             << " CPU Time: " << tc.getCPUTime() << "\n";
 
       //printRMPSolution();
@@ -496,10 +498,11 @@ namespace boosting {
 
 
   void Boosting::printRMASolutionTime() {
-    ucout << "ERMA Solution: " << rma->workingSol.value
-          << "\tCPU time: "    << tc.getCPUTime()
-          << "\tNum of Nodes: " << rma->subCount[2]
-          << "\n";
+    std::cout << std::fixed << std::setprecision(4)
+          << "ERMA Solution: " << rma->workingSol.value;
+    std::cout << std::fixed << std::setprecision(2)
+          << " \tCPU time: "    << tc.getCPUTime()
+          << "\tNum of Nodes: " << rma->subCount[2] << "\n";
   }
 
   void Boosting::printIterInfo() {
