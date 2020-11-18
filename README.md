@@ -6,7 +6,7 @@ We implemented both classification and regression algorithms using rectangular m
 
 ## LPBR (LPBoost with RMA)
 
-LPBR is a two-class classification algorithm using LPBoost and RMA.
+LPBR is a two-class classification algorithm using LPBoost and RMA. (currently not available with CLP)
 
 ## REPR (Rule-Enhanced Penalized Regression)
 
@@ -15,7 +15,7 @@ REPR is a prediction algorithm using linear regression with both linear and boxe
 ## Software Requirement:
 
 ### You need to install
-* CMake (version > 3.0)
+* CMake (version >= 3.0)
 * C++ compiler (g++)
 * OpenMPI 2.1.1 (openmpi-bin, libopenmpi-dev)
 * Fortran compiler (gfortran)

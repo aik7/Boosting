@@ -10,7 +10,8 @@
 namespace boosting {
 
 
-  Boosting::Boosting(int& argc, char**& argv): rma(NULL), prma(NULL), isParallel(false) {
+  Boosting::Boosting(int& argc, char**& argv):
+                 rma(NULL), prma(NULL), isParallel(false) {
 
 #ifdef ACRO_HAVE_MPI
     uMPI::init(&argc, &argv, MPI_COMM_WORLD);
@@ -31,10 +32,7 @@ namespace boosting {
 
   Boosting::~Boosting() {
 #ifdef ACRO_HAVE_MPI
-    if (isParallel) {
-      CommonIO::end();
-      uMPI::done();
-    }
+    if (isParallel) { CommonIO::end(); uMPI::done(); }
 #endif // ACRO_HAVE_MPI
   };
 
@@ -43,7 +41,8 @@ namespace boosting {
 
   // set data for Boosting class
   void Boosting::setData(int& argc, char**& argv) {
-    data = new data::DataBoost(argc, argv, (BaseRMA *) this, (arg::ArgBoost *) this);
+    data = new data::DataBoost(argc, argv, (BaseRMA *) this,
+                               (arg::ArgBoost *) this);
   }
 
 
@@ -341,15 +340,19 @@ namespace boosting {
       resetExactRMA();
 
       if (BaseRMA::initGuess()) {
+        /*
 #ifdef ACRO_HAVE_MPI
 	if (uMPI::rank==0) {
 #endif //  ACRO_HAVE_MPI
+*/
 	  solveGreedyRMA();
 	  rma->setInitialGuess(grma->isPosIncumb, grma->maxObjValue,
 			       grma->L, grma->U);
+/*
 #ifdef ACRO_HAVE_MPI
 	}
 #endif //  ACRO_HAVE_MPI
+*/
       }
       solveExactRMA();
     } else {
@@ -403,15 +406,15 @@ namespace boosting {
     if (BaseRMA::printBBdetails()) rma->solve();  // print out B&B details
     else                           rma->search();
 
-#ifdef ACRO_HAVE_MPI
-    if (uMPI::rank==0) {
-#endif //  ACRO_HAVE_MPI
+// #ifdef ACRO_HAVE_MPI
+//     if (uMPI::rank==0) {
+// #endif //  ACRO_HAVE_MPI
       tc.getCPUTime();
       tc.getWallTime();
       printRMASolutionTime();
-#ifdef ACRO_HAVE_MPI
-    }
-#endif //  ACRO_HAVE_MPI
+// #ifdef ACRO_HAVE_MPI
+//     }
+// #endif //  ACRO_HAVE_MPI
 
     // CommonIO::end();
     // uMPI::done();

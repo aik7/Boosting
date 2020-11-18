@@ -6,3 +6,13 @@ build/
 
 external/coin
 external/RMA
+
+*.out
+*.txt
+*.data
+*.mps
+
+GERMA_*
+
+gdb*
+
