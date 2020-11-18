@@ -7,8 +7,6 @@
 #ifndef Boosting1_h
 #define Boosting1_h
 
-//#include <direct.h>
-
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -35,7 +33,7 @@
 #include <pebbl/pbb/parBranching.h>
 #include "parRMA.h"
 #define outstream ucout
-#define IO(action) if (uMPI::iDoIO) { CommonIO::end_tagging(); action; }
+// #define IO(action) if (uMPI::iDoIO) { CommonIO::end_tagging(); action; }
 #else // ACRO_HAVE_MPI
 typedef void parRMA;
 #define outstream cout
@@ -49,7 +47,7 @@ typedef void parRMA;
 #include "baseRMA.h"
 #include "serRMA.h"
 #include "greedyRMA.h"
-
+#include "driverRMA.h"
 
 namespace boosting {
 
@@ -57,16 +55,22 @@ namespace boosting {
   enum TestTrainData {TRAIN, TEST, VALID};
   //enum OuterInnerCV  {INNER, OUTER};
 
-  class Boosting : public arg::ArgBoost, public base::BaseRMA { //public base::BaseBoost { //public DriverRMA,
+  class Boosting : public arg::ArgBoost, virtual public rma::DriverRMA {
+  // class Boosting : public arg::ArgBoost, public base::BaseRMA {
+  //public base::BaseBoost { //public DriverRMA,
 
   public:
 
-    Boosting(int& argc, char**& argv); //  rma(NULL), prma(NULL), parallel(false)  { }; //: DriverRMA{argc, argv} {};   //:  rma(NULL), prma(NULL), parallel(false) {}; //, model(env) {};
-    virtual ~Boosting();
+    Boosting(int& argc, char**& argv);
+    virtual ~Boosting() {
+    // #ifdef ACRO_HAVE_MPI
+    //     if (isParallel) { CommonIO::end(); uMPI::done(); }
+    // #endif // ACRO_HAVE_MPI
+    }
 
     void         reset();
     void         setData(int& argc, char**& argv);
-    void         setupPebblRMA(int& argc, char**& argv);
+    // void         setupPebblRMA(int& argc, char**& argv);
     virtual void setBoostingParameters() = 0;
 
     //////////////////////// training data //////////////////////////////
@@ -76,13 +80,13 @@ namespace boosting {
     //// virtual void   resetMaster() = 0;
     virtual void setInitRMP() = 0;
     void         solveRMP();
-    virtual void setDataWts()      = 0;
+    virtual void setDataWts() = 0;
 
-    void   resetExactRMA();
+    // void   resetExactRMA();
 
-    void   solveRMA();
-    void   solveExactRMA();
-    void   solveGreedyRMA();
+    // void   solveRMA();
+    // void   solveExactRMA();
+    // void   solveGreedyRMA();
 
     virtual bool isStoppingCondition() = 0;
     void         insertColumns();
@@ -98,7 +102,9 @@ namespace boosting {
     virtual void printRMPSolution() = 0;  		// restricted mater problem solution
     virtual void printRMAInfo()     = 0;		  // pritinc problem, RMA
     //virtual void printEachIterAllErrs() = 0;
-    void         printRMASolutionTime();
+
+    // void         printRMASolutionTime();
+
     void         printIterInfo();
     void         printBoostingErr();
     void         printCLPsolution();
@@ -188,14 +194,15 @@ namespace boosting {
     double errTrain;
     double errTest;
 
+    // bool isParallel;	// is parallel or not
+
     Time   tc;
 
     data::DataBoost*      data;
-    pebblRMA::RMA*        rma;   // serial RMA instance
-    pebblRMA::parRMA*     prma;  // parallel RMA instance
-    greedyRMA::GreedyRMA* grma;  // greedy RMA instance
-
-    bool isParallel;	// is parallel or not
+    // pebblRMA::RMA*        rma;   // serial RMA instance
+    // pebblRMA::parRMA*     prma;  // parallel RMA instance
+    // greedyRMA::GreedyRMA* grma;  // greedy RMA instance
+    //
 
   };
 

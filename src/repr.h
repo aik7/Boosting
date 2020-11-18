@@ -31,16 +31,18 @@ typedef void parRMA;
 
 #include "Time.h"
 #include "boosting.h"
+#include "driverRMA.h"
 
 
 namespace boosting {
 
-  class REPR : public Boosting {
+  class REPR : virtual public Boosting {
 
   public:
 
-    //REPR() {}
-    REPR(int argc, char** argv) : Boosting(argc, argv) {};
+    // REPR() {}
+    // REPR(int argc, char** argv) : Boosting(argc, argv) {};
+    REPR(int argc, char** argv) : rma::DriverRMA(argc, argv), Boosting(argc, argv) {};
     ~REPR() {}
 
     //////////////////////// Training methods //////////////////////////////
