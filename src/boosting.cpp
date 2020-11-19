@@ -9,15 +9,15 @@
 
 namespace boosting {
 
+  ///////////////////////// Set-up Boosting /////////////////////////
 
-  Boosting::Boosting(int& argc, char**& argv) : rma::DriverRMA(argc, argv) {
-        // : isParallel(false), rma(NULL), prma(NULL) {
+  void Boosting::setupBoosting(int& argc, char**& argv) {
 
-// #ifdef ACRO_HAVE_MPI
-//     uMPI::init(&argc, &argv, MPI_COMM_WORLD);
-// #endif // ACRO_HAVE_M
+#ifdef ACRO_HAVE_MPI
+    uMPI::init(&argc, &argv, MPI_COMM_WORLD);
+#endif // ACRO_HAVE_M
 
-    // setup(argc, argv);     // setup all paramaters
+    setup(argc, argv);     // setup all paramaters
 
     setData(argc, argv);   // set data
 
@@ -27,15 +27,8 @@ namespace boosting {
 
     reset();
 
-  }
+    if (prma!=NULL) prma->printConfiguration();
 
-
-  ///////////////////////// Set-up Boosting /////////////////////////
-
-  // set data for Boosting class
-  void Boosting::setData(int& argc, char**& argv) {
-    data = new data::DataBoost(argc, argv, (BaseRMA *) this,
-                               (arg::ArgBoost *) this);
   }
 
 
@@ -224,7 +217,7 @@ namespace boosting {
     tc.startTime();
 
     model.dual();
-    if (debug>=1) model.writeMps("a.mps");
+    if (debug>=1) model.writeMps("clp.mps");
 
     vecPrimal = model.primalColumnSolution();
     vecDual   = model.dualRowSolution();

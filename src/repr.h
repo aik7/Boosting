@@ -40,9 +40,9 @@ namespace boosting {
 
   public:
 
-    // REPR() {}
+    REPR() {}
     // REPR(int argc, char** argv) : Boosting(argc, argv) {};
-    REPR(int argc, char** argv) : rma::DriverRMA(argc, argv), Boosting(argc, argv) {};
+    // REPR() : rma::DriverRMA(), Boosting() {};
     ~REPR() {}
 
     //////////////////////// Training methods //////////////////////////////

@@ -61,15 +61,24 @@ namespace boosting {
 
   public:
 
-    Boosting(int& argc, char**& argv);
+    Boosting() {};
     virtual ~Boosting() {
     // #ifdef ACRO_HAVE_MPI
     //     if (isParallel) { CommonIO::end(); uMPI::done(); }
     // #endif // ACRO_HAVE_MPI
     }
 
+    void setupBoosting(int& argc, char**& argv);
+
     void         reset();
-    void         setData(int& argc, char**& argv);
+
+    void         setData(int& argc, char**& argv) {
+      data = new data::DataBoost(argc, argv, (BaseRMA *) this,
+                                 (arg::ArgBoost *) this);
+      // rma::DriverRMA::data = (data::DataRMA *) this;
+      rma::DriverRMA::data = new data::DataRMA(argc, argv, (ArgRMA *) this);
+    }
+
     // void         setupPebblRMA(int& argc, char**& argv);
     virtual void setBoostingParameters() = 0;
 

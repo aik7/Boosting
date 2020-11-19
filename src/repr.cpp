@@ -20,7 +20,10 @@ namespace boosting {
 
   bool REPR::isStoppingCondition() {
     if (greedyLevel==EXACT) {
-      if (rma->incumbentValue <= E + .00001) {return true;}
+      if (rma->incumbentValue <= E + .00001) {
+        ucout << "Stopping Condition!\n";
+        return true;
+      }
     }
     if (greedyLevel==Greedy) {
       if (curIter>0 && grma->L == matIntLower[curIter-1] &&
