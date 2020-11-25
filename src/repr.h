@@ -41,7 +41,7 @@ namespace boosting {
   public:
 
     REPR() {}
-    // REPR(int argc, char** argv) : Boosting(argc, argv) {};
+    REPR(int argc, char** argv) : Boosting(argc, argv) {};
     // REPR() : rma::DriverRMA(), Boosting() {};
     ~REPR() {}
 

@@ -42,7 +42,7 @@ namespace boosting {
     DEBUGPR(10, cout << "Setup Initial Restricted Master Problem!" << "\n");
 
     int i, j, k, obs;
-    numCols = 1+2*NumAttrib+NumObs; // vecPrimal.size();
+    numCols = 1+2*NumAttrib+NumObs; // vecPrimalVars.size();
     numRows = isLPBoost() ? NumObs+1 : 2*NumObs ; // //NumVar+1;	// +1 for constant term
 
     objValue    = new double[numCols];
@@ -172,8 +172,8 @@ namespace boosting {
     if (uMPI::rank==0) {
 #endif //  ACRO_HAVE_MPI
       for (int i=0; i < NumObs ; ++i) {
-      	obs = data->vecTrainData[i];
-      	data->intTrainData[obs].w = vecDual[i]-vecDual[NumObs+i];
+      	obs = rma::DriverRMA::data->vecTrainData[i];
+      	rma::DriverRMA::data->intTrainData[obs].w = vecDualVars[i]-vecDualVars[NumObs+i];
       }
 #ifdef ACRO_HAVE_MPI
     }
@@ -187,11 +187,11 @@ namespace boosting {
 	// If we are the root process, send our data to everyone
 	for (int k = 0; k < uMPI::size; ++k)
 	  if (k != 0)
-	    MPI_Send(&data->intTrainData[i].w, 1, MPI_DOUBLE, k, 0, MPI_COMM_WORLD);
+	    MPI_Send(&rma::DriverRMA::data->intTrainData[i].w, 1, MPI_DOUBLE, k, 0, MPI_COMM_WORLD);
     } else {
 
     	// If we are a receiver process, receive the data from the root
-    	MPI_Recv(&data->intTrainData[i].w, 1, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD,
+    	MPI_Recv(&rma::DriverRMA::data->intTrainData[i].w, 1, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD,
 		           MPI_STATUS_IGNORE);
     }
   }
@@ -410,7 +410,7 @@ namespace boosting {
 
     for (int i=0; i<size; ++i) { // for each obsercation
 
-      expY = vecPrimal[0];    // for constant terms
+      expY = vecPrimalVars[0];    // for constant terms
       DEBUGPR(20, cout << "constant expY: " << expY << "\n");
 
       if (isTest) obs = data->vecTestData[i];
@@ -418,7 +418,7 @@ namespace boosting {
 
       for (int j=0; j<NumAttrib; ++j) {
 	expY +=  ( origData[obs].X[j]-data->avgX[j] ) / data->sdX[j]
-	  * ( vecPrimal[j+1] - vecPrimal[NumAttrib+j+1] );
+	  * ( vecPrimalVars[j+1] - vecPrimalVars[NumAttrib+j+1] );
 	DEBUGPR(20, cout << "linear expY: " << expY << "\n");
       }
 
@@ -426,12 +426,12 @@ namespace boosting {
 	      <<  " features: " << origData[obs].X );
 
       for (unsigned int k=0; k<matOrigLower.size(); ++k) { // for each box solution
-	if (!(vecPrimal[data->numTrainObs+2*NumAttrib+k+1] ==0) ) {	//if (vecPrimal[numVar+2*k]!=0) {
+	if (!(vecPrimalVars[data->numTrainObs+2*NumAttrib+k+1] ==0) ) {	//if (vecPrimalVars[numVar+2*k]!=0) {
 	  if ( vecCoveredObsByBox[obs][k] ) { // if this observation is covered
 	    if (vecCoveredSign[k])
-	      expY +=  vecPrimal[data->numTrainObs+2*data->numAttrib+k+1] ;
+	      expY +=  vecPrimalVars[data->numTrainObs+2*data->numAttrib+k+1] ;
 	    else
-	      expY += -vecPrimal[data->numTrainObs+2*data->numAttrib+k+1] ;
+	      expY += -vecPrimalVars[data->numTrainObs+2*data->numAttrib+k+1] ;
 	    DEBUGPR(20, cout << "kth box: " << k	<< " box exp: " << expY << "\n");
 	  }
 	} // end if for the coefficient of box not 0
@@ -491,7 +491,7 @@ namespace boosting {
 
     for (int i=0; i<size; ++i) { // for each obsercation
 
-      expY = vecPrimal[0];    // for constant terms
+      expY = vecPrimalVars[0];    // for constant terms
       DEBUGPR(20, cout << "constant expY: " << expY << "\n");
 
       if (isTest) obs = data->vecTestData[i];
@@ -499,7 +499,7 @@ namespace boosting {
 
       for (int j=0; j<NumAttrib; ++j) {
 	expY +=  ( origData[obs].X[j]-data->avgX[j] ) / data->sdX[j]
-	  * ( vecPrimal[j+1] - vecPrimal[NumAttrib+j+1] );
+	  * ( vecPrimalVars[j+1] - vecPrimalVars[NumAttrib+j+1] );
 	DEBUGPR(20, cout << "linear expY: " << expY << "\n");
       }
 
@@ -510,16 +510,16 @@ namespace boosting {
 
 	// if the coefficients (gamma^+-gamma^-)=0 for the box[k] is not 0
 	// if the coefficients for the box[k] is not 0
-	if (!(vecPrimal[data->numTrainObs+2*NumAttrib+k+1] ==0)) {//if (vecPrimal[numVar+2*k]!=0) {
+	if (!(vecPrimalVars[data->numTrainObs+2*NumAttrib+k+1] ==0)) {//if (vecPrimalVars[numVar+2*k]!=0) {
 
 	  for (int j=0; j<NumAttrib; ++j) { // for each attribute
 	    if (matOrigLower[k][j] <= origData[obs].X[j] &&
 		origData[obs].X[j] <= matOrigUpper[k][j] ) {
 	      if ( j==NumAttrib-1) { // all features are covered by the box
 		if (vecCoveredSign[k])
-		  expY +=  vecPrimal[data->numTrainObs+2*NumAttrib+k+1] ;
+		  expY +=  vecPrimalVars[data->numTrainObs+2*NumAttrib+k+1] ;
 		else
-		  expY += -vecPrimal[data->numTrainObs+2*NumAttrib+k+1] ;
+		  expY += -vecPrimalVars[data->numTrainObs+2*NumAttrib+k+1] ;
 		DEBUGPR(20, cout << "kth box: " << k	<< " box exp: " << expY << "\n");
 	      }
 	    } else break; // this observation is not covered
@@ -599,44 +599,44 @@ namespace boosting {
       int i,j, obs;
 
       if (C != 0) {
-      	for (j = 1; j < NumAttrib+1; ++j) sumPrimal += C*vecPrimal[j];
+      	for (j = 1; j < NumAttrib+1; ++j) sumPrimal += C*vecPrimalVars[j];
       }
       for (j = NumAttrib+1; j < numCols; ++j) {
-      	if (P==1)   	 sumPrimal += vecPrimal[j];
-      	else if (P==2) sumPrimal += vecPrimal[j]*vecPrimal[j];
+      	if (P==1)   	 sumPrimal += vecPrimalVars[j];
+      	else if (P==2) sumPrimal += vecPrimalVars[j]*vecPrimalVars[j];
       }
 
       if (D != 0) {
       	for (j = 1; j < NumAttrib+1; ++j)	// for linear square coefficients
-      	  sumPrimal += D*vecPrimal[j]*vecPrimal[j];
+      	  sumPrimal += D*vecPrimalVars[j]*vecPrimalVars[j];
       }
 
       double sumDual=0, sumCheck=0;
       vector<double> checkConst(NumAttrib);
       for (i=0; i<NumObs; i++)  {
       	obs = data->vecTrainData[i];
-      	sumDual += data->standTrainData[obs].y * ( vecDual[i] - vecDual[NumObs+i] );
-      	if (P==2)  sumDual -= pow( ( vecDual[i] - vecDual[NumObs+i] ), 2 ) / 4.0 ;
-      	sumCheck += ( vecDual[i] - vecDual[NumObs+i] );
+      	sumDual += data->standTrainData[obs].y * ( vecDualVars[i] - vecDualVars[NumObs+i] );
+      	if (P==2)  sumDual -= pow( ( vecDualVars[i] - vecDualVars[NumObs+i] ), 2 ) / 4.0 ;
+      	sumCheck += ( vecDualVars[i] - vecDualVars[NumObs+i] );
 
-      	DEBUGPR(1, cout << "mu: " << vecDual[i] << " nu:" << vecDual[NumObs+i]
-      		<< " eps: " << vecPrimal[2*NumAttrib+i+1] << "\n" );
+      	DEBUGPR(1, cout << "mu: " << vecDualVars[i] << " nu:" << vecDualVars[NumObs+i]
+      		<< " eps: " << vecPrimalVars[2*NumAttrib+i+1] << "\n" );
       }
 
       for (j=0; j<NumAttrib; ++j) {
       	for (i=0; i<NumObs; ++i)  {
       	  obs = data->vecTrainData[i];
-      	  checkConst[j] += ( vecDual[i] - vecDual[NumObs+i] )
+      	  checkConst[j] += ( vecDualVars[i] - vecDualVars[NumObs+i] )
 	    * data->standTrainData[obs].X[j] ;
       	}
       }
 
-      DEBUGPR(1, cout << "vecPrimal: " << vecPrimal
+      DEBUGPR(1, cout << "vecPrimalVars: " << vecPrimalVars
 	      << " PrimalObj:" << sumPrimal << "\n" );
-      DEBUGPR(1, for (i=0; i<numCols; ++i) cout << vecPrimal[i] << " "; );
-      DEBUGPR(1, cout << "\nvecDual: " << vecDual
+      DEBUGPR(1, for (i=0; i<numCols; ++i) cout << vecPrimalVars[i] << " "; );
+      DEBUGPR(1, cout << "\nvecDualVarss: " << vecDualVars
 	      << " DualObj:" << sumDual << "\n" );
-      DEBUGPR(1, for (i=0; i<numRows; ++i) cout << vecDual[i] << " "; );
+      DEBUGPR(1, for (i=0; i<numRows; ++i) cout << vecDualVars[i] << " "; );
       DEBUGPR(1, cout << "\nsumCheck: " << sumCheck << "\n" );  // sum has to be 1
       DEBUGPR(1, cout << "checkCons: " << checkConst << "\n" );
 #ifdef ACRO_HAVE_MPI

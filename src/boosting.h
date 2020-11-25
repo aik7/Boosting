@@ -38,12 +38,13 @@
 typedef void parRMA;
 #define outstream cout
 #define IO(action) action;
-#endif // ACRO_HAVE_MPI
+#endif //
 
 #include "Time.h"
 #include "argRMA.h"
+#include "argBoost.h"
 #include "dataRMA.h"
-#include "dataBoost.h"
+// #include "dataBoost.h"
 #include "baseRMA.h"
 #include "serRMA.h"
 #include "greedyRMA.h"
@@ -56,28 +57,28 @@ namespace boosting {
   //enum OuterInnerCV  {INNER, OUTER};
 
   class Boosting : public arg::ArgBoost, virtual public rma::DriverRMA {
-  // class Boosting : public arg::ArgBoost, public base::BaseRMA {
-  //public base::BaseBoost { //public DriverRMA,
 
   public:
 
     Boosting() {};
+    Boosting(int& argc, char**& argv);
     virtual ~Boosting() {
-    // #ifdef ACRO_HAVE_MPI
-    //     if (isParallel) { CommonIO::end(); uMPI::done(); }
-    // #endif // ACRO_HAVE_MPI
+#ifdef ACRO_HAVE_MPI
+      if (isParallel) { CommonIO::end(); uMPI::done(); }
+#endif // ACRO_HAVE_MPI
     }
 
     void setupBoosting(int& argc, char**& argv);
 
     void         reset();
 
-    void         setData(int& argc, char**& argv) {
-      data = new data::DataBoost(argc, argv, (BaseRMA *) this,
-                                 (arg::ArgBoost *) this);
-      // rma::DriverRMA::data = (data::DataRMA *) this;
-      rma::DriverRMA::data = new data::DataRMA(argc, argv, (ArgRMA *) this);
-    }
+    // void         setData(int& argc, char**& argv) {
+    //
+    //   // rma::DriverRMA::data = new data::DataRMA(argc, argv, (ArgRMA *) this);
+    //
+    //   // rma::DriverRMA::data = (data::DataRMA *) this;
+    //   // rma::DriverRMA::data = new data::DataRMA(argc, argv, (ArgRMA *) this);
+    // }
 
     // void         setupPebblRMA(int& argc, char**& argv);
     virtual void setBoostingParameters() = 0;
@@ -171,9 +172,9 @@ namespace boosting {
     int    *colIndex,    *rowIndex;
 
     // store solution infomation for the master problem
-    double *vecPrimal;  // dual variables
-    double *vecDual;    // primal variables
-    double primalVal;	 // primal solution value
+    double *vecPrimalVars;  // dual variables
+    double *vecDualVars;    // primal variables
+    double primalSol;	 // primal solution value
     double *columnObjective;
 
     deque<bool>    vecIsCovered;	// each observation is covered or not
@@ -186,8 +187,8 @@ namespace boosting {
     // store lower and upper bound of rules (boxes)
     vector<vector<unsigned int> >    matIntLower;
     vector<vector<unsigned int> >    matIntUpper;
-    vector<vector<double> > matOrigLower;
-    vector<vector<double> > matOrigUpper;
+    vector<vector<double> >          matOrigLower;
+    vector<vector<double> >          matOrigUpper;
 
     ///////////////////// For Evaluation /////////////////////
 
@@ -197,8 +198,8 @@ namespace boosting {
     vector<double>          predTrain;          // predictions of training data by model
     vector<double>          predTest;           // predictions of testing data by model
 
-    vector<double> vecERMA;
-    vector<double> vecGRMA;
+    vector<double>          vecERMA;
+    vector<double>          vecGRMA;
 
     double errTrain;
     double errTest;
@@ -207,7 +208,7 @@ namespace boosting {
 
     Time   tc;
 
-    data::DataBoost*      data;
+    // data::DataBoost*      data;
     // pebblRMA::RMA*        rma;   // serial RMA instance
     // pebblRMA::parRMA*     prma;  // parallel RMA instance
     // greedyRMA::GreedyRMA* grma;  // greedy RMA instance
