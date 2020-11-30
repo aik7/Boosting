@@ -147,13 +147,35 @@ namespace boosting {
       return; // EXIT_FAILURE;
     } // end try ... catch
 
+    saveModel();
+
   } // trainData function
+
+
+  void Boosting::saveModel() {
+
+    stringstream s;
+    s << problemName << "_model_" << getDateTime() << ".out";
+    ofstream os(s.str().c_str());
+
+    for (int i=0; i<numCols; ++i) os << vecPrimalVars[i] << ",";
+
+    os << "\n" ;
+    for (int k=0; k<getIterations(); ++k ) {
+      // os << "Box " << k << " a: "<< matOrigLower[k] << "\n" ;
+      // os << "Box " << k << " b: "<< matOrigUpper[k] << "\n" ;
+      os << "Box " << k << " a: "<< matIntLower[k] << "\n" ;
+      os << "Box " << k << " b: "<< matIntUpper[k] << "\n" ;
+    }
+
+    os.close();
+  }
 
 
   void Boosting::writeGERMA() {
 
     stringstream s;
-    s << "GERMA" << '_' << problemName;
+    s << "GERMA_" << problemName << ".out";
     ofstream os(s.str().c_str());
 
     os << "iter\tGRMA\tERMA\n";

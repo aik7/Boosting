@@ -15,6 +15,7 @@
 #include <map>
 #include <iomanip>
 #include <cassert>
+#include <ctime>
 
 #include <ClpSimplex.hpp>
 #include <CoinTime.hpp>
@@ -72,31 +73,35 @@ namespace boosting {
 
     void         reset();
 
-    // void         setData(int& argc, char**& argv) {
-    //
-    //   // rma::DriverRMA::data = new data::DataRMA(argc, argv, (ArgRMA *) this);
-    //
-    //   // rma::DriverRMA::data = (data::DataRMA *) this;
-    //   // rma::DriverRMA::data = new data::DataRMA(argc, argv, (ArgRMA *) this);
-    // }
-
-    // void         setupPebblRMA(int& argc, char**& argv);
     virtual void setBoostingParameters() = 0;
 
     //////////////////////// training data //////////////////////////////
     void train(const bool& isOuter, const int& iter, const int & greedyLevel);
+
+    void saveModel();
+
+    std::string getDateTime(){
+
+      time_t rawtime;
+      struct tm * timeinfo;
+      char buffer[80];
+
+      time (&rawtime);
+      timeinfo = localtime(&rawtime);
+
+      strftime(buffer,sizeof(buffer),"%m%d%Y%H%M",timeinfo);
+      std::string str(buffer);
+
+      // std::cout << str;
+      return str;
+
+    }
 
     /////////////////void discretizeData();
     //// virtual void   resetMaster() = 0;
     virtual void setInitRMP() = 0;
     void         solveRMP();
     virtual void setDataWts() = 0;
-
-    // void   resetExactRMA();
-
-    // void   solveRMA();
-    // void   solveExactRMA();
-    // void   solveGreedyRMA();
 
     virtual bool isStoppingCondition() = 0;
     void         insertColumns();
@@ -174,7 +179,7 @@ namespace boosting {
     // store solution infomation for the master problem
     double *vecPrimalVars;  // dual variables
     double *vecDualVars;    // primal variables
-    double primalSol;	 // primal solution value
+    double primalSol;	      // primal solution value
     double *columnObjective;
 
     deque<bool>    vecIsCovered;	// each observation is covered or not
@@ -204,15 +209,8 @@ namespace boosting {
     double errTrain;
     double errTest;
 
-    // bool isParallel;	// is parallel or not
-
     Time   tc;
 
-    // data::DataBoost*      data;
-    // pebblRMA::RMA*        rma;   // serial RMA instance
-    // pebblRMA::parRMA*     prma;  // parallel RMA instance
-    // greedyRMA::GreedyRMA* grma;  // greedy RMA instance
-    //
 
   };
 
