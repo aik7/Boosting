@@ -1,9 +1,8 @@
 /*
- *  File name: allParams.cpp
+ *  File name: argBoost.cpp
  *  Author:    Ai Kagawa
  */
 
-//#include <acro_config.h>
 #include "argBoost.h"
 
 

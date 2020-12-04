@@ -1,5 +1,5 @@
 /*
- *  File name: allParams.h
+ *  File name: argBoost.h
  *  Author:    Ai Kagawa
  */
 
@@ -14,10 +14,6 @@
 
 
 namespace arg {
-
-  // double inf = numeric_limits<double>::infinity();
-  // int intInf = numeric_limits<int>::max();
-
 
   //  Boosting parameters class
   class ArgBoost :

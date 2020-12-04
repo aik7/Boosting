@@ -176,8 +176,8 @@ namespace boosting {
     if (uMPI::rank==0) {
 #endif //  ACRO_HAVE_MPI
       for (int i=0; i < NumObs ; ++i) {
-      	obs = rma::DriverRMA::data->vecTrainData[i];
-      	rma::DriverRMA::data->intTrainData[obs].w = vecDualVars[i]-vecDualVars[NumObs+i];
+      	obs = rma::SolveRMA::data->vecTrainData[i];
+      	rma::SolveRMA::data->intTrainData[obs].w = vecDualVars[i]-vecDualVars[NumObs+i];
       }
 #ifdef ACRO_HAVE_MPI
     }
@@ -191,11 +191,11 @@ namespace boosting {
 	// If we are the root process, send our data to everyone
 	for (int k = 0; k < uMPI::size; ++k)
 	  if (k != 0)
-	    MPI_Send(&rma::DriverRMA::data->intTrainData[i].w, 1, MPI_DOUBLE, k, 0, MPI_COMM_WORLD);
+	    MPI_Send(&rma::SolveRMA::data->intTrainData[i].w, 1, MPI_DOUBLE, k, 0, MPI_COMM_WORLD);
     } else {
 
     	// If we are a receiver process, receive the data from the root
-    	MPI_Recv(&rma::DriverRMA::data->intTrainData[i].w, 1, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD,
+    	MPI_Recv(&rma::SolveRMA::data->intTrainData[i].w, 1, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD,
 		           MPI_STATUS_IGNORE);
     }
   }
@@ -357,25 +357,6 @@ namespace boosting {
     matIntUpper[matIntUpper.size()-1] = grma->U;
 
     DEBUGPR(1, cout << "vecIsCovered: " << vecIsCovered );
-
-    /*
-    // add columns using GUROBI
-    //col.clear();
-    //constr = model.getConstrs();
-    for (int i = 0; i < NumObs; ++i) {
-      obs = data->vecTrainData[i];
-      if (vecIsCovered[i]==true) {
-	if (grma->isPosIncumb) {
-	  //col.addTerm(1, constr[i]);
-	  //col.addTerm(-1, constr[i+NumObs]);
-	} else {
-	  //col.addTerm(-1, constr[i]);
-	  //col.addTerm(1, constr[i+NumObs]);
-	}
-      }
-    }
-    */
-    //model.addVar(0.0, GRB_INFINITY, E, GRB_CONTINUOUS, col);
 
     double *columnValue = new double[numRows];
     for (int i = 0; i < numRows; ++i) columnValue[i] = 0;
@@ -650,262 +631,3 @@ namespace boosting {
 
 
 } // namespace boosting
-
-
-
-// Add variables to the model
-//vars = model.addVars(LB, UB, NULL, vtype, NULL, numCols);
-/*
-// set constraits
-for (i = 0; i < NumObs; ++i) {
-lhs = vars[0];										   // beta_0
-obs = data->vecTrainData[i];
-for (j = 0; j < NumAttrib; ++j)      // beta^+_j
-if (data->standData[obs].X[j] != 0)
-lhs += data->standData[obs].X[j]*vars[1+j];
-for (j = 0; j < NumAttrib; ++j)      // beta^-_j
-if (data->standData[obs].X[j] != 0)
-lhs -= data->standData[obs].X[j]*vars[1+NumAttrib+j];
-for (j = 0; j < NumObs; ++j) 				// episilon
-if (i==j)
-lhs -= vars[1+2*NumAttrib+j];
-// model.addConstr(lhs, GRB_LESS_EQUAL, data->standData[obs].y);
-}
-
-for (i = 0; i < NumObs; ++i) {
-lhs = -vars[0];										   // beta_0
-obs = data->vecTrainData[i];
-for (j = 0; j < NumAttrib; ++j)      // beta^+_j
-if (data->standData[obs].X[j] != 0)
-lhs -= data->standData[obs].X[j]*vars[1+j];
-for (j = 0; j < NumAttrib; ++j)      // beta^-_j
-if (data->standData[obs].X[j] != 0)
-lhs += data->standData[obs].X[j]*vars[1+NumAttrib+j];
-for (j = 0; j < NumObs; ++j) 				// episilon
-if (i==j)
-lhs -= vars[1+2*NumAttrib+j];
-// model.addConstr(lhs, GRB_LESS_EQUAL, -data->standData[obs].y);
-}
-
-// set cobjectives
-obj = 0;
-
-if (C != 0) {
-for (j = 1; j < 2*NumAttrib+1; ++j)
-obj += C*vars[j];
-}
-if (D != 0) {
-for (j = 1; j < 2*NumAttrib+1; ++j)	// for linear square coefficients
-obj += D*vars[j]*vars[j];
-}
-for (j = 2*NumAttrib+1; j < numCols; ++j) {
-if (P==1)  		 obj += vars[j];
-else if (P==2) obj += vars[j]*vars[j];
-}
-*/
-/*
-  model.setObjective(obj);
-  model.update();
-  //model.write("master.lp");
-  model.getEnv().set(GRB_IntParam_OutputFlag, 0);  // not to print out GUROBI
-*/
-
-/*
-// solve RMA
-void REPR::solveRMA() { //const int& GreedyLevel) {
-
-rma->reset();
-
-#ifdef ACRO_HAVE_MPI
-if (parallel) {
-prma->reset();
-//prma->printConfiguration();
-//CommonIO::begin_tagging();
-}
-#endif //  ACRO_HAVE_MPI
-
-rma->workingSol.value=-inf;
-rma->mmapCachedCutPts.clear();
-rma->numDistObs = NumObs;				// only use training data
-rma->setSortObsNum(data->vecTrainData);	// only use training data
-setDataWts();
-
-if (data->getInitialGuess()) {
-grma = new GreedyRMA(data);
-grma->runGreedyRangeSearch();
-}
-
-rma->resetTimers();
-InitializeTiming();
-rma->solve();
-
-} // end function REPR::solveRMA()
-*/
-
-
-/*
-// train data using REPRoost
-void REPR::train(const bool& isOuter, const int& NumIter, const int& greedyLevel) {
-
-int i, j;
-curIter=-1;
-
-setREPRdata();
-flagDuplicate=false;
-
-try {
-
-data->setStandData(data->origTrainData, data->standTrainData);					// standadize data for L1 regularization
-setInitialMaster();
-solveMaster();  //solveInitialMaster();
-
-data->integerizeData(data->origTrainData, data->intTrainData); 	// integerize features
-if (BaseRMA::exactRMA()) rma->setData(data);
-
-for (curIter=0; curIter<NumIter; ++curIter) {
-
-//ucout << "\nColGen Iter: " << curIter << "\n";
-setDataWts();
-
-solveRMA();
-
-
-if ( !BaseRMA::exactRMA() || greedyLevel==base::Greedy) {	// Greedy RMA
-
-grma = new greedyRMA::GreedyRMA(static_cast<BaseRMA *>(this), data);
-grma->runGreedyRangeSearch();
-
-if ( isOuter && grma->maxObjValue <= E + .00001 && BaseRMA::exactRMA()) {
-
-solveRMA();	// solve RMA for each iteration
-
-#ifdef ACRO_HAVE_MPI
-if (uMPI::rank==0) {
-#endif //  ACRO_HAVE_MPI
-ucout << " RMA Solution:  " << rma->incumbentValue
-<< "\tCPU time: " << rma->searchTime << "\n";
-#ifdef ACRO_HAVE_MPI
-}
-#endif //  ACRO_HAVE_MPI
-//
-if ( rma->incumbentValue <= E + .00001 ) {
-#ifdef ACRO_HAVE_MPI
-if (uMPI::rank==0) {
-#endif //  ACRO_HAVE_MPI
-ucout << "Stopping Condition! RMA <=  E!!" << "\n";
-#ifdef ACRO_HAVE_MPI
-}
-#endif //  ACRO_HAVE_MPI
-//
-rma->incumbentValue = inf;
-break;
-} else {
-insertColumns(); // add RMA solutions
-}
-
-if (flagDuplicate) {
-#ifdef ACRO_HAVE_MPI
-if (uMPI::rank==0) {
-#endif //  ACRO_HAVE_MPI
-ucout << "Stop due to duplicates!" << "\n";
-#ifdef ACRO_HAVE_MPI
-}
-#endif //  ACRO_HAVE_MPI
-rma->incumbentValue = inf;
-break;
-}
-
-// if the current rule is the same as the previous rule
-} else if ( curIter>0 &&
-grma->L == matIntLower[curIter-1] &&
-grma->U == matIntUpper[curIter-1] )  {
-#ifdef ACRO_HAVE_MPI
-if (uMPI::rank==0) {
-#endif //  ACRO_HAVE_MPI
-ucout << "Stopping Condition! Greedy RMA" << "\n";
-#ifdef ACRO_HAVE_MPI
-}
-#endif //  ACRO_HAVE_MPI
-break;
-} else {
-insertGreedyColumns(); // add Greedy RMA solutions
-}
-
-} else if (BaseRMA::exactRMA()) {	// Exact RMA
-
-#ifdef ACRO_HAVE_MPI
-if (uMPI::rank==0) {
-#endif //  ACRO_HAVE_MPI
-if (isOuter) ucout << "Outer Iter: " << curIter+1 << " ";
-else 				 ucout << "Inner Iter: " << curIter+1 << " ";
-#ifdef ACRO_HAVE_MPI
-}
-#endif //  ACRO_HAVE_MPI
-
-solveRMA();	// solve RMA for each iteration
-
-if ( rma->incumbentValue <= E + .00001 )  {
-#ifdef ACRO_HAVE_MPI
-if (uMPI::rank==0) {
-#endif //  ACRO_HAVE_MPI
-ucout << "Stopping Condition! RMA <=  E" << "\n";
-#ifdef ACRO_HAVE_MPI
-}
-#endif //  ACRO_HAVE_MPI
-rma->incumbentValue = inf;
-break;
-}
-
-insertColumns(); // add RMA solutions
-
-if (flagDuplicate) {
-#ifdef ACRO_HAVE_MPI
-if (uMPI::rank==0) {
-#endif //  ACRO_HAVE_MPI
-ucout << "EREPR: Stop due to duplicates!" << "\n";
-#ifdef ACRO_HAVE_MPI
-}
-#endif //  ACRO_HAVE_MPI
-rma->incumbentValue = inf;
-break;
-}
-} // end GreedyRMA or ExactRMA
-
-// map back from the discretized data into original
-setOriginalBounds();
-
-#ifdef ACRO_HAVE_MPI
-if (uMPI::rank==0) {
-#endif //  ACRO_HAVE_MPI
-if (isOuter) ucout << "Outer Iter: " << curIter+1;
-else 				 ucout << "Inner Iter: " << curIter+1;
-#ifdef ACRO_HAVE_MPI
-}
-#endif //  ACRO_HAVE_MPI
-
-solveMaster();
-
-} // end for each column generation iteration
-
-#ifdef ACRO_HAVE_MPI
-if (uMPI::rank==0) {
-#endif //  ACRO_HAVE_MPI
-if (isOuter) ucout << "OutREPR ";
-else         ucout << "InnREPR ";
-ucout << curIter << ":\tTest/Train Errors: " << errTest << " " << errTrain << "\n";
-#ifdef ACRO_HAVE_MPI
-}
-#endif //  ACRO_HAVE_MPI
-
-if ( evalFinalIter() && !(evalEachIter()) ) evaluateFinal();
-
-// clean up GUROBI for the next crossvalidation set
-//resetGurobi();
-
-} catch(...) {
-ucout << "Exception during optimization" << "\n";
-return; // EXIT_FAILURE;
-} // end try ... catch
-
-} // trainData function
-*/

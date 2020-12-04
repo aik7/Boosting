@@ -4,8 +4,8 @@
  *  Description: a header file for Boosting class
  */
 
-#ifndef Boosting1_h
-#define Boosting1_h
+#ifndef Boosting_h
+#define Boosting_h
 
 #include <iostream>
 #include <fstream>
@@ -25,31 +25,14 @@
 #include <CoinPackedVector.hpp>
 #include <CoinHelperFunctions.hpp>
 
-#include <pebbl_config.h>
-#include <pebbl/utilib/ParameterList.h>
-#include <pebbl/utilib/memdebug.h>
-#include <pebbl/utilib/CommonIO.h>
-
-#ifdef ACRO_HAVE_MPI
-#include <pebbl/pbb/parBranching.h>
-#include "parRMA.h"
-#define outstream ucout
-// #define IO(action) if (uMPI::iDoIO) { CommonIO::end_tagging(); action; }
-#else // ACRO_HAVE_MPI
-typedef void parRMA;
-#define outstream cout
-#define IO(action) action;
-#endif //
-
 #include "Time.h"
 #include "argRMA.h"
 #include "argBoost.h"
 #include "dataRMA.h"
-// #include "dataBoost.h"
 #include "baseRMA.h"
 #include "serRMA.h"
 #include "greedyRMA.h"
-#include "driverRMA.h"
+#include "solveRMA.h"
 
 namespace boosting {
 
@@ -57,7 +40,7 @@ namespace boosting {
   enum TestTrainData {TRAIN, TEST, VALID};
   //enum OuterInnerCV  {INNER, OUTER};
 
-  class Boosting : public arg::ArgBoost, virtual public rma::DriverRMA {
+  class Boosting : public arg::ArgBoost, virtual public rma::SolveRMA {
 
   public:
 
@@ -206,7 +189,6 @@ namespace boosting {
     double errTest;
 
     Time   tc;
-
 
   };
 

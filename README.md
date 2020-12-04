@@ -70,6 +70,9 @@ Please read the user guide about how to use parameters for the Boosting solver.
 
 <img src="https://github.com/aik7/Boosting/blob/devel/figures/Boosting_class_org.png" width="400">
 
+* A solid arrow indicates an inheritance relationship
+* A dashed arrow indicates a composition relationship
+
 ## Source files at src directory
 
 ```
@@ -78,8 +81,6 @@ Please read the user guide about how to use parameters for the Boosting solver.
 ├── argBoost.o
 ├── boosting.cpp     : a file contains Boosting driver class
 ├── boosting.h
-├── dataBoost.cpp    : a file contains Boosting data class
-├── dataBoost.h
 ├── driver.cpp       : a driver file
 ├── lpbr.cpp         : a file contains LPBR class
 ├── lpbr.h

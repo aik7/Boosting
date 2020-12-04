@@ -14,24 +14,8 @@
 #include <deque>
 #include <map>
 
-#include <pebbl_config.h>
-#include <pebbl/utilib/ParameterList.h>
-#include <pebbl/utilib/memdebug.h>
-
-#ifdef ACRO_HAVE_MPI
-#include <pebbl/pbb/parBranching.h>
-#include "parRMA.h"
-#define outstream ucout
-//#define IO(action) if (uMPI::iDoIO) { CommonIO::end_tagging(); action; }
-#else // ACRO_HAVE_MPI
-typedef void parRMA;
-#define outstream cout
-#define IO(action) action;
-#endif // ACRO_HAVE_MPI
-
 #include "Time.h"
 #include "boosting.h"
-#include "driverRMA.h"
 
 
 namespace boosting {
@@ -42,7 +26,6 @@ namespace boosting {
 
     REPR() {}
     REPR(int argc, char** argv) : Boosting(argc, argv) {};
-    // REPR() : rma::DriverRMA(), Boosting() {};
     virtual ~REPR() {}
 
     //////////////////////// Training methods //////////////////////////////
