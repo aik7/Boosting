@@ -63,11 +63,7 @@ namespace boosting {
 
     Boosting() {};
     Boosting(int& argc, char**& argv);
-    virtual ~Boosting() {
-#ifdef ACRO_HAVE_MPI
-      if (isParallel) { CommonIO::end(); uMPI::done(); }
-#endif // ACRO_HAVE_MPI
-    }
+    virtual ~Boosting() {}
 
     void setupBoosting(int& argc, char**& argv);
 

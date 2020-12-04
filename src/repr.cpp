@@ -45,6 +45,10 @@ namespace boosting {
     numCols = 1+2*NumAttrib+NumObs; // vecPrimalVars.size();
     numRows = isLPBoost() ? NumObs+1 : 2*NumObs ; // //NumVar+1;	// +1 for constant term
 
+    DEBUGPR(1, cout << "NumAttrib: " << NumAttrib << "\n");
+    DEBUGPR(1, cout << "NumObs: " << NumObs << "\n");
+    DEBUGPR(1, cout << "numCols: " << numCols << "\n");
+
     objValue    = new double[numCols];
     lowerColumn = new double[numCols];
     upperColumn = new double[numCols];

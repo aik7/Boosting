@@ -137,9 +137,6 @@ namespace boosting {
 
       //if ( evalFinalIter() && !(evalEachIter()) ) evaluateFinal();
 
-      // clean up GUROBI for the next crossvalidation set
-      //resetGurobi();
-
       writeGERMA();
 
     } catch(...) {
@@ -147,7 +144,13 @@ namespace boosting {
       return; // EXIT_FAILURE;
     } // end try ... catch
 
+#ifdef ACRO_HAVE_MPI
+	if (uMPI::rank==0) {
+#endif //  ACRO_HAVE_MPI
     saveModel();
+#ifdef ACRO_HAVE_MPI
+  }
+#endif //  ACRO_HAVE_MPI
 
   } // trainData function
 
@@ -158,14 +161,26 @@ namespace boosting {
     s << problemName << "_model_" << getDateTime() << ".out";
     ofstream os(s.str().c_str());
 
-    for (int i=0; i<numCols; ++i) os << vecPrimalVars[i] << ",";
+    DEBUGPR(1, cout << numCols << "\n");
+    DEBUGPR(1, for (int i=0; i<numCols; ++i)
+       {cout << vecPrimalVars[i] << ", ";});
+
+    os << "#_of_features: " << data->numAttrib << "\n";
+    os << "#_of_boxes:    " << numBox << "\n";
+
+    os << vecPrimalVars[0] << " ";
+    for (unsigned int i=0; i<data->numAttrib; ++i) {
+      os << vecPrimalVars[1+i] - vecPrimalVars[1+data->numAttrib+i] << " ";
+    }
+    for (int i=0; i<numBox; ++i)
+      os << vecPrimalVars[1+2*data->numAttrib+NumObs+i] << " ";
 
     os << "\n" ;
     for (int k=0; k<getIterations(); ++k ) {
       // os << "Box " << k << " a: "<< matOrigLower[k] << "\n" ;
       // os << "Box " << k << " b: "<< matOrigUpper[k] << "\n" ;
-      os << "Box " << k << " a: "<< matIntLower[k] << "\n" ;
-      os << "Box " << k << " b: "<< matIntUpper[k] << "\n" ;
+      os << "Box_" << k << "_a: "<< matIntLower[k] << "\n" ;
+      os << "Box_" << k << "_b: "<< matIntUpper[k] << "\n" ;
     }
 
     os.close();

@@ -9,11 +9,12 @@
 
 int main(int argc, char** argv) {
 
-  boosting::REPR* repr = new boosting::REPR(argc, argv);
-  repr->train(true, repr->getIterations(), repr->greedyLevel);
+  boosting::REPR repr(argc, argv);
+  repr.train(true, repr.getIterations(), repr.greedyLevel);
 
-  // boosting::REPR repr(argc, argv);
-  // repr.train(true, repr.getIterations(), repr.greedyLevel); //isOuter=false, NumIter=10, greedyLevel=EXACT
+  // boosting::REPR* repr = new boosting::REPR(argc, argv);
+  // repr->train(true, repr->getIterations(), repr->greedyLevel);
+  // delete repr;
 
   return 0;
 
