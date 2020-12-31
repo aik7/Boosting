@@ -14,17 +14,16 @@ namespace arg {
 
   ArgBoost::ArgBoost():
 
-    _isLPBoost(false),
     _isREPR(true),
-    _iterations(1),
+    _numIterations(1),
     _exponentP(2),
-    _printBoost(false),
+    _isPrintBoost(false),
 
     _coeffD(0.5),
     _nu(.5),
-    _noSoftMargin(false),
-    _initRules(false),
-    _init1DRules(false),
+    _isNoSoftMargin(false),
+    _isInitRules(false),
+    _isInit1DRules(false),
     _lowerRho(-getInf()),
     _upperRho(getInf()),
 
@@ -32,35 +31,35 @@ namespace arg {
     _coeffE(1),
     _coeffF(0),
 
-    _SeqCoverValue(false),
+    _isSeqCoverValue(false),
     _numLimitedObs(getIntInf()),
     _maxBoundedSP(10000000),
 
-    _evalEachIter(false),
-    _evalFinalIter(false),
-    _saveWts(false),
-    _writePredictions(false)
+    _isEvalEachIter(false),
+    _isEvalFinalIter(false),
+    _isSaveWts(false),
+    _isSavePredictions(false)
 
     {
 
       ///////////////////// Boosting parameters /////////////////////
 
-  create_categorized_parameter("lpboost", _isLPBoost, "<bool>",
-      "false",	"Run LPBoost", "LPBoost");
+  // create_categorized_parameter("lpboost", _isLPBoost, "<bool>",
+  //     "false",	"Run LPBoost", "LPBoost");
 
   create_categorized_parameter("repr", _isREPR, "<bool>",
       "true",	"Run REPR", "REPR");
 
-  create_categorized_parameter("iterations", _iterations, "<int>", "1",
+  create_categorized_parameter("numIterations", _numIterations, "<unsigned int>", "1",
       "Number of LP-boosting iterations to run.  "
       "Each iteration runs\n\ta full branch and "
       "bound with different observation weights", "Boosting",
-      utilib::ParameterLowerBound<int>(0));
+      utilib::ParameterLowerBound<unsigned>(0));
 
-  create_categorized_parameter("p", _exponentP, "<int>",
+  create_categorized_parameter("p", _exponentP, "<unsigned int>",
      "1", "exponent p", "Boosting");
 
-  create_categorized_parameter("printBoost", _printBoost, "<bool>", "false",
+  create_categorized_parameter("isPrintBoost", _isPrintBoost, "<bool>", "false",
     "print out more details to cehck boosting procedures", "Boosting");
 
 ///////////////////// LPBoost parameters /////////////////////
@@ -71,13 +70,13 @@ namespace arg {
   create_categorized_parameter("nu", _nu, "<double>",
       "0.00", "coefficient D = 1/(m*nu)", "LPBoost");
 
-  create_categorized_parameter("noSoftMargin", _noSoftMargin, "<bool>",
+  create_categorized_parameter("isNoSoftMargin", _isNoSoftMargin, "<bool>",
       "false", "No soft margin, all episilon_i has to be 0", "LPBoost");
 
-  create_categorized_parameter("initRules", _initRules, "<bool>",
+  create_categorized_parameter("isInitRules", _isInitRules, "<bool>",
       "false", "LPBR has initial simple rules", "LPBoost");
 
-  create_categorized_parameter("init1DRules", _init1DRules, "<bool>",
+  create_categorized_parameter("isInit1DRules", _isInit1DRules, "<bool>",
       "false", "LPBR has initial 1 dimentional rules", "LPBoost");
 
   create_categorized_parameter("lowerRho", _lowerRho, "<double>",
@@ -97,26 +96,26 @@ namespace arg {
   create_categorized_parameter("f", _coeffF, "<double>",
       "1.0", "coefficient F", "REPR");
 
-  create_categorized_parameter("SeqCoverValue", _SeqCoverValue, "<bool>",
+  create_categorized_parameter("isSeqCoverValue", _isSeqCoverValue, "<bool>",
       "false",	"Weighted Sequential Coering for Value ",
       "GreedyRMA");
 
-
-  create_categorized_parameter("numLimitedObs", _numLimitedObs, "<int>",
+  create_categorized_parameter("numLimitedObs", _numLimitedObs, "<unsigned>",
       "inf", "limit number of observations to use", "CrossValidation");
 
 ///////////////////// Evaluation parameters /////////////////////
 
-  create_categorized_parameter("evalEachIter", _evalEachIter, "<bool>",
+  create_categorized_parameter("isEvalEachIter", _isEvalEachIter, "<bool>",
       "true",	"Evaluate each iteration ", "Boosting");
 
-  create_categorized_parameter("evalFinalIter", _evalFinalIter, "<bool>",
+  create_categorized_parameter("isEvalFinalIter", _isEvalFinalIter, "<bool>",
       "false", "evaluate model in the final iteration ", "Boosting");
 
-  create_categorized_parameter("saveWts", _writePredictions, "<bool>",
-       "false", "Write weights for each boosting iteration ", "Boosting");
+  create_categorized_parameter("isSaveWts", _isSaveWts, "<bool>",
+       "false", "Wether or not to save weights for each boosting iteration ",
+       "Boosting");
 
-  create_categorized_parameter("writePredictions", _writePredictions, "<bool>",
+  create_categorized_parameter("_isSavePredictions", _isSavePredictions, "<bool>",
        "false", "Write predictions for each model ", "Boosting");
 
   }

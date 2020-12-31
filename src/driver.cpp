@@ -10,7 +10,7 @@
 int main(int argc, char** argv) {
 
   boosting::REPR repr(argc, argv);
-  repr.train(true, repr.getIterations(), repr.greedyLevel);
+  repr.train(true, repr.getNumIterations(), repr.greedyLevel);
 
   return 0;
 

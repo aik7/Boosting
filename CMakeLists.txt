@@ -67,3 +67,10 @@ target_link_libraries(boosting ${RMA_LIBRARIES})
 target_link_libraries(boosting ${Coin_LIBRARIES})
 
 #add_dependencies(boosting coin_external)
+
+
+# find_package(PythonInterp REQUIRED)
+# include_directories(${PYTHON_INCLUDE_DIRS})
+
+# add_subdirectory(pybind11)
+# pybind11_add_module(example ./src/example.cpp)

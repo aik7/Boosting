@@ -22,85 +22,86 @@ namespace arg {
 
   public:
 
-      ArgBoost();
-      virtual ~ArgBoost(){};
+    ArgBoost();
+    virtual ~ArgBoost(){};
 
-      /////////////////// parameters for Boosting ///////////////////
+    /////////////////// parameters for Boosting ///////////////////
 
-      bool isLPBoost()     const {return _isLPBoost;}
-      bool isREPR()        const {return _isREPR;}
-      int  getIterations() const {return _iterations;}
-      int  getExponentP()  const {return _exponentP;}
-      bool printBoost()    const {return _printBoost;}
+    // bool         isLPBoost()        const {return _isLPBoost;}
+    bool         isREPR()           const {return _isREPR;}
+    unsigned int getNumIterations() const {return _numIterations;}
+    unsigned int getExponentP()     const {return _exponentP;}
+    bool         isPrintBoost()     const {return _isPrintBoost;}
 
-      /////////////////// parameters for LPBR class ///////////////////
+    /////////////////// parameters for LPBR class ///////////////////
 
-      double getCoefficientD() const {return _coeffD;}
-      double getNu()           const {return _nu;}
-      bool   getNoSoftMargin() const {return _noSoftMargin; }
-      double getLowerRho()     const {return _lowerRho; }
-      double getUpperRho()     const {return _upperRho;}
-      bool   initRules()       const {return _initRules; }
-      bool   init1DRules()     const {return _init1DRules; }
+    double getCoefficientD() const {return _coeffD;}
+    double getNu()           const {return _nu;}
+    bool   isNoSoftMargin()  const {return _isNoSoftMargin; }
+    double getLowerRho()     const {return _lowerRho; }
+    double getUpperRho()     const {return _upperRho;}
+    bool   isInitRules()     const {return _isInitRules; }
+    bool   isInit1DRules()   const {return _isInit1DRules; }
 
-      /////////////////// parameters for REPR class ///////////////////
+    /////////////////// parameters for REPR class ///////////////////
 
-      double getCoefficientC() const {return _coeffC;}
-      double getCoefficientE() const {return _coeffE;}
-      double getCoefficientF() const {return _coeffF;}
+    double getCoefficientC() const {return _coeffC;}
+    double getCoefficientE() const {return _coeffE;}
+    double getCoefficientF() const {return _coeffF;}
 
-      /////////////////// Parameters for Greedy level of pricing problems ///////////////////
+    /////////////////// Parameters for Greedy level of pricing problems ///////////////////
 
-      bool SeqCoverValue() const {return _SeqCoverValue;}
-      int  getNumLimitedObs() const {return _numLimitedObs;}
+    // TODO: what is this variable?
+    bool         isSeqCoverValue() const {return _isSeqCoverValue;}
+    unsigned int getNumLimitedObs() const {return _numLimitedObs;}
 
-      //////////////////////// Evaluation parameters ////////////////////////
+    //////////////////////// Evaluation parameters ////////////////////////
 
-      bool evalEachIter()  const {return _evalEachIter;}
-      bool evalFinalIter() const {return _evalFinalIter;}
-      bool saveWts()       const {return _saveWts;}
-      bool writePred()     const {return _writePredictions;}
+    bool isEvalEachIter()  const {return _isEvalEachIter;}
+    bool isEvalFinalIter() const {return _isEvalFinalIter;}
+
+    bool isSaveWts()       const {return _isSaveWts;}
+    bool isSavePred()    const {return _isSavePredictions;}
 
   protected:
 
-      /////////////////// Parameters for Boosting ///////////////////
+    /////////////////// Parameters for Boosting ///////////////////
 
-      bool _isLPBoost;
-      bool _isREPR;
-      int  _iterations;					// the number of iterations in column generation
-      int  _exponentP;	// exponent of residuals
-      bool _printBoost; // print out more details for boosting
+    bool          _isREPR;
+    unsigned int  _numIterations;  // the number of iterations in column generation
+    unsigned int  _exponentP;	    // exponent of residuals
+    bool          _isPrintBoost;    // print out more details for boosting
 
-      /////////////////// Parameters for LPBoost class ///////////////////
+    /////////////////// Parameters for LPBoost class ///////////////////
 
-      double _coeffD;	// coefficients parameters
-      double _nu;     // D = 1 / (m * nu)
-      bool   _noSoftMargin;
-      bool   _initRules;
-      bool   _init1DRules;
-      double _lowerRho;
-      double _upperRho;
+    double _coeffD;	  // coefficients parameters
+    double _nu;            // D = 1 / (m * nu)
+    bool   _isNoSoftMargin;
+    bool   _isInitRules;
+    bool   _isInit1DRules;
+    double _lowerRho;
+    double _upperRho;
 
-      /////////////////// Parameters for LPBoost class ///////////////////
+    /////////////////// Parameters for LPBoost class ///////////////////
 
-      double _coeffC;	// coefficients parameters
-      double _coeffE;	// coefficients parameters
-      double _coeffF;	// coefficients parameters
+    double _coeffC;	// coefficients parameters
+    double _coeffE;	// coefficients parameters
+    double _coeffF;	// coefficients parameters
 
-      /////////////////// Parameters for Greedy level of pricing problems ///////////////////
+    /////////////////// Parameters for Greedy level of pricing problems ///////////////////
 
-      bool _SeqCoverValue;
-      int  _numLimitedObs;
-      int  _maxBoundedSP;				// set a maximum number of bounded subproblems to check
+    bool         _isSeqCoverValue;
+    unsigned int _numLimitedObs;
+    unsigned int _maxBoundedSP;  // set a maximum number of bounded subproblems to check
 
       //////////////////////// Evaluation parameters ////////////////////////
 
-      bool _evalEachIter;   		// evaluate solutions in each iteration
-      bool _evalFinalIter;      // evaluate solutions in the final column generation
-      bool _saveWts;            // save weights for each boosting iteration
-      bool _writePredictions;		// print prediction
+    bool _isEvalEachIter;       // evaluate solutions in each iteration
+    bool _isEvalFinalIter;      // evaluate solutions in the final column generation
+    bool _isSaveWts;            // save weights for each boosting iteration
+    bool _isSavePredictions;    // print prediction
 
-    };
+  }; // end ArgBoost class
 
 } // namespace arg
 

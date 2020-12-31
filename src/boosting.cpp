@@ -15,129 +15,134 @@ namespace boosting {
 
     setup(argc, argv);     // setup all paramaters
 
-    setData(argc, argv);   // set data
+    setData(argc, argv);   // set data from SolveRMA class
 
-    (exactRMA()) ? greedyLevel=EXACT : greedyLevel=Greedy;
+    (isPebblRMA()) ? greedyLevel=EXACT : greedyLevel=Greedy;
 
-    if (exactRMA()) setupPebblRMA(argc, argv);  // setup RMA
+    if (isPebblRMA()) setupPebblRMA(argc, argv);  // setup PEBBL RMA
 
-    reset();
+    reset(); // reste Boosting
 
-    if (prma!=NULL) prma->printConfiguration();
+    if (prma!=NULL) prma->printConfiguration(); // TODO: do not know why...
 
-  }
+  } // end Boosting constructor
 
 
   // reset Boosting variables
   void Boosting::reset() {
 
-    numBox     = 0;
-    numRMASols = 0;
-    NumObs     = data->numTrainObs;
-    NumAttrib  = data->numAttrib;
+    numBoxesSoFar = 0;                  // # of boxes
+    numBoxesIter  = 0;                  // # of RMA solutions
+    numObs        = data->numTrainObs;  // # of training observations
+    numAttrib     = data->numAttrib;    // # of attributes or features
 
-    //vecDualVars.resize(NumObs);
-    vecIsCovered.resize(NumObs);
-    if (exactRMA()) rma->incumbentValue = -getInf();
+    //vecDualVars.resize(numObs);
+    vecIsCovered.resize(numObs);     // a vector indicate each observation is covered or not
+    if (isPebblRMA()) rma->incumbentValue = -getInf();  // set the pebbl RMA incumbent value to be negative infinity
 
-    matIntLower.clear();
-    matIntUpper.clear();
+    matIntLower.clear();    // matrix containes lower bound of box in integerized value
+    matIntUpper.clear();    // matrix containes upper bound of box in integerized value
 
-    matOrigLower.clear();
-    matOrigUpper.clear();
+    matOrigLower.clear();   // matrix containes lower bound of box in original value
+    matOrigUpper.clear();   // matrix containes upper bound of box in original value
 
-    if (evalEachIter()) {
+    if (isEvalEachIter()) { // evaluate each iteration
       vecCoveredObsByBox.clear();
       vecCoveredObsByBox.resize(data->numOrigObs);
-    }
+    } // end if eacluate each iteration
 
-  }
+  } // end reset function
 
 
   ///////////////////////// Training methods /////////////////////////
 
   // training process of boosting
-  void Boosting::train(const bool& isOuter, const int& NumIter, const int& greedyLevel) {
+  void Boosting::train(const bool& isOuter,
+                       const unsigned int& numIter,
+                       const unsigned int& greedyLevel) {
 
     int flagStop = 0;
 
     curIter=-1;
 
-    setBoostingParameters();
-    flagDuplicate=false;
+    setBoostingParameters();  // set Boosting parameters
 
-    vecERMA.resize(NumIter);
-    vecGRMA.resize(NumIter);
+    vecERMAObjVal.resize(numIter);
+    vecGRMAObjVal.resize(numIter);
 
     try {
 
-      //data->setStandDataY(data->origTrainData, data->standTrainData);					// standadize data for L1 regularization
-      //data->setStandDataX(data->origTrainData, data->standTrainData);
-      //data->integerizeData(data->origTrainData, data->intTrainData); 	// integerize features
+      // standadize data for L1 regularization
+      data->setDataStandY();  // set data->dataStandTrain
+      data->setDataStandX();
+
+      // TODO: thiw was done at RMA constructor
+      // integerize data for RMA
+      // data->integerizeEpsData();  // set data->dataIntTrain
+
 #ifdef ACRO_HAVE_MPI
       if (uMPI::rank==0) {
 #endif //  ACRO_HAVE_MPI
-	data->standTrainData = data->origTrainData;
-	// if (exactRMA()) rma->setData(data);
-	setInitRMP();
-	solveRMP();  //solveInitialMaster();
+        // if (isPebblRMA()) rma->setData(data);
+        setInitRMP();  // set the initial RMP
+        solveRMP();    // set the RMP
 #ifdef ACRO_HAVE_MPI
       }
 #endif //  ACRO_HAVE_MPI
 
-      for (curIter=0; curIter<NumIter; ++curIter) { // for each column generation iteration
+      for (curIter=0; curIter<numIter; ++curIter) { // for each column generation iteration
 
-	//ucout << "\nColGen Iter: " << curIter << "\n";
+        //ucout << "\nColGen Iter: " << curIter << "\n";
 
         setDataWts();
         //if (saveWts())  // TODO: fix this later
-        writeWts(curIter);
+        saveWts(curIter);
 
         solveRMA();
 
-        if (exactRMA()) vecERMA[curIter] = rma->workingSol.value;
-        vecGRMA[curIter] = grma->maxObjValue;
+        if (isPebblRMA()) vecERMAObjVal[curIter] = rma->workingSol.value;
+        vecGRMAObjVal[curIter] = grma->getObjVal();
 
 #ifdef ACRO_HAVE_MPI
 	if (uMPI::rank==0) {
 #endif //  ACRO_HAVE_MPI
 
-	  if (isStoppingCondition()) flagStop = 1;
+          if (isStoppingCondition()) flagStop = 1;
 
-	  // If we are the root process, send our data to everyone
-	  for (int k = 0; k < uMPI::size; ++k)
-	    if (k != 0)
-	      MPI_Send(&flagStop, 1, MPI_INT, k, 0, MPI_COMM_WORLD);
+          // If we are the root process, send our data to everyone
+          for (int k = 0; k < uMPI::size; ++k)
+            if (k != 0)
+              MPI_Send(&flagStop, 1, MPI_INT, k, 0, MPI_COMM_WORLD);
 
-	  if (flagStop==1)  break;
+          if (flagStop==1)  break;
 
-	  insertColumns(); // add RMA solutions and check duplicate
+          insertColumns(); // add RMA solutions and check duplicate
 
-	  //setOriginalBounds();  // map back from the discretized data into original
+          //setOriginalBounds();  // map back from the discretized data into original
 
-	  solveRMP();
+          solveRMP();
 
 #ifdef ACRO_HAVE_MPI
 	} else {
 #endif //  ACRO_HAVE_MPI
 
-	  if ((uMPI::rank!=0)) {
-	    // If we are a receiver process, receive the data from the root
-	    MPI_Recv(&flagStop, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-	    if (flagStop==1) break;
-	  }
+          if ((uMPI::rank!=0)) {
+            // If we are a receiver process, receive the data from the root
+            MPI_Recv(&flagStop, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+            if (flagStop==1) break;
+          }
 
 #ifdef ACRO_HAVE_MPI
-	}
+        }
 #endif //  ACRO_HAVE_MPI
 
       } // end for each column generation iteration
 
       //printBoostingErr();
 
-      //if ( evalFinalIter() && !(evalEachIter()) ) evaluateFinal();
+      //if ( evalFinalIter() && !(isEvalEachIter()) ) evaluateFinal();
 
-      writeGERMA();
+      saveGERMAObjVals();
 
     } catch(...) {
       ucout << "Exception during training" << "\n";
@@ -152,60 +157,30 @@ namespace boosting {
   }
 #endif //  ACRO_HAVE_MPI
 
-  } // trainData function
+  } // end trainData function
 
 
-  void Boosting::saveModel() {
+  // save both greedy and PEBBL RMA solutions for all Boosting iterations
+  void Boosting::saveGERMAObjVals() {
 
-    stringstream s;
-    s << problemName << "_model_" << getDateTime() << ".out";
-    ofstream os(s.str().c_str());
-
-    DEBUGPR(1, cout << numCols << "\n");
-    DEBUGPR(1, for (int i=0; i<numCols; ++i)
-       {cout << vecPrimalVars[i] << ", ";});
-
-    os << "#_of_features: " << data->numAttrib << "\n";
-    os << "#_of_boxes:    " << numBox << "\n";
-
-    os << vecPrimalVars[0] << " ";
-    for (unsigned int i=0; i<data->numAttrib; ++i) {
-      os << vecPrimalVars[1+i] - vecPrimalVars[1+data->numAttrib+i] << " ";
-    }
-    for (int i=0; i<numBox; ++i)
-      os << vecPrimalVars[1+2*data->numAttrib+NumObs+i] << " ";
-
-    os << "\n" ;
-    for (int k=0; k<getIterations(); ++k ) {
-      // os << "Box " << k << " a: "<< matOrigLower[k] << "\n" ;
-      // os << "Box " << k << " b: "<< matOrigUpper[k] << "\n" ;
-      os << "Box_" << k << "_a: "<< matIntLower[k] << "\n" ;
-      os << "Box_" << k << "_b: "<< matIntUpper[k] << "\n" ;
-    }
-
-    os.close();
-  }
-
-
-  void Boosting::writeGERMA() {
-
+    // set the output file name
     stringstream s;
     s << "GERMA_" << problemName << ".out";
     ofstream os(s.str().c_str());
 
     os << "iter\tGRMA\tERMA\n";
-    for (int i=0; i<getIterations(); ++i )
-      os << i << "\t" << vecGRMA[i] << "\t" << vecERMA[i] << "\n" ;
+    for (unsigned int i=0; i<getNumIterations(); ++i ) // for each iteration
+      os << i << "\t" << vecGRMAObjVal[i] << "\t" << vecERMAObjVal[i] << "\n" ;
 
     os.close();
 
-  }
+} // end saveGERMAObjVals function
 
 
   // call CLP to solve Master Problems
   void Boosting::solveRMP() {
 
-    int i;
+    unsigned int i;
 
     DEBUGPR(10, cout <<  "Solve Restricted Master Problem!\n");
 
@@ -233,14 +208,14 @@ namespace boosting {
       std::cout << std::fixed << std::setprecision(2)
             << " CPU Time: " << tc.getCPUTime() << "\n";
 
-      printRMPSolution();
+      DEBUGPR(1, printRMPSolution());
 
 #ifdef ACRO_HAVE_MPI
     }
 #endif //  ACRO_HAVE_MPI
 
-    if (evalEachIter()) {
-      for (i=numBox-numRMASols; i<numBox; ++i) {
+    if (isEvalEachIter()) {
+      for (i=numBoxesSoFar-numBoxesIter; i<numBoxesSoFar; ++i) {
       	setCoveredTrainObs();
       	setCoveredTestObs();
       }
@@ -322,45 +297,47 @@ namespace boosting {
     matOrigLower.resize(matIntLower.size());
     matOrigUpper.resize(matIntUpper.size());
 
-    for (unsigned int k = matIntLower.size()-numRMASols; k<matIntLower.size(); ++k) {
+    // for each distinct value
+    for (unsigned int k = matIntLower.size()-numBoxesIter;
+         k<matIntLower.size(); ++k) {
 
-      matOrigLower[k].resize(NumAttrib);
-      matOrigUpper[k].resize(NumAttrib);
+      matOrigLower[k].resize(numAttrib);
+      matOrigUpper[k].resize(numAttrib);
 
-      for (int j=0; j<NumAttrib; ++j) { // for each attribute
+      for (unsigned int j=0; j<numAttrib; ++j) { // for each attribute
 
-	///////////////////////////// mid point rule //////////////////////////////
-	if ( matIntLower[k][j] > 0 ) { // lowerBound
+        ///////////////////////////// mid point rule //////////////////////////////
+        if ( matIntLower[k][j] > 0 ) { // lowerBound
 
-	  tmpLower =  getUpperBound(k, j, -1, false);
-	  tmpUpper =  getLowerBound(k, j, 0, false);
-	  lower =  (tmpLower + tmpUpper) / 2.0;
+          tmpLower =  getUpperBound(k, j, -1, false);
+          tmpUpper =  getLowerBound(k, j, 0, false);
+          lower =  (tmpLower + tmpUpper) / 2.0;
 
-	  DEBUGPR(10, cout << "(k,j): (" << k << ", " << j
-		  << ") matIntLower[k][j]-1: " << matIntLower[k][j]-1
-		  << " LeastLower: " << tmpLower << "\n"
-		  << " matIntLower[k][j]: " << matIntLower[k][j]
-		  << " GreatestLower: " << tmpUpper << "\n");
+          DEBUGPR(10, cout << "(k,j): (" << k << ", " << j
+                  << ") matIntLower[k][j]-1: " << matIntLower[k][j]-1
+                  << " LeastLower: " << tmpLower << "\n"
+                  << " matIntLower[k][j]: " << matIntLower[k][j]
+                  << " GreatestLower: " << tmpUpper << "\n");
 
-	} else lower=-getInf(); // if matIntLower[k][j] < 0 and matIntLower[k][j] != rma->distFeat[j]
+        } else lower=-getInf(); // if matIntLower[k][j] < 0 and matIntLower[k][j] != rma->vecNumDistVals[j]
 
-	if ( matIntUpper[k][j] < data->distFeat[j] ) { // upperBound
+        if ( matIntUpper[k][j] < data->vecNumDistVals[j] ) { // upperBound
 
-	  tmpLower = getUpperBound(k, j, 0, true);
-	  tmpUpper =  getLowerBound(k, j, 1, true);
-	  upper = (tmpLower + tmpUpper) / 2.0;
+          tmpLower = getUpperBound(k, j, 0, true);
+          tmpUpper =  getLowerBound(k, j, 1, true);
+          upper = (tmpLower + tmpUpper) / 2.0;
 
-	  DEBUGPR(10, cout << "(k,j): (" << k << ", " << j
-		  << ") matIntUpper[k][j]: " << matIntUpper[k][j]
-		  << " LeastUpper: " << tmpLower << "\n"
-		  << " matIntUpper[k][j]+1: " << matIntUpper[k][j]+1
-		  << " GreatestUpper: " << tmpUpper << "\n");
+          DEBUGPR(10, cout << "(k,j): (" << k << ", " << j
+                  << ") matIntUpper[k][j]: " << matIntUpper[k][j]
+                  << " LeastUpper: " << tmpLower << "\n"
+                  << " matIntUpper[k][j]+1: " << matIntUpper[k][j]+1
+                  << " GreatestUpper: " << tmpUpper << "\n");
 
-	} else upper=getInf(); // if matIntUpper[k][j] < rma->distFeat[j] and matIntUpper[k][j] != 0
+        } else upper=getInf(); // if matIntUpper[k][j] < rma->vecNumDistVals[j] and matIntUpper[k][j] != 0
 
-	// store values
-	matOrigLower[k][j]=lower;
-	matOrigUpper[k][j]=upper;
+        // store values
+        matOrigLower[k][j]=lower;
+        matOrigUpper[k][j]=upper;
 
       } // end for each attribute, j
 
@@ -379,7 +356,7 @@ namespace boosting {
     // double min = getInf();
     if (isUpper) boundVal = matIntUpper[k][j];
     else         boundVal = matIntLower[k][j];
-    return data->vecFeature[j].vecIntMinMax[boundVal+value].minOrigVal;
+    return data->vecAttribIntInfo[j].vecBins[boundVal+value].lowerBound;
   }
 
 
@@ -388,7 +365,7 @@ namespace boosting {
     // double max = -getInf();
     if (isUpper) boundVal = matIntUpper[k][j];
     else         boundVal = matIntLower[k][j];
-    return data->vecFeature[j].vecIntMinMax[boundVal+value].maxOrigVal;
+    return data->vecAttribIntInfo[j].vecBins[boundVal+value].upperBound;
   }
 
 
@@ -421,9 +398,9 @@ namespace boosting {
 
   void Boosting::evaluateEach() {
 
-    errTrain = evaluateEachIter(TRAIN, data->origTrainData);
-    errTest  = evaluateEachIter(TEST,  data->origTestData);
-    //if (isLPBoost() && printBoost()) printEachIterAllErrs();
+    errTrain = evaluateEachIter(TRAIN, data->dataOrigTrain);
+    errTest  = evaluateEachIter(TEST,  data->dataOrigTest);
+    //if (!isREPR() && isPrintBoost()) printEachIterAllErrs();
 
 #ifdef ACRO_HAVE_MPI
     if (uMPI::rank==0) {
@@ -431,7 +408,7 @@ namespace boosting {
       (isOuter) ? ucout << "Outer " : ucout << "Inner ";
       ucout << "Iter: " << curIter+1 << " ";
       ucout << "Test/Train Errors: " << errTest << " " << errTrain ;
-      if (isLPBoost()) ucout << " " << "rho: "<< vecPrimalVars[NumObs] << "\n";
+      if (!isREPR()) ucout << " " << "rho: "<< vecPrimalVars[numObs] << "\n";
       else           ucout << "\n";
 #ifdef ACRO_HAVE_MPI
     }
@@ -442,8 +419,8 @@ namespace boosting {
 
   void Boosting::evaluateFinal() {
 
-    errTrain = evaluateAtFinal(TRAIN, data->origTrainData);
-    errTest  = evaluateAtFinal(TEST,  data->origTestData);
+    errTrain = evaluateAtFinal(TRAIN, data->dataOrigTrain);
+    errTest  = evaluateAtFinal(TEST,  data->dataOrigTest);
 
 #ifdef ACRO_HAVE_MPI
     if (uMPI::rank==0) {
@@ -461,49 +438,53 @@ namespace boosting {
 
   // set covered train observations
   void Boosting::setCoveredTrainObs() {
-    int obs;
-    if (printBoost()) ucout << "vecCoveredObsByBox Train:\n";
-    for (unsigned int i=0; i<data->vecTrainData.size(); ++i) {
-      obs = data->vecTrainData[i];
-      vecCoveredObsByBox[obs].resize(numBox);
-      vecCoveredObsByBox[obs][numBox-1] = vecIsCovered[i];
-      if (printBoost()) {
-	for (int j=0; j<numBox; ++j)
-	  ucout << vecCoveredObsByBox[obs][j] << " ";
-	ucout << "\n";
-      }
-    }
 
-  }
+    if (isPrintBoost()) ucout << "vecCoveredObsByBox Train:\n";
+
+    for (unsigned int i=0; i<data->vecTrainObsIdx.size(); ++i) {
+
+      vecCoveredObsByBox[i].resize(numBoxesSoFar);
+      vecCoveredObsByBox[i][numBoxesSoFar-1] = vecIsCovered[i];
+
+      if (isPrintBoost()) {
+        for (unsigned int j=0; j<numBoxesSoFar; ++j)
+          ucout << vecCoveredObsByBox[i][j] << " ";
+        ucout << "\n";
+      }
+
+    } // end each train observation
+
+  } // end setCoveredTrainObs function
 
 
   // set covered test observations
   void Boosting::setCoveredTestObs() {
 
-    int obs;
-    if (printBoost()) ucout << "\nvecCoveredObsByBox Test:\n";
-    for (unsigned int i=0; i<data->vecTestData.size(); ++i) { // for each test dataset
-      obs = data->vecTestData[i];
-      vecCoveredObsByBox[obs].resize(numBox);
+    unsigned int j, obs;
 
-      for (int j=0; j<NumAttrib; ++j) { // for each attribute
+    if (isPrintBoost()) ucout << "\nvecCoveredObsByBox Test:\n";
+    for (unsigned int i=0; i<data->vecTestObsIdx.size(); ++i) { // for each test dataset
+      obs = data->vecTestObsIdx[i];
+      vecCoveredObsByBox[obs].resize(numBoxesSoFar);
 
-	if (matOrigLower[numBox-1][j] <= data->origTestData[obs].X[j] &&
-	    data->origTestData[obs].X[j] <= matOrigUpper[numBox-1][j]  ) {
-	  if ( j==NumAttrib-1) { // all features are covered by the box
-	    vecCoveredObsByBox[obs][numBox-1] = true;
-	  }
-	} else {
-	  vecCoveredObsByBox[obs][numBox-1] = false;
-	  break; // this observation is not covered
-	}
+      for (j=0; j<numAttrib; ++j) { // for each attribute
+
+        if (matOrigLower[numBoxesSoFar-1][j] <= data->dataOrigTest[obs].X[j] &&
+            data->dataOrigTest[obs].X[j] <= matOrigUpper[numBoxesSoFar-1][j]  ) {
+          if (j==numAttrib-1) { // all features are covered by the box
+            vecCoveredObsByBox[obs][numBoxesSoFar-1] = true;
+          }
+        } else {
+          vecCoveredObsByBox[obs][numBoxesSoFar-1] = false;
+          break; // this observation is not covered
+        }
 
       } // end for each attribute, j
 
-      if (printBoost()) {
-	for (int j=0; j<numBox; ++j)
-	  ucout << vecCoveredObsByBox[obs][j] << " ";
-	ucout << "\n";
+      if (isPrintBoost()) {
+        for (j=0; j<numBoxesSoFar; ++j)
+          ucout << vecCoveredObsByBox[obs][j] << " ";
+        ucout << "\n";
       }
 
     } // for each test dataset
@@ -511,29 +492,25 @@ namespace boosting {
   } // setCoveredTestObs function
 
 
-  void Boosting::writeWts(const int& curIter) {
+  void Boosting::saveWts(const unsigned int& curIter) {
 
-    int obs;
-
+    // TODO if this directory exists, create the directory
     //mkdir("./wts")
 
     stringstream s;
     s << "./wts/wt_" << problemName << "_" << curIter;
-
     ofstream os(s.str().c_str());
-    for (int i=0; i < NumObs ; ++i) {
-      obs = data->vecTrainData[i];
-      os << data->intTrainData[obs].w << ", ";
-    }
 
-  }
+    for (unsigned int i=0; i < numObs ; ++i)
+      os << data->dataIntTrain[idxTrain(i)].w << ", ";
 
+  } // end saveWts function
 
 
-  void Boosting::writePredictions(const int& isTest, vector<DataXy> origData) {
+  void Boosting::savePredictions(const bool &isTest, vector<DataXy> origData) {
 
     stringstream s;
-    int obs, size;
+    unsigned int obs, size;
 
     if (isTest) s << "predictionTest" << '.' << problemName;
     else        s << "predictionTrain" << '.' << problemName;
@@ -544,216 +521,103 @@ namespace boosting {
 
     os << "ActY \t Boosting  \n";
 
-    (isTest) ? size = data->vecTestData.size() : size = data->vecTrainData.size();
-    for (int i=0; i < size; ++i) {
-      (isTest) ? obs = data->vecTestData[i] : obs = data->vecTrainData[i];
+    (isTest) ? size = data->vecTestObsIdx.size() : size = data->vecTrainObsIdx.size();
+
+    for (unsigned int i=0; i < size; ++i) { // for each observation
+      (isTest) ? obs = data->vecTestObsIdx[i] : obs = data->vecTrainObsIdx[i];
       if (isTest) os << origData[obs].y << " " << predTest[i] << "\n";
       else        os << origData[obs].y << " " << predTrain[i] << "\n";
-    }
+    } // end for each observation
 
     os.close();
-  }
+  } // for savePredictions function
 
   //////////////////////// Checking methods ///////////////////////
 
+  // check wether or not the "k"-th box in the current iteration is duplicated
   bool Boosting::isDuplicate() {
 
 #ifdef ACRO_HAVE_MPI
     if (uMPI::rank==0) {
 #endif //  ACRO_HAVE_MPI
-      if ( matIntUpper.size()==1 ) return false;
 
-      for (int j=0; j<NumAttrib; ++j)
-	if ( matIntLower[matIntLower.size()-2][j] != sl[0]->a[j]
-	     || matIntUpper[matIntUpper.size()-2][j] != sl[0]->b[j] )
-	  return false;
+      // if the cuurent box is only one, no duplicates
+      if ( matIntUpper.size()==1 )
+        return false;
+
+      // for each box in this iteration
+      for (unsigned int k=0; k < numBoxesIter; ++k) {
+        // for each boxes already in model
+        for (unsigned int l=0; l < numBoxesSoFar; ++l)
+          for (unsigned int j=0; j<numAttrib; ++j) // for each attribute
+            // if no duplicates boxes
+            if ( matIntLower[l][j] != sl[k]->a[j]
+                 || matIntUpper[l][j] != sl[k]->b[j] )
+              return false;
       ucout << "Duplicate Solution Found!! \n" ;
-      flagDuplicate = true;
+      }
+
 #ifdef ACRO_HAVE_MPI
     }
 #endif //  ACRO_HAVE_MPI
 
     return true;
 
-  }
+  } // end isDuplicate function
 
 
   void Boosting::checkObjValue(vector<DataXw> intData) {
+
     int obs;
     double wt=0.0;
 
-    for (int i=0; i<NumObs; i++) { // for each training data
-      obs = data->vecTrainData[i];
-      for (int f=0; f<NumAttrib; ++f) { // for each feature
-    	if ( (grma->L[f] <= intData[obs].X[f])
-	     && (intData[obs].X[f] <= grma->U[f]) ) {
-	  if (f==NumAttrib-1)  // if this observation is covered by this solution
-	    wt+=intData[obs].w;   //dataWts[i];
-	} else break; // else go to the next observation
+    for (unsigned int i=0; i<numObs; i++) { // for each training data
+      obs = data->vecTrainObsIdx[i];
+      for (unsigned int j=0; j<numAttrib; ++j) { // for each feature
+        if ( (grma->getLowerBounds()[j] <= intData[obs].X[j])
+             && (intData[obs].X[j] <= grma->getUpperBounds()[j]) ) {
+          if (j==numAttrib-1)  // if this observation is covered by this solution
+            wt+=intData[obs].w;   //dataWts[i];
+        } else break; // else go to the next observation
       }  // end for each feature
     }  // end for each training observation
 
-    cout << "grma->L: " << grma->L ;
-    cout << "grma->U: " << grma->U ;
+    cout << "grma->L: " << grma->getLowerBounds() ;
+    cout << "grma->U: " << grma->getLowerBounds() ;
     cout << "GRMA ObjValue=" << wt << "\n";
   }
 
 
-  void Boosting::checkObjValue(int k, vector<DataXw> intData) {
-    int    obs;
-    double wt=0.0;
+  // check objective value in a brute force way (k: k-th box)
+  void Boosting::checkObjValue(const unsigned int &k, vector<DataXw> intData) {
 
-    for (int i=0; i<NumObs; i++) { // for each training data
-      obs = data->vecTrainData[i];
-      for (int f=0; f<NumAttrib; ++f) { // for each feature
-    	if ( (matIntLower[k][f] <= intData[obs].X[f])
-	     && (intData[obs].X[f] <= matIntUpper[k][f]) ) {
-	  if (f==NumAttrib-1)  // if this observation is covered by this solution
-	    wt+=intData[obs].w;   //dataWts[i];
-	} else break; // else go to the next observation
-      }  // end for each feature
+    unsigned int obs;
+    double wt = 0.0;
+
+    for (unsigned int i=0; i<numObs; i++) { // for each training data
+
+      for (unsigned int j=0; j<numAttrib; ++j) { // for each attribute
+
+        // if this solution is covered by the current lower and upper bound
+        if ( (matIntLower[k][j] <= intData[idxTrain(i)].X[j])
+             && (intData[idxTrain(i)].X[j] <= matIntUpper[k][j]) ) {
+
+          // if this observation is covered by this solution
+          // if this observation satisfies all attributes' constraints
+          if (j==numAttrib-1)  // TODO: specify obs!
+            wt+=intData[obs].w;   // add weights
+
+        } else break; // else go to the next observation
+
+      }  // end for each attribute
+
     }  // end for each training observation
 
     cout << "matIntLower[k]: " << matIntLower[k] ;
     cout << "matIntUpper[k]: " << matIntUpper[k] ;
     cout << "RMA ObjValue=" << wt << "\n";
-  }
+
+  } // end checkObjValue function
 
 
 } // namespace boosting
-
-
-
-  //   // set up PEBBL RMA
-  //   void Boosting::(setup)PebblRMA(int& argc, char**& argv) {
-  //
-  // #ifdef ACRO_HAVE_MPI
-  //     int nprocessors = uMPI::size;
-  //     /// Do parallel optimization if MPI indicates that we're using more than one processor
-  //     if (parallel_exec_test<parallelBranching>(argc, argv, nprocessors)) {
-  //       /// Manage parallel I/O explicitly with the utilib::CommonIO tools
-  //       CommonIO::begin();
-  //       CommonIO::setIOFlush(1);
-  //       isParallel = true;
-  //       prma     = new pebblRMA::parRMA(MPI_COMM_WORLD);
-  //       rma      = prma;
-  //     } else {
-  // #endif // ACRO_HAVE_MPI
-  //       rma = new pebblRMA::RMA;
-  // #ifdef ACRO_HAVE_MPI
-  //     }
-  // #endif // ACRO_HAVE_MPI
-  //
-  //     rma->setParameters(this); // passing arguments
-  //     rma->setData(data);
-  //
-  // #ifdef ACRO_HAVE_MPI
-  //     if (uMPI::rank==0) {
-  // #endif //  ACRO_HAVE_MPI
-  //       rma->setSortedObsIdx(data->vecTrainData);
-  // #ifdef ACRO_HAVE_MPI
-  //     }
-  // #endif //  ACRO_HAVE_MPI
-  //
-  //     //exception_mngr::set_stack_trace(false);
-  //     rma->setup(argc,argv);
-  //     //exception_mngr::set_stack_trace(true);
-  //
-  //   }
-
-//   void Boosting::solveRMA() {
-//
-//     if (exactRMA()) {
-//
-//       resetExactRMA();
-//
-//       if (BaseRMA::initGuess()) {
-//         /*
-// #ifdef ACRO_HAVE_MPI
-// 	if (uMPI::rank==0) {
-// #endif //  ACRO_HAVE_MPI
-// */
-// 	  solveGreedyRMA();
-// 	  rma->setInitialGuess(grma->isPosIncumb, grma->maxObjValue,
-// 			       grma->L, grma->U);
-// /*
-// #ifdef ACRO_HAVE_MPI
-// 	}
-// #endif //  ACRO_HAVE_MPI
-// */
-//       }
-//       solveExactRMA();
-//     } else {
-// #ifdef ACRO_HAVE_MPI
-//       if (uMPI::rank==0) {
-// #endif //  ACRO_HAVE_MPI
-// 	solveGreedyRMA();
-// #ifdef ACRO_HAVE_MPI
-//       }
-// #endif //  ACRO_HAVE_MPI
-//     }
-//   }
-
-
-  // TODO: make reset function for GreedyRMA
-  // void Boosting::solveGreedyRMA() {
-  //   grma = new greedyRMA::GreedyRMA((BaseRMA *) this, (DataRMA *) data);
-  //   grma->runGreedyRangeSearch();
-  // }
-
-
-//   void Boosting::resetExactRMA() {
-//
-// #ifdef ACRO_HAVE_MPI
-//     if (isParallel) {
-//       prma->reset();
-//       if (printBBdetails()) prma->printConfiguration();
-//       CommonIO::begin_tagging();
-//     } else {
-// #endif //  ACRO_HAVE_MPI
-//       rma->reset();
-// #ifdef ACRO_HAVE_MPI
-//     }
-// #endif //  ACRO_HAVE_MPI
-//
-//     rma->mmapCachedCutPts.clear();
-//     rma->workingSol.value = -getInf();
-//     //rma->numDistObs       = data->numTrainObs;	    // only use training data
-//     //rma->setSortedObsIdx(data->vecTrainData);
-//
-//   }
-
-
-//   void Boosting::solveExactRMA() {
-//
-//     rma->resetTimers();
-//     InitializeTiming();
-//
-//     tc.startTime();
-//
-//     if (BaseRMA::printBBdetails()) rma->solve();  // print out B&B details
-//     else                           rma->search();
-//
-// // #ifdef ACRO_HAVE_MPI
-// //     if (uMPI::rank==0) {
-// // #endif //  ACRO_HAVE_MPI
-//       tc.getCPUTime();
-//       tc.getWallTime();
-//       printRMASolutionTime();
-// // #ifdef ACRO_HAVE_MPI
-// //     }
-// // #endif //  ACRO_HAVE_MPI
-//
-//     // CommonIO::end();
-//     // uMPI::done();
-//
-//   } // end function solveExactRMA()
-
-
-  // void Boosting::printRMASolutionTime() {
-  //   std::cout << std::fixed << std::setprecision(4)
-  //         << "ERMA Solution: " << rma->workingSol.value;
-  //   std::cout << std::fixed << std::setprecision(2)
-  //         << " \tCPU time: "    << tc.getCPUTime()
-  //         << "\tNum of Nodes: " << rma->subCount[2] << "\n";
-  // }

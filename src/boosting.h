@@ -48,35 +48,18 @@ namespace boosting {
     Boosting(int& argc, char**& argv);
     virtual ~Boosting() {}
 
+    // set up to run Boosting algorithm
     void setupBoosting(int& argc, char**& argv);
 
-    void         reset();
+    void reset();
 
     virtual void setBoostingParameters() = 0;
 
     //////////////////////// training data //////////////////////////////
-    void train(const bool& isOuter, const int& iter, const int & greedyLevel);
+    void train(const bool& isOuter, const unsigned int& iter,
+               const unsigned int & greedyLevel);
 
-    void saveModel();
-
-    std::string getDateTime(){
-
-      time_t rawtime;
-      struct tm * timeinfo;
-      char buffer[80];
-
-      time (&rawtime);
-      timeinfo = localtime(&rawtime);
-
-      strftime(buffer,sizeof(buffer),"%m%d%Y%H%M",timeinfo);
-      std::string str(buffer);
-
-      // std::cout << str;
-      return str;
-
-    }
-
-    /////////////////void discretizeData();
+    ////void discretizeData();
     //// virtual void   resetMaster() = 0;
     virtual void setInitRMP() = 0;
     void         solveRMP();
@@ -103,70 +86,100 @@ namespace boosting {
     void         printBoostingErr();
     void         printCLPsolution();
 
-    void         writeGERMA();
+    void         saveGERMAObjVals();
 
     //////////////////////// Evaluating methods /////////////////////////////
 
     void setCoveredTrainObs();
     void setCoveredTestObs();
 
-    void evaluateEach();
-    void evaluateFinal();
+    void evaluateEach();  // evaluate each iteration
+    void evaluateFinal(); // evaluate in the end
 
-    virtual double evaluateEachIter(const int& isTest, vector<DataXy> origData) = 0;
-    virtual double evaluateAtFinal(const int& isTest, vector<DataXy> origData)  = 0;
+    virtual double evaluateEachIter(const bool &isTest,
+                                    vector<DataXy> origData) = 0;
+    virtual double evaluateAtFinal(const bool &isTest,
+                                   vector<DataXy> origData)  = 0;
 
-    void    writeWts(const int& curIter);
-    void    writePredictions(const int& isTest, vector<DataXy> origData); // write predictions
+    void    saveWts(const unsigned int &curIter);
+    void    savePredictions(const bool &isTest, vector<DataXy> origData); // write predictions
+
+    virtual void saveModel() = 0;  // save model
 
     //////////////////////// Checking methods ///////////////////////
     bool isDuplicate();
     void checkObjValue(vector<DataXw> intData);
-    void checkObjValue(int k, vector<DataXw> intData);	// double-check objevtive value for (a, b)
+    void checkObjValue(const unsigned int &k, vector<DataXw> intData);	// double-check objevtive value for (a, b)
 
     GreedyLevel greedyLevel;
 
+    // TODO:: put this function somewhere else
+    std::string getDateTime(){
+
+      time_t rawtime;
+      struct tm * timeinfo;
+      char buffer[80];
+
+      time (&rawtime);
+      timeinfo = localtime(&rawtime);
+
+      strftime(buffer,sizeof(buffer),"%m%d%Y%H%M",timeinfo);
+      std::string str(buffer);
+
+      // std::cout << str;
+      return str;
+
+    }
+
   protected:
+
+    inline unsigned int idxTrain(const unsigned int &i) {
+      return data->vecTrainObsIdx[i];
+    };
 
     ///////////////////// Boosting variables /////////////////////
 
-    int  NumIter;	  // # of iterations, observation, features, and variables
-    int  curIter;		// the current iteration number
+    unsigned int  numObs;     // # of observation
+    unsigned int  numAttrib;  // # of attribute
 
-    int  numRows;    // # of constraints / rows in the mater problem
-    int  numCols;    // # of variables / columns in the mater problem
-    int  numBox;     // # of total boxes entered so far
-    unsigned int  numRMASols; // # of boxes entered in the current interaction
+    // unsigned int  numIter;    // # of iterations, observation, features, and variables
+    unsigned int  curIter;    // the current iteration number
 
-    int  NumObs;
-    int  NumAttrib;
+    unsigned int  numRows;    // # of constraints / rows in the mater problem
+    unsigned int  numCols;    // # of variables / columns in the mater problem
 
-    bool flagDuplicate;
-    bool isOuter;
+    unsigned int  numBoxesSoFar;  // # of total boxes entered so far
+    unsigned int  numBoxesIter;   // # of boxes entered in the current interaction
+
+    bool isOuter;     // whether or not it is the outer iteration of the cross validation
 
     ///////////////////// CLP variables /////////////////////
-    ClpSimplex       model;
+    ClpSimplex       model;   // CLP model
     CoinPackedMatrix *matrix;
     CoinPackedVector row;
 
-    double *dataWts;
-    double *objValue;
-    double *lowerColumn, *upperColumn;
-    double *lowerRow,    *upperRow;
-    int    *colIndex,    *rowIndex;
+    double *objective;
+    double *columnLower, *columnUpper;
+    double *rowLower,     *rowUpper;
+    int *colIndex, *rowIndex;  // indices for columns and rows
+    unsigned long long int numElements;
+    double *elements;
+    CoinBigIndex *starts;
+    int *rows;
+    int *lengths;
 
     // store solution infomation for the master problem
-    double *vecPrimalVars;  // dual variables
-    double *vecDualVars;    // primal variables
+    double *vecPrimalVars;    // dual variables
+    double *vecDualVars;      // primal variables
     double primalSol;	      // primal solution value
     double *columnObjective;
 
-    deque<bool>    vecIsCovered;	// each observation is covered or not
+    deque<bool>  vecIsCovered;	// whether or not each observation is covered
 
     ///////////////////// For RMA /////////////////////
 
-    BasicArray<pebbl::solution*>       s;
-    BasicArray<pebblRMA::rmaSolution*> sl;
+    BasicArray<pebbl::solution*>       s;   // PEBBL solution objects
+    BasicArray<pebblRMA::rmaSolution*> sl;  // PEBBL RMA solution objects
 
     // store lower and upper bound of rules (boxes)
     vector<vector<unsigned int> >    matIntLower;
@@ -176,21 +189,22 @@ namespace boosting {
 
     ///////////////////// For Evaluation /////////////////////
 
-    vector<bool>            vecCoveredSign;     // size: m (originalObs) x |K'|
+    vector<bool>            vecIsObjValPos;     // size: m (originalObs) x |K'|
     vector<vector<bool> >   vecCoveredObsByBox; // size: m (originalObs) x |K'|
 
     vector<double>          predTrain;          // predictions of training data by model
     vector<double>          predTest;           // predictions of testing data by model
 
-    vector<double>          vecERMA;
-    vector<double>          vecGRMA;
+    // a vector of PEBBL RMA solutions for all iterations
+    vector<double>          vecERMAObjVal;
 
-    double errTrain;
-    double errTest;
+    // a vector of Greery RMA solutions for all iterations
+    vector<double>          vecGRMAObjVal;
 
-    Time   tc;
+    double errTrain; // error for the train data
+    double errTest;  // error for the test data
 
-  };
+  }; // end Boosting class
 
 } // namespace boosting
 
