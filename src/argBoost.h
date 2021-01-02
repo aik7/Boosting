@@ -10,7 +10,7 @@
 #include <pebbl/utilib/ParameterSet.h>
 #include <limits>
 #include "argRMA.h"
-#include "utilRMA.h"
+#include "utility.h"
 
 
 namespace arg {

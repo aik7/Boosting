@@ -13,6 +13,6 @@ sh build.sh
 * The fist file is the saved REPR model (i.e. indian_model_*.out)
 * The second file is the testing X-values (i.e. indian.dat)
 
-````
+```
 ./predict ../indian_model_*.out  ../data/indian.dat
 ```

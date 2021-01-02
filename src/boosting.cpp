@@ -81,10 +81,6 @@ namespace boosting {
 
     try {
 
-      // TODO: thiw was done at RMA constructor
-      // integerize data for RMA
-      // data->integerizeEpsData();  // set data->dataIntTrain
-
       // use rank 1 to solve RMP
 #ifdef ACRO_HAVE_MPI
       if (uMPI::rank==0) {
@@ -139,22 +135,23 @@ namespace boosting {
     if (uMPI::rank==0) {
   #endif //  ACRO_HAVE_MPI
 
-          if (isStopCond==1)  break;
+          if (isStopCond==1) break;
 
           insertColumns(); // add RMA solutions and check duplicate
 
-          // setOriginalBounds();  // map back from the discretized data into original
+          // map back from the discretized data into original
+          if (delta()!=-1) setOriginalBounds();
 
           solveRMP();
 
-          if (isEvalEachIter()) {
+          if (isEvalEachIter()) { // if evalute the model each iteration
 
             errTrain = evaluateEachIter(TRAIN, data->dataOrigTrain);
             errTest  = evaluateEachIter(TEST,  data->dataOrigTest);
 
             printBoostingErr();
 
-          }
+          } // end if evalute the model each iteration
 
 #ifdef ACRO_HAVE_MPI
   } else { // if MPI rank is not 0, receive the info about the stopping condition
