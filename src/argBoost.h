@@ -1,6 +1,6 @@
 /*
- *  File name: argBoost.h
- *  Author:    Ai Kagawa
+ *  Author:      Ai Kagawa
+ *  Description: a hedare file for Boosintg arguments
  */
 
 #ifndef ARG_BOOST_h
@@ -49,7 +49,7 @@ namespace arg {
     double getCoefficientE() const {return _coeffE;}
     double getCoefficientF() const {return _coeffF;}
 
-    /////////////////// Parameters for Greedy level of pricing problems ///////////////////
+    /////////// Parameters for Greedy level of pricing problems ///////////////
 
     // TODO: what is this variable?
     bool         isSeqCoverValue() const {return _isSeqCoverValue;}
@@ -60,17 +60,25 @@ namespace arg {
     bool isEvalEachIter()  const {return _isEvalEachIter;}
     bool isEvalFinalIter() const {return _isEvalFinalIter;}
 
-    bool isSaveWts()       const {return _isSaveWts;}
-    bool isSavePred()    const {return _isSavePredictions;}
+    bool isSaveWts()        const {return _isSaveWts;}
+    bool isSavePred()       const {return _isSavePredictions;}
+    bool isSaveAllRMASols() const {return _isSaveAllRMASols;}
 
   protected:
 
     /////////////////// Parameters for Boosting ///////////////////
 
+    // if isREPR=true, run REPR; else, run LPBosot
     bool          _isREPR;
-    unsigned int  _numIterations;  // the number of iterations in column generation
-    unsigned int  _exponentP;	    // exponent of residuals
-    bool          _isPrintBoost;    // print out more details for boosting
+
+    // # of iterations in column generation
+    unsigned int  _numIterations;
+
+    // exponent of residuals
+    unsigned int  _exponentP;
+
+    // whether or not to print more details for boosting
+    bool          _isPrintBoost;
 
     /////////////////// Parameters for LPBoost class ///////////////////
 
@@ -84,22 +92,34 @@ namespace arg {
 
     /////////////////// Parameters for LPBoost class ///////////////////
 
-    double _coeffC;	// coefficients parameters
-    double _coeffE;	// coefficients parameters
-    double _coeffF;	// coefficients parameters
+    double _coeffC;  // coefficients parameters
+    double _coeffE;  // coefficients parameters
+    double _coeffF;  // coefficients parameters
 
-    /////////////////// Parameters for Greedy level of pricing problems ///////////////////
+    //////////// Parameters for Greedy level of pricing problems /////////////
 
     bool         _isSeqCoverValue;
     unsigned int _numLimitedObs;
-    unsigned int _maxBoundedSP;  // set a maximum number of bounded subproblems to check
 
-      //////////////////////// Evaluation parameters ////////////////////////
+    // set a maximum number of bounded subproblems to check
+    unsigned int _maxBoundedSP;
 
-    bool _isEvalEachIter;       // evaluate solutions in each iteration
-    bool _isEvalFinalIter;      // evaluate solutions in the final column generation
-    bool _isSaveWts;            // save weights for each boosting iteration
-    bool _isSavePredictions;    // print prediction
+    //////////////////////// Evaluation parameters ////////////////////////
+
+    // whether or not to evaluate solutions in each iteration
+    bool _isEvalEachIter;
+
+    // whether or not to evaluate solutions in the final column generation
+    bool _isEvalFinalIter;
+
+    // whether or not to save weights for each boosting iteration
+    bool _isSaveWts;
+
+    // whether or not to save actual and predicted y-values
+    bool _isSavePredictions;
+
+    // whether or not to save all RMA solutions for each Boosting iterations
+    bool _isSaveAllRMASols;
 
   }; // end ArgBoost class
 

@@ -1,5 +1,4 @@
 /*
- *  File name:   driver.cpp
  *  Author:      Ai Kagawa
  *  Description: a dirver to run LPBoost or REPR with cross-validation
  */
@@ -10,7 +9,7 @@
 int main(int argc, char** argv) {
 
   boosting::REPR repr(argc, argv);
-  repr.train(true, repr.getNumIterations(), repr.greedyLevel);
+  repr.train(repr.getNumIterations(), repr.greedyLevel);
 
   return 0;
 
