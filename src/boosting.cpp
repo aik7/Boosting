@@ -32,7 +32,7 @@ namespace boosting {
 
     numBoxesSoFar = 0;                  // # of boxes
     numBoxesIter  = 0;                  // # of RMA solutions
-    numObs        = data->numTrainObs;  // # of training observations
+    numObs        = data->numOrigObs;   // # of original observations
     numAttrib     = data->numAttrib;    // # of attributes or features
 
     if (isPebblRMA()) rma->incumbentValue = -getInf();  // set the pebbl RMA incumbent value to be negative infinity
@@ -87,8 +87,12 @@ namespace boosting {
 #endif //  ACRO_HAVE_MPI
 
         // standadize data for L1 regularization
-        data->setDataStandY();  // set data->dataStandTrain
-        data->setDataStandX();
+        if (isStandData()) {
+          data->setDataStandY();  // set data->dataStandTrain
+          data->setDataStandX();
+        } else { // not to standerdise for debugging purpose
+          data->dataStandTrain = data->dataOrigTrain;
+        }
 
         setInitRMP();  // set the initial RMP
 
@@ -109,7 +113,7 @@ namespace boosting {
 
         //ucout << "\nColGen Iter: " << curIter << "\n";
 
-        setDataWts();  // set data weight in DataRMA class
+        setWeights();  // set data weight in DataRMA class
 
         solveRMA();    // solve the subproblem of RMA
 
@@ -119,7 +123,8 @@ namespace boosting {
   if (uMPI::rank==0) {
 #endif //  ACRO_HAVE_MPI
 
-        saveWts(curIter);  // save the weights for the current iteration
+        // save the weights for the current iteration
+        if (isSaveWts()) saveWeights(curIter);
 
         if (isSaveAllRMASols()) setVecRMAObjVals();
 
@@ -208,7 +213,9 @@ namespace boosting {
 
     model.dual();
 
-    primalSol = model.objectiveValue();
+    primalSol     = model.objectiveValue();        // get objective value
+    vecPrimalVars = model.primalColumnSolution();  // ger primal variables
+    vecDualVars   = model.dualRowSolution();       // get dual variables
 
     // printCLPsolution();
 
@@ -217,10 +224,15 @@ namespace boosting {
     cout << fixed << setprecision(2)
           << " CPU Time: " << tc.getCPUTime() << "\n";
 
-    vecPrimalVars = model.primalColumnSolution();
-    vecDualVars   = model.dualRowSolution();
-
-    if (debug>=1) model.writeMps("clp.mps");
+    if (debug>=0) {
+      int iter;
+      char clpFile[12];
+      strcpy(clpFile, "clp_");
+      iter = (curIter>getNumIterations()) ? -1 : curIter;
+      strcat(clpFile, to_string(iter).c_str());
+      strcat(clpFile, ".mps");
+      model.writeMps(clpFile);
+    }
 
     if (debug>=10) {
 
@@ -231,16 +243,60 @@ namespace boosting {
 
     }
 
-    DEBUGPR(1, printRMPSolution());
+    DEBUGPR(1, printRMPCheckInfo());
 
   } // end function Boosting::solveRMP()
 
 
-  // call insert column in sub-class
-  void Boosting::insertColumns() {
-    // greedyLevel=EXACT; // TODO: fix this later
-    (greedyLevel==EXACT) ? insertPebblColumns() : insertGreedyColumns();
-  }
+  // set matIsCvdObsByBox, whether or not each observation is vecCovered
+  // by the lower and upper bounds, a and b of the current box k
+  void Boosting::setMatIsCvdObsByBox(const unsigned int &k) {
+
+    matIsCvdObsByBox[numBoxesSoFar+k].resize(numObs);
+
+    for (unsigned int i=0; i< numObs; ++i) { // for each observation
+
+      for (unsigned int j=0; j< numAttrib; ++j) { // for each attribute
+
+        // if the curinsertPebbrent observation is covered by the current k'th box
+        // for attribute k
+        if ( matIntLower[numBoxesSoFar+k][j]
+               <= data->dataIntTrain[i].X[j]
+            && data->dataIntTrain[i].X[j]
+               <= matIntUpper[numBoxesSoFar+k][j] ) {
+
+          // if this observation is covered in all attributes
+          if ( j==numAttrib-1)
+            matIsCvdObsByBox[numBoxesSoFar+k][i] = true;  // set this observation is covered
+
+        } else { // if it is not covered
+          matIsCvdObsByBox[numBoxesSoFar+k][i] = false;  // set this observation is not covered
+          break;
+        } // end if this observation is covered in attribute j
+
+      } // end for each attribute
+
+    } // end for each observation
+
+    DEBUGPR(1, cout << "matIsCvdObsByBox: " << matIsCvdObsByBox << "\n" );
+
+  } // end setMatIsCvdObsByBox function
+
+
+  // set vecIsObjValPos by box idx (k) and
+  // isPosObjVal (wehther or not the current solution is positive)
+  void Boosting::setVecIsObjValPos(const unsigned int &k,
+                               const bool &isPosObjVal) {
+    vecIsObjValPos[numBoxesSoFar+k] = isPosObjVal;
+  } // enf setVecIsObjValPos function
+
+
+  void Boosting::setMatIntBounds(const unsigned int &k,
+                             const vector<unsigned int> &lower,
+                             const vector<unsigned int> &upper) {
+    matIntLower[matIntLower.size()-numBoxesIter+k] = lower;
+    matIntUpper[matIntUpper.size()-numBoxesIter+k] = upper;
+  } // end setVecIsObjValPos function
 
 
   // set original lower and upper bounds matrices
@@ -330,7 +386,36 @@ namespace boosting {
   } // end setPebblRMASolutions function
 
 
-  //////////////////////// Checking methods ///////////////////////
+  // resize vecERMAObjVal and vecGRMAObjVal
+  void Boosting::resetVecRMAObjVals() {
+
+    // if PEBBL RMA is enabled
+    if (isPebblRMA())
+      vecERMAObjVal.resize(getNumIterations());
+
+    // if PEBBL RMA and its initial guess options are enabled
+    // or PEBBL RMA is not enabled (GreedyRMA only)
+    if ( (isPebblRMA() && isInitGuess()) || !isPebblRMA() )
+      vecGRMAObjVal.resize(getNumIterations());
+
+  }  // end resetVecRMAObjVals function
+
+
+  // set vecERMAObjVal and vecGRMAObjVal for current iteration
+  void Boosting::setVecRMAObjVals() {
+
+    // if PEBBL RMA is enabled
+    if (isPebblRMA())
+      vecERMAObjVal[curIter] = rma->workingSol.value;
+
+    // if PEBBL RMA and its initial guess options are enabled
+    // or PEBBL RMA is not enabled (GreedyRMA only)
+    if ( (isPebblRMA() && isInitGuess()) || !isPebblRMA() )
+      vecGRMAObjVal[curIter] = grma->getObjVal();
+
+  } // end setVecRMAObjVals function
+
+  /************************ Checking methods ************************/
 
   // TODO: combine this function for Pebbl and Greedy RMA boxes
   // check wether or not the "k"-th box in the current iteration is duplicated
@@ -352,6 +437,7 @@ namespace boosting {
           if ( matIntLower[l][j] != vecIntLower[j]       // sl[k]->a[j]
                || matIntUpper[l][j] != vecIntUpper[j] )  // sl[k]->b[j] )
             return false;
+            
       ucout << "Duplicate Solution Found!! \n" ;
 
 #ifdef ACRO_HAVE_MPI
@@ -363,9 +449,10 @@ namespace boosting {
   } // end checkDuplicateBoxes function
 
 
-  // TODO: combine two checkObjValue
-  // check objective value function
-  void Boosting::checkObjValue(vector<DataXw> intData) {
+  // check objective value for the current lower and upper bounds
+  void Boosting::checkObjValue(vector<DataXw> intData,
+                               vector<unsigned int> lower,
+                               vector<unsigned int> upper) {
 
     double totalWeights=0.0;
 
@@ -373,11 +460,11 @@ namespace boosting {
 
       for (unsigned int j=0; j<numAttrib; ++j) { // for each feature
 
-        if ( (grma->getLowerBounds()[j] <= intData[idxTrain(i)].X[j])
-             && (intData[idxTrain(i)].X[j] <= grma->getUpperBounds()[j]) ) {
+        if ( (lower[j] <= intData[i].X[j])
+             && (intData[i].X[j] <= upper[j]) ) {
 
           if (j==numAttrib-1)  // if this observation is covered by this solution
-            totalWeights += intData[idxTrain(i)].w;   //dataWts[i];
+            totalWeights += intData[i].w;   //dataWts[i];
 
         } else break; // else go to the next observation
 
@@ -385,42 +472,19 @@ namespace boosting {
 
     }  // end for each training observation
 
-    cout << "grma->L: " << grma->getLowerBounds() ;
-    cout << "grma->U: " << grma->getLowerBounds() ;
-    cout << "GRMA ObjValue=" << totalWeights << "\n";
+    cout << "Lower Bound: " << lower ;
+    cout << "Upper Bound: " << upper ;
+    cout << "Objective Value: " << totalWeights << "\n";
 
   } // end checkObjValue function
 
+  /************************ Printing functions ************************/
 
-  // check objective value in a brute force way (k: k-th box)
-  void Boosting::checkObjValue(const unsigned int &k, vector<DataXw> intData) {
-
-    double       totalWeights = 0.0;
-
-    for (unsigned int i=0; i<numObs; ++i) { // for each training data
-
-      for (unsigned int j=0; j<numAttrib; ++j) { // for each attribute
-
-        // if this solution is covered by the current lower and upper bound
-        if ( (matIntLower[k][j] <= intData[idxTrain(i)].X[j])
-             && (intData[idxTrain(i)].X[j] <= matIntUpper[k][j]) ) {
-
-          // if this observation is covered by this solution
-          // if this observation satisfies all attributes' constraints
-          if (j==numAttrib-1)  // TODO: specify obs!
-            totalWeights += intData[idxTrain(i)].w;   // add weights
-
-        } else break; // else go to the next observation
-
-      }  // end for each attribute
-
-    }  // end for each training observation
-
-    cout << "matIntLower[k]: " << matIntLower[k] ;
-    cout << "matIntUpper[k]: " << matIntUpper[k] ;
-    cout << "RMA ObjValue="    << totalWeights << "\n";
-
-  } // end checkObjValue function
+  // print curret iteration, testing and testing errors
+  void Boosting::printBoostingErr() {
+      ucout << "Iter: " << curIter
+            << ":\tTest/Train Errors: " << errTest << " " << errTrain << "\n";
+  } // end printBoostingErr function
 
 
   // print function for CLP solutions
@@ -490,27 +554,33 @@ namespace boosting {
   } // end printCLPsolution function
 
 
-  void Boosting::printBoostingErr() {
-      ucout << "Iter: " << curIter
-            << ":\tTest/Train Errors: " << errTest << " " << errTrain << "\n";
-  } // end printBoostingErr function
 
 
   // save weights for current iteration (curIter)
-  void Boosting::saveWts(const unsigned int& curIter) {
+  void Boosting::saveWeights(const unsigned int& curIter) {
 
     // TODO if this directory exists, create the directory
     //mkdir("./wts")
 
     // create a file name to save
     stringstream s;
-    s << "./wts/wt_" << problemName << "_" << curIter;
+    s << "wt_" << problemName << "_" << curIter << ".out";
     ofstream os(s.str().c_str());
 
     for (unsigned int i=0; i < numObs ; ++i) // for each observation
-      os << data->dataIntTrain[idxTrain(i)].w << ", "; // output each weight
+      os << data->dataIntTrain[i].w << ", "; // output each weight
 
-  } // end saveWts function
+  } // end saveWeights function
+
+
+
+
+
+
+
+  /************************ Saving functions ************************/
+
+
 
 
   // save actual y values and predicted y values
@@ -533,44 +603,14 @@ namespace boosting {
 
     for (unsigned int i=0; i < numIdx; ++i) { // for each observation
 
-      if (isTest) os << origData[idxTest(i)].y  << " " << predTest[i] << "\n";
-      else        os << origData[idxTrain(i)].y << " " << predTrain[i] << "\n";
+      if (isTest) os << origData[i].y  << " " << predTest[i] << "\n";
+      else        os << origData[i].y << " " << predTrain[i] << "\n";
 
     } // end for each observation
 
     os.close();  // close the file
 
   } // for savePredictions function
-
-
-  // resize vecERMAObjVal and vecGRMAObjVal
-  void Boosting::resetVecRMAObjVals() {
-
-    // if PEBBL RMA is enabled
-    if (isPebblRMA())
-      vecERMAObjVal.resize(getNumIterations());
-
-    // if PEBBL RMA and its initial guess options are enabled
-    // or PEBBL RMA is not enabled (GreedyRMA only)
-    if ( (isPebblRMA() && isInitGuess()) || !isPebblRMA() )
-      vecGRMAObjVal.resize(getNumIterations());
-
-  }  // end resetVecRMAObjVals function
-
-
-  // set vecERMAObjVal and vecGRMAObjVal for current iteration
-  void Boosting::setVecRMAObjVals() {
-
-    // if PEBBL RMA is enabled
-    if (isPebblRMA())
-      vecERMAObjVal[curIter] = rma->workingSol.value;
-
-    // if PEBBL RMA and its initial guess options are enabled
-    // or PEBBL RMA is not enabled (GreedyRMA only)
-    if ( (isPebblRMA() && isInitGuess()) || !isPebblRMA() )
-      vecGRMAObjVal[curIter] = grma->getObjVal();
-
-  } // end setVecRMAObjVals function
 
 
   // save both greedy and PEBBL RMA solutions for all Boosting iterations
@@ -589,26 +629,6 @@ namespace boosting {
     os.close();  // close the output file
 
   } // end saveGERMAObjVals function
-
-
-  // double Boosting::getLowerBound(const unsigned int &k, const unsigned int &j,
-  //                            const unsigned int &value, const bool &isUpper) {
-  //   int boundVal;
-  //   // double min = getInf();
-  //   if (isUpper) boundVal = matIntUpper[k][j];
-  //   else         boundVal = matIntLower[k][j];
-  //   return data->vecAttribIntInfo[j].vecBins[boundVal+value].lowerBound;
-  // } // end getLowerBound
-  //
-  //
-  // double Boosting::getUpperBound(const unsigned int &k, const unsigned int &j,
-  //                            const unsigned int &value, const bool &isUpper) {
-  //   int boundVal;
-  //   // double max = -getInf();
-  //   if (isUpper) boundVal = matIntUpper[k][j];
-  //   else         boundVal = matIntLower[k][j];
-  //   return data->vecAttribIntInfo[j].vecBins[boundVal+value].upperBound;
-  // } // end getUpperBound
 
 
 } // namespace boosting

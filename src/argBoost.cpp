@@ -41,7 +41,10 @@ namespace arg {
     _isEvalFinalIter(false),
     _isSaveWts(false),
     _isSavePredictions(false),
-    _isSaveAllRMASols(true)
+    _isSaveAllRMASols(true),
+    _isSaveClpMps(false),
+
+    _isStandData(true)
 
     {
 
@@ -119,12 +122,17 @@ namespace arg {
          "false", "Wether or not to save weights for each boosting iteration ",
          "Boosting");
 
-    create_categorized_parameter("_isSavePredictions", _isSavePredictions, "<bool>",
+    create_categorized_parameter("isSavePredictions", _isSavePredictions, "<bool>",
          "false", "Write predictions for each model ", "Boosting");
 
-    create_categorized_parameter("_isSaveAllRMASols", _isSaveAllRMASols, "<bool>",
+    create_categorized_parameter("isSaveAllRMASols", _isSaveAllRMASols, "<bool>",
         "true", "save all RMA solutions for each boosting iteration ", "Boosting");
 
+    create_categorized_parameter("isSaveClpMps", _isSaveClpMps, "<bool>",
+        "false", "save a CLP MPS file for each boosting iteration", "Boosting");
+
+    create_categorized_parameter("isStandData", _isStandData, "<bool>",
+        "true", "standerdize data", "Boosting");
   }  // end ArgBoost class
 
 }  // end namespace arg

@@ -63,6 +63,9 @@ namespace arg {
     bool isSaveWts()        const {return _isSaveWts;}
     bool isSavePred()       const {return _isSavePredictions;}
     bool isSaveAllRMASols() const {return _isSaveAllRMASols;}
+    bool isSaveClpMps()     const {return _isSaveClpMps;}
+
+    bool isStandData()     const {return _isStandData;}
 
   protected:
 
@@ -120,6 +123,12 @@ namespace arg {
 
     // whether or not to save all RMA solutions for each Boosting iterations
     bool _isSaveAllRMASols;
+
+    // whether or not to save ClpMps files for each boosting iteration
+    bool _isSaveClpMps;
+
+    // whether or not to standerdize the data
+    bool _isStandData;
 
   }; // end ArgBoost class
 

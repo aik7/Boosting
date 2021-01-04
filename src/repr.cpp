@@ -10,6 +10,7 @@ namespace boosting {
 
   // set REPR parameters
   void REPR::setBoostingParameters() {
+    P = 1;
     C = getCoefficientC();
     D = 0; //getCoefficientD();
     E = getCoefficientE();
@@ -127,10 +128,10 @@ namespace boosting {
     for (unsigned int k = 0; k < numRows; k++) { // for each row
       if (k < numObs) {
         rowLower[k] = -COIN_DBL_MAX; //-inf;
-        rowUpper[k] = data->dataStandTrain[idxTrain(k)].y;
+        rowUpper[k] = data->dataStandTrain[k].y;
       } else {
         rowLower[k] = -COIN_DBL_MAX; //-inf;
-        rowUpper[k] = -data->dataStandTrain[idxTrain(k-numObs)].y;
+        rowUpper[k] = -data->dataStandTrain[k-numObs].y;
       } // end if
     } // end each row
 
@@ -159,14 +160,14 @@ namespace boosting {
           elements[idxClp] = (i < numObs) ? 1.0 : -1.0;
         else if (j<1+numAttrib) {    // for positive linear variables
           if (i < numObs)
-            elements[idxClp] = data->dataStandTrain[idxTrain(idx)].X[j-1];  // -1 for constant term
+            elements[idxClp] = data->dataStandTrain[idx].X[j-1];  // -1 for constant term
           else
-            elements[idxClp] = -data->dataStandTrain[idxTrain(idx)].X[j-1];
+            elements[idxClp] = -data->dataStandTrain[idx].X[j-1];
         } else if (j<1+2*numAttrib) { // for negative linear variables
           if (i < numObs)
-            elements[idxClp] = -data->dataStandTrain[idxTrain(idx)].X[j-1-numAttrib];
+            elements[idxClp] = -data->dataStandTrain[idx].X[j-1-numAttrib];
           else
-            elements[idxClp] = data->dataStandTrain[idxTrain(idx)].X[j-1-numAttrib];
+            elements[idxClp] = data->dataStandTrain[idx].X[j-1-numAttrib];
         } else { // for oservation error variables, episilon_i
           if (j-1-2*numAttrib==idx)
             elements[idxClp] = (j < numObs) ? 1.0 : -1.0;
@@ -205,15 +206,16 @@ namespace boosting {
   // set a weight of each observation for RMA
   // if rank 0, send the weights to the other ranks
   // if not rank 0, receive the weights from the rank 0
-  void REPR::setDataWts() {
+  void REPR::setWeights() {
 
 #ifdef ACRO_HAVE_MPI
     if (uMPI::rank==0) {
 #endif //  ACRO_HAVE_MPI
+
       // assign a weight for each observation ($/mu-/nu$, dual variables)
       for (unsigned int i=0; i < numObs ; ++i) // for each observation
-        data->dataIntTrain[idxTrain(i)].w
-          = vecDualVars[i]-vecDualVars[numObs+i];
+        data->dataIntTrain[i].w = vecDualVars[i] - vecDualVars[numObs+i];
+
 #ifdef ACRO_HAVE_MPI
     }
 #endif //  ACRO_HAVE_MPI
@@ -227,13 +229,13 @@ namespace boosting {
         // If we are the root process, send the observation weights to everyone
         for (int k = 0; k < uMPI::size; ++k)
           if (k != 0)
-            MPI_Send(&data->dataIntTrain[idxTrain(i)].w,
+            MPI_Send(&data->dataIntTrain[i].w,
                      1, MPI_DOUBLE, k, 0, MPI_COMM_WORLD);
 
       } else { // else (if not rank 0)
 
         // If we are a receiver process, receive the data from the root
-        MPI_Recv(&data->dataIntTrain[idxTrain(i)].w,
+        MPI_Recv(&data->dataIntTrain[i].w,
                  1, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 
       } // end if rank 0 else ...
@@ -242,14 +244,22 @@ namespace boosting {
 
 #endif //  ACRO_HAVE_MPI
 
-    DEBUGPR(1, ucout << "wt: ");
-    DEBUGPR(1,
-            for (unsigned int i=0; i < numObs ; ++i) {
-              ucout << data->dataIntTrain[idxTrain(i)].w << ", ";
-            });
-    DEBUGPR(1, ucout << "\n");
+#ifdef ACRO_HAVE_MPI
+    if (uMPI::rank==0) {
+#endif //  ACRO_HAVE_MPI
 
-  } // end setDataWts function
+    if(debug>=1) {
+      ucout << "Weight: ";
+      for (unsigned int i=0; i < numObs ; ++i)
+            ucout << data->dataIntTrain[i].w << ", ";
+      ucout << "\n";
+    } // end debug
+
+#ifdef ACRO_HAVE_MPI
+    }
+#endif //  ACRO_HAVE_MPI
+
+  } // end setWeights function
 
 
   // check wether or not to spop the REPR iteration
@@ -257,7 +267,7 @@ namespace boosting {
 
     if (greedyLevel==EXACT) {  // if PEBBL RMA
       // if the incumbent is less tha E + threthold
-      if (rma->incumbentValue <= E + .00001) {
+      if (rma->incumbentValue <= E ) {
         ucout << "PEBBL Stopping Condition!\n";
         return true;
       } // end if the stopping condition
@@ -286,7 +296,7 @@ namespace boosting {
 
     if ( curIter!=0 ) { // if not the first iteration
       // check whether or not the current iterations has any duplicate boxes
-      if(debug>=1) {
+      if (debug>=1) {
         for (unsigned int k=0; k<numBoxesIter; ++k)
           checkDuplicateBoxes(sl[k]->a, sl[k]->b);
       } // end debug
@@ -335,11 +345,17 @@ namespace boosting {
 
     numBoxesIter = 1;
 
+    if ( curIter!=0 ) { // if not the first iteration
+      // check whether or not the current iterations has any duplicate boxes
+      if (debug>=1) {
+        for (unsigned int k=0; k<numBoxesIter; ++k)
+          checkDuplicateBoxes(grma->getLowerBounds(), grma->getUpperBounds());
+      } // end debug
+    } // end if not the first iteration
+
     vecIsObjValPos.resize(vecIsObjValPos.size()+numBoxesIter);
     matIntUpper.resize(matIntUpper.size()+numBoxesIter);
     matIntLower.resize(matIntLower.size()+numBoxesIter);
-
-    // setVecIsCovered(grma->getLowerBounds(), grma->getUpperBounds());
 
     setVecIsObjValPos(0, grma->isPostObjVal());
 
@@ -354,57 +370,6 @@ namespace boosting {
     ++numCols;
 
   } // end insertGreedyColumns function
-
-
-  // set vecIsObjValPos by box idx (k) and
-  // isPosObjVal (wehther or not the current solution is positive)
-  void REPR::setVecIsObjValPos(const unsigned int &k,
-                               const bool &isPosObjVal) {
-    vecIsObjValPos[numBoxesSoFar+k] = isPosObjVal;
-  } // enf setVecIsObjValPos function
-
-
-  void REPR::setMatIntBounds(const unsigned int &k,
-                             const vector<unsigned int> &lower,
-                             const vector<unsigned int> &upper) {
-    matIntLower[matIntLower.size()-numBoxesIter+k] = lower;
-    matIntUpper[matIntUpper.size()-numBoxesIter+k] = upper;
-  } // end setVecIsObjValPos function
-
-
-  // set matIsCvdObsByBox, whether or not each observation is vecCovered
-  // by the lower and upper bounds, a and b of the current box k
-  void REPR::setMatIsCvdObsByBox(const unsigned int &k) {
-
-    matIsCvdObsByBox[k].resize(numObs);
-
-    for (unsigned int i=0; i< numObs; ++i) { // for each observation
-
-      for (unsigned int j=0; j< numAttrib; ++j) { // for each attribute
-
-        // if the curinsertPebbrent observation is covered by the current k'th box
-        // for attribute k
-        if ( matIntLower[numBoxesSoFar+k][j]
-               <= data->dataIntTrain[idxTrain(i)].X[j]
-            && data->dataIntTrain[idxTrain(i)].X[j]
-               <= matIntUpper[numBoxesSoFar+k][j] ) {
-
-          // if this observation is covered in all attributes
-          if ( j==numAttrib-1)
-            matIsCvdObsByBox[k][i] = true;  // set this observation is covered
-
-        } else { // if it is not covered
-          matIsCvdObsByBox[k][i] = false;  // set this observation is not covered
-          break;
-        } // end if this observation is covered in attribute j
-
-      } // end for each attribute
-
-    } // end for each observation
-
-    DEBUGPR(1, cout << "matIsCvdObsByBox: " << matIsCvdObsByBox << "\n" );
-
-  } // end setMatIsCvdObsByBox function
 
 
   // insert a colum in CLP model
@@ -622,89 +587,107 @@ namespace boosting {
 
   //////////////////////// Printing methods //////////////////////////////
 
+  // print solution for the restricted master problem
+  void REPR::printRMPCheckInfo() {
+
+#ifdef ACRO_HAVE_MPI
+    if (uMPI::rank==0) {
+#endif //  ACRO_HAVE_MPI
+
+      unsigned int i, j;
+      double sumPrimal = 0;
+
+      // for linear variables
+      if (C != 0) { // if C is not 0
+        for (j = 1; j < 1+numAttrib; ++j)
+          sumPrimal += C * vecPrimalVars[j];  // + \beta^+ * X
+        for (j = 1+numAttrib; j < 1+2*numAttrib; ++j)
+          sumPrimal -= C * vecPrimalVars[j];  // - \beta^- * X
+      }
+
+      // for observation variable, episilon_i
+      for (j = 1+2*numAttrib; j < 1+2*numAttrib+numObs; ++j) {
+        if (P==1)      sumPrimal += vecPrimalVars[j];
+        else if (P==2) sumPrimal += vecPrimalVars[j]*vecPrimalVars[j];
+      }
+
+      // if (D != 0) {
+      //   for (j = 1; j < numAttrib+1; ++j)	// for linear square coefficients
+      //     sumPrimal += D*vecPrimalVars[j]*vecPrimalVars[j];
+      //   for (j = 1+numAttrib; j < 2*numAttrib+1; ++j)
+      //     sumPrimal -= D*vecPrimalVars[j]*vecPrimalVars[j];
+      // }
+
+      cout << "vecPrimalVars: ";
+      for (i=0; i<numCols; ++i) cout << vecPrimalVars[i] << " ";
+      cout << "\n";
+
+      ////////////////////////////////////////////////////////////////////
+
+      double sumDual=0, sumDualCheck=0;
+
+      for (i=0; i<numObs; i++)  { // for each observation
+
+        sumDual += data->dataStandTrain[i].y
+                   * ( vecDualVars[i] - vecDualVars[numObs+i] );
+        // if (P==2)
+        //   sumDual -= pow( ( vecDualVars[i] - vecDualVars[numObs+i] ), 2 ) / 4.0;
+
+      }
+
+      cout << "vecDualVars: ";
+      for (i=0; i<numRows; ++i) cout << vecDualVars[i] << " ";
+      cout << "\n";
+
+      cout << "Check PrimalObj: " << sumPrimal << " = DualObj:" << sumDual << "\n";
+
+      ////////////////////////////////////////////////////////////////////
+
+      for (i=0; i<numObs; i++)  // for each observation
+        cout << "Check mu+nu=eps; mu: " << vecDualVars[i]
+           << ", nu:" << vecDualVars[numObs+i]
+           << ", eps: " << vecPrimalVars[2*numAttrib+1+i] << "\n" ;
+
+      ////////////////////////////////////////////////////////////////////
+
+      for (i=0; i<numObs; i++) // for each observation
+        sumDualCheck += ( vecDualVars[i] - vecDualVars[numObs+i] );
+
+      cout << "sumDualCheck: "  << sumDualCheck  << " (This should be 0.)\n";
+
+      ////////////////////////////////////////////////////////////////////
+
+      vector<double> vecSumConstCheck(numAttrib);
+      fill(vecSumConstCheck.begin(), vecSumConstCheck.end(), 0);
+
+      for (j=0; j<numAttrib; ++j)  // for each attribute
+        for (i=0; i<numObs; ++i)   // for each observation
+          vecSumConstCheck[j] += ( vecDualVars[i] - vecDualVars[numObs+i] )
+                                 * data->dataStandTrain[i].X[j] ;
+
+      cout << "vecSumConstCheck: "  << vecSumConstCheck
+           << " (Each element should be >= -C.)\n";
+
+#ifdef ACRO_HAVE_MPI
+    }
+#endif //  ACRO_HAVE_MPI
+
+} // end printRMPCheckInfo function
+
+
   // print RMA information
   void REPR::printRMAInfo() {
 
-#ifdef ACRO_HAVE_MPI
+  #ifdef ACRO_HAVE_MPI
     if (uMPI::rank==0) {
-#endif //  ACRO_HAVE_MPI
+  #endif //  ACRO_HAVE_MPI
       DEBUGPR(20, cout <<  "E: " << E <<
               ", incumb: " << rma->incumbentValue<< "\n");
-#ifdef ACRO_HAVE_MPI
+  #ifdef ACRO_HAVE_MPI
     }
-#endif //  ACRO_HAVE_MPI
+  #endif //  ACRO_HAVE_MPI
 
-} // end printRMAInfo function
-
-
-  // print solution for the restricted master problem
-  void REPR::printRMPSolution() {
-
-#ifdef ACRO_HAVE_MPI
-    if (uMPI::rank==0) {
-#endif //  ACRO_HAVE_MPI
-
-      double sumPrimal=0.0;
-      unsigned int i, j;
-
-      if (C != 0) {
-      	for (j = 1; j < numAttrib+1; ++j)
-          sumPrimal += C*vecPrimalVars[j];
-      }
-
-      for (j = numAttrib+1; j < numCols; ++j) {
-      	if (P==1)      sumPrimal += vecPrimalVars[j];
-      	else if (P==2) sumPrimal += vecPrimalVars[j]*vecPrimalVars[j];
-      }
-
-      if (D != 0) {
-      	for (j = 1; j < numAttrib+1; ++j)	// for linear square coefficients
-      	  sumPrimal += D*vecPrimalVars[j]*vecPrimalVars[j];
-      }
-
-      double sumDual=0, sumCheck=0;
-      vector<double> checkConst(numAttrib);
-
-      for (i=0; i<numObs; i++)  { // for each observation
-      	sumDual += data->dataStandTrain[idxTrain(i)].y
-                   * ( vecDualVars[i] - vecDualVars[numObs+i] );
-      	if (P==2)
-          sumDual -= pow( ( vecDualVars[i] - vecDualVars[numObs+i] ), 2 ) / 4.0 ;
-      	sumCheck += ( vecDualVars[i] - vecDualVars[numObs+i] );
-
-      	cout << "mu: " << vecDualVars[i]
-             << ", nu:" << vecDualVars[numObs+i]
-      	     << ", eps: " << vecPrimalVars[2*numAttrib+i+1] << "\n" ;
-      }
-
-      for (j=0; j<numAttrib; ++j) { // for each attribute
-      	for (i=0; i<numObs; ++i)  { // for each observation
-      	  checkConst[j] += ( vecDualVars[i] - vecDualVars[numObs+i] )
-            * data->dataStandTrain[idxTrain(i)].X[j] ;
-      	}
-      }
-
-      cout << "vecPrimalVars: " << vecPrimalVars
-           << " PrimalObj: " << sumPrimal << "\n";
-
-      for (i=0; i<numCols; ++i)
-        cout << vecPrimalVars[i] << " ";
-
-      cout << "\nvecDualVarss: " << vecDualVars
-           << " DualObj:" << sumDual << "\n";
-
-      for (i=0; i<numRows; ++i)
-        cout << vecDualVars[i] << " ";
-
-      cout << "\nsumCheck: " << sumCheck << "\n";  // sum has to be 1
-      cout << "checkCons: "  << checkConst << "\n";
-
-#ifdef ACRO_HAVE_MPI
-    }
-#endif //  ACRO_HAVE_MPI
-
-} // end print RMPSolution
-
+  } // end printRMAInfo function
 
   // print the LHS constrraint elements
   void REPR::printClpElements() {
@@ -739,10 +722,6 @@ void REPR::saveModel() {
   s << problemName << "_model_" << getDateTime() << ".out";
   ofstream os(s.str().c_str());
 
-  DEBUGPR(1, cout << numCols << "\n");
-  DEBUGPR(1, for (i=0; i<numCols; ++i)
-               { cout << vecPrimalVars[i] << ", ";} );
-
   // save # of attributes and boxes
   os << "#_of_attributes: " << data->numAttrib << "\n";
   os << "#_of_boxes:      " << numBoxesSoFar << "\n";
@@ -761,7 +740,7 @@ void REPR::saveModel() {
   os << "\n" ;  // go to the next line
 
   // output each box's lower and upper bounds in original values
-  for (unsigned int k=0; k<getNumIterations(); ++k ) { // for each Boosting iteration
+  for (unsigned int k=0; k<curIter; ++k ) { // for each Boosting iteration
 
     if (matOrigLower.size()!=0) { // if integerized
       os << "Box " << k << "_a: "<< matOrigLower[k] << "\n" ;
@@ -795,38 +774,7 @@ void REPR::saveModel() {
   }
 #endif //  ACRO_HAVE_MPI
 
-} // end saveModel function
+  } // end saveModel function
+
 
 } // namespace boosting
-
-
-// set vecIsCovered, whether or not each observation is vecCovered
-// by the lower and upper bounds, a and b
-// void REPR::setVecIsCovered(const vector<unsigned int> &a,
-//                            const vector<unsigned int> &b) {
-//
-//   for (unsigned int i=0; i< numObs; ++i) { // for each observation
-//
-//     for (unsigned int j=0; j< numAttrib; ++j) { // for each attribute
-//
-//       // if the curinsertPebbrent observation is covered by the current k'th box
-//       // for attribute k
-//       if ( a[j] <=  data->dataIntTrain[idxTrain(i)].X[j] &&
-//              data->dataIntTrain[idxTrain(i)].X[j] <= b[j] ) {
-//
-//         // if this observation is covered in all attributes
-//         if ( j==numAttrib-1)
-//           vecIsCovered[i]= true;  // set this observation is covered
-//
-//       } else { // if it is not covered
-//         vecIsCovered[i]= false;  // set this observation is not covered
-//         break;
-//       } // end if this observation is covered in attribute j
-//
-//     } // end for each attribute
-//
-//   } // end for each observation
-//
-//   DEBUGPR(1, cout << "vecIsCovered: " << vecIsCovered << "\n" );
-//
-// } // end setVecIsCovered function

@@ -44,7 +44,7 @@ namespace boosting {
     void setConstraintsLHS();      // set LHS constraints, elements
     void setInitRMPClpModel();     // set initial RMP CLP model
 
-    void setDataWts();             // set data weights in DataRMA class
+    void setWeights();            // set data weights in DataRMA class
 
     bool isStoppingCondition();    // whether or not stopping condition
 
@@ -52,20 +52,6 @@ namespace boosting {
     void insertPebblColumns();     // insert columns using PEBBL RMA solution
     void insertGreedyColumns();    // insert columns using Greedy RMA solution
 
-    // void setVecIsCovered(const vector<unsigned int> &a,
-    //                      const vector<unsigned int> &b);
-
-    // set vecIsObjValPos,
-    // a vector of whether or not each solution, k, is positive
-    void setVecIsObjValPos(const unsigned int &k, const bool &isPosObjVal);
-
-    // set matIntLower and matIntUpper for k-th box, and lower and upper boudns
-    void setMatIntBounds(const unsigned int &k,
-                         const vector<unsigned int> &lower,
-                         const vector<unsigned int> &upper);
-
-    // set matIsCvdObsByBox, a matrix of each observation is covered by k-th box
-    void setMatIsCvdObsByBox(const unsigned int &k);
 
     // insert a column in the CLP model using k-th RMA solution
     void insertColumnClpModel(const unsigned int &k);
@@ -80,7 +66,7 @@ namespace boosting {
 
     /************************* Printing methods **************************/
 
-    void printRMPSolution();  // restricted mater problem solution
+    void printRMPCheckInfo();  // restricted mater problem solution
     void printRMAInfo();      // print RMA problem info
     //void printEachIterAllErrs() {}
     void printClpElements();  // print CLP elements
