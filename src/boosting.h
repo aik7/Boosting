@@ -180,8 +180,9 @@ namespace boosting {
     unsigned int  numBoxesIter;   // # of boxes entered in the current interaction
 
     ///////////////////// CLP variables /////////////////////
-    ClpSimplex       model;   // CLP model
-    CoinPackedMatrix *matrix; // CLP matrix
+    ClpSimplex       model;     // CLP model
+    CoinPackedMatrix *matrix;   // CLP matrix
+    ClpPackedMatrix *clpMatrix; // CLP matrix
     // CoinPackedVector row;
 
     // indices for columns

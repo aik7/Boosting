@@ -61,7 +61,7 @@ namespace boosting {
   // set CLP model
   void REPR::setClpParameters() {
 
-    colIndex    = new int[numRows];  // column index
+    colIndex    = new int[numRows];  // row index for this colum
 
     for (unsigned int i=0; i<numRows; ++i) // for each row
       colIndex[i] = i;
@@ -71,13 +71,13 @@ namespace boosting {
 
     elements = new double [numElements];  // elements in the constraints
     rows     = new int [numElements];
-    starts   = new CoinBigIndex [numCols+1];
-    lengths  = new int [numCols];
+    starts   = new CoinBigIndex [numCols+1]; // the first index of this column
+    lengths  = new int [numCols];            // # of rows in each column
 
     // columns to insert
     columnInsert = new double[numRows];
 
-    model.setOptimizationDirection(1);               // maximization
+    model.setOptimizationDirection(1); // maximization
 
     // to turn off some output, 0 gives nothing and each increase
     // in value switches on more messages.
@@ -87,20 +87,14 @@ namespace boosting {
     // set the dimension of the model
     model.resize(numRows, numCols);
 
-    // get objective, lower and upper bounds of column,
-    // and lower and upper bounds of rows
-    objective   = model.objective();
-    columnLower = model.columnLower();
-    columnUpper = model.columnUpper();
-    rowLower    = model.rowLower();
-    rowUpper    = model.rowUpper();
-
   } // end resetCLPModel function
 
 
   // set Initial RMP objective
   void REPR::setInitRMPObjective() {
-    // set the objectives
+
+    objective   = model.objective();
+
     for (unsigned int k = 0; k < numCols; ++k) { // end for each column
       if (k==0)                 objective[k] = 0.0;  // for the constnt term
       else if (k<1+2*numAttrib) objective[k] = C;    // for the linear variables
@@ -113,17 +107,37 @@ namespace boosting {
   // set column bounds for RMP
   void REPR::setInitRMPColumnBound() {
 
+    columnLower = model.columnLower();
+    columnUpper = model.columnUpper();
+
+    columnLower[0] = -COIN_DBL_MAX;
+
     // set lower and upper bounds for each variables
-    for (unsigned int k = 0; k < numCols; ++k) { // for each colum
-      columnLower[k] = (k==0) ? -COIN_DBL_MAX : 0.0;
-      columnUpper[k] = COIN_DBL_MAX;
-    } // end each column
+    // for (unsigned int k = 0; k < numCols; ++k) { // for each colum
+    //   columnLower[k] = (k==0) ? -COIN_DBL_MAX : 0.0;
+    //   columnUpper[k] = COIN_DBL_MAX;
+    // } // end each column
+
+    if (debug>=5)  {
+      cout << "column lower: ";
+      for (unsigned int i = 0; i<numCols; ++i)
+        if (columnLower[i] == -COIN_DBL_MAX) cout << "-inf, ";
+        else                                 cout << columnLower[i] << ", ";
+      cout << "\ncolumn upper: ";
+      for (unsigned int i = 0; i<numCols; ++i)
+        if (columnUpper[i] == COIN_DBL_MAX) cout << "inf, ";
+        else                                cout << columnUpper[i] << ", ";
+      cout << "\n";
+    }
 
   } // end setInitRMPColumnBound function
 
 
   // set row bounds for RMP
   void REPR::setInitRMPRowBound() {
+
+    rowLower    = model.rowLower();
+    rowUpper    = model.rowUpper();
 
     for (unsigned int k = 0; k < numRows; k++) { // for each row
       if (k < numObs) {
@@ -134,6 +148,18 @@ namespace boosting {
         rowUpper[k] = -data->dataStandTrain[k-numObs].y;
       } // end if
     } // end each row
+
+    if (debug>=5) {
+      cout << "\nrow lower: ";
+      for (unsigned int i = 0; i<numRows; ++i)
+        if (rowLower[i] == -COIN_DBL_MAX) cout << "-inf, ";
+        else                              cout << rowLower[i] << ", ";
+      cout << "\nrow: upper";
+      for (unsigned int i = 0; i<numRows; ++i)
+        if (rowUpper[i] == COIN_DBL_MAX) cout << "inf, ";
+        else                             cout << rowUpper[i] << ", ";
+      cout << "\n";
+    }
 
   } // end setInitRMPRowBound function
 
@@ -194,10 +220,19 @@ namespace boosting {
     // assign to matrix
     matrix = new CoinPackedMatrix(true, 0.0, 0.0);
     matrix->assignMatrix(true, numRows, numCols, numElements,
-         elements, rows, starts, lengths);
+                         elements, rows, starts, lengths);
 
-    ClpPackedMatrix *clpMatrix = new ClpPackedMatrix(matrix);
+    clpMatrix = new ClpPackedMatrix(matrix);
+
+    // replace CLP matrix (current is deleted by deleteCurrent=true)
     model.replaceMatrix(clpMatrix, true);
+
+    // matrix.assignMatrix(true, numRows, numCols, numElements,
+    //                       elements, rows, starts, lengths);
+    // // clpMatrix = ClpPackedMatrix(matrix);
+    // model.loadProblem(matrix,
+    //                   columnLower, columnUpper, objective,
+    //                   rowLower, rowUpper);
 
   } // end setInitRMPModel function
 
@@ -392,10 +427,15 @@ namespace boosting {
       } else { // if this observation is not covered by k-th box
         columnInsert[i]        = 0;
         columnInsert[numObs+i] = 0;
-      }// end if covered observation or not
+      } // end if covered observation or not
 
     } // end for each observation
 
+    // insert column
+    //(numRows: # of rows, colIndex: column index,
+    // columnInsert: column values to insert,
+    // lower and upper bounds of this column variable = {0, COIN_DBL_MAX},
+    // objective coefficient = {E})
     model.addColumn(numRows, colIndex, columnInsert, 0.0, COIN_DBL_MAX, E);
 
   } // end insertColumnClpModel function
@@ -643,10 +683,10 @@ namespace boosting {
 
       ////////////////////////////////////////////////////////////////////
 
-      for (i=0; i<numObs; i++)  // for each observation
-        cout << "Check mu+nu=eps; mu: " << vecDualVars[i]
-           << ", nu:" << vecDualVars[numObs+i]
-           << ", eps: " << vecPrimalVars[2*numAttrib+1+i] << "\n" ;
+      // for (i=0; i<numObs; i++)  // for each observation
+      //   cout << "Check mu+nu=eps; mu: " << vecDualVars[i]
+      //      << ", nu:" << vecDualVars[numObs+i]
+      //      << ", eps: " << vecPrimalVars[2*numAttrib+1+i] << "\n" ;
 
       ////////////////////////////////////////////////////////////////////
 

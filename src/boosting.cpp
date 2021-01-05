@@ -211,13 +211,14 @@ namespace boosting {
 
     tc.startTime();
 
-    model.dual();
+    model.primal();
+    // model.dual();  //  invoke the dual simplex method.
 
     primalSol     = model.objectiveValue();        // get objective value
     vecPrimalVars = model.primalColumnSolution();  // ger primal variables
-    vecDualVars   = model.dualRowSolution();       // get dual variables
+    vecDualVars   = model.dualRowSolution();       // dualColumnSolution(); 
 
-    // printCLPsolution();
+    // if (debug>=0) printCLPsolution();
 
     cout << fixed << setprecision(4)
           << "Master Solution: " << primalSol << "\t";
@@ -437,7 +438,7 @@ namespace boosting {
           if ( matIntLower[l][j] != vecIntLower[j]       // sl[k]->a[j]
                || matIntUpper[l][j] != vecIntUpper[j] )  // sl[k]->b[j] )
             return false;
-            
+
       ucout << "Duplicate Solution Found!! \n" ;
 
 #ifdef ACRO_HAVE_MPI
@@ -490,66 +491,91 @@ namespace boosting {
   // print function for CLP solutions
   void Boosting::printCLPsolution() {
 
-    double value;
+    int numberRows = model.numberRows();
+    double * rowPrimal = model.primalRowSolution();
+    double * rowDual = model.dualRowSolution();
 
-    // Print column solution
+    int iRow;
+
+    for (iRow=0;iRow<numberRows;iRow++)
+      printf("Row %d, primal %g, dual %g\n",iRow,
+    rowPrimal[iRow],rowDual[iRow]);
+
     int numberColumns = model.numberColumns();
-
-    // Alternatively getColSolution()
-    double * columnPrimal   = model.primalColumnSolution();
-    // Alternatively getReducedCost()
-    double * columnDual     = model.dualColumnSolution();
-    // Alternatively getColLower()
-    double * columnLower    = model.columnLower();
-    // Alternatively getColUpper()
-    double * columnUpper    = model.columnUpper();
-    // Alternatively getObjCoefficients()
-    double * columnObjective = model.objective();
+    double * columnPrimal = model.primalColumnSolution();
+    double * columnDual = model.dualColumnSolution();
 
     int iColumn;
 
-    cout << "               Primal          Dual         Lower         Upper          Cost"
-              << endl;
+    for (iColumn=0;iColumn<numberColumns;iColumn++)
+      printf("Column %d, primal %g, dual %g\n",iColumn,
+    columnPrimal[iColumn],columnDual[iColumn]);
 
-    for (iColumn = 0; iColumn < numberColumns; iColumn++) { // for each column
-
-      cout << setw(6) << iColumn << " ";
-
-      value = columnPrimal[iColumn];
-      if (fabs(value) < 1.0e5)
-        cout << setiosflags(ios::fixed | ios::showpoint) << setw(14) << value;
-      else
-        cout << setiosflags(ios::scientific) << setw(14) << value;
-
-      value = columnDual[iColumn];
-
-      if (fabs(value) < 1.0e5)
-        cout << setiosflags(ios::fixed | ios::showpoint) << setw(14) << value;
-      else
-        cout << setiosflags(ios::scientific) << setw(14) << value;
-
-      value = columnLower[iColumn];
-
-      if (fabs(value) < 1.0e5)
-        cout << setiosflags(ios::fixed | ios::showpoint) << setw(14) << value;
-      else
-        cout << setiosflags(ios::scientific) << setw(14) << value;
-
-      value = columnUpper[iColumn];
-      if (fabs(value) < 1.0e5)
-        cout << setiosflags(ios::fixed | ios::showpoint) << setw(14) << value;
-      else
-        cout << setiosflags(ios::scientific) << setw(14) << value;
-
-      value = columnObjective[iColumn];
-      if (fabs(value) < 1.0e5)
-        cout << setiosflags(ios::fixed | ios::showpoint) << setw(14) << value;
-      else
-        cout << setiosflags(ios::scientific) << setw(14) << value;
-
-      cout << "\n";
-
-    } // end each column
+    ///////////////////////////////////////////////////////////
+    //
+    // double value;
+    //
+    // // Print column solution
+    // int numberColumns = model.numberColumns();
+    //
+    // // Alternatively getColSolution()  // get Primal column solution
+    // double * columnPrimal   = model.primalColumnSolution();
+    // // Alternatively getReducedCost()  // get Dual row solution
+    // double * columnDual     = model.dualColumnSolution();
+    // // Alternatively getColLower()
+    // double * columnLower    = model.columnLower();
+    // // Alternatively getColUpper()
+    // double * columnUpper    = model.columnUpper();
+    // // Alternatively getObjCoefficients()
+    // double * columnObjective = model.objective();
+    //
+    // int iColumn;
+    //
+    // cout << "               Primal          Dual         Lower         Upper          Cost"
+    //           << endl;
+    //
+    // for (iColumn = 0; iColumn < numberColumns; iColumn++) { // for each column
+    //
+    //   cout << setw(6) << iColumn << " ";
+    //
+    //   // print primal variables
+    //   value = columnPrimal[iColumn];
+    //   if (fabs(value) < 1.0e5)
+    //     cout << setiosflags(ios::fixed | ios::showpoint) << setw(14) << value;
+    //   else
+    //     cout << setiosflags(ios::scientific) << setw(14) << value;
+    //
+    //   // print dual variables
+    //   value = columnDual[iColumn];
+    //   if (fabs(value) < 1.0e5)
+    //     cout << setiosflags(ios::fixed | ios::showpoint) << setw(14) << value;
+    //   else
+    //     cout << setiosflags(ios::scientific) << setw(14) << value;
+    //
+    //   // print primal lower bounds variables
+    //   value = columnLower[iColumn];
+    //   if (fabs(value) < 1.0e5)
+    //     cout << setiosflags(ios::fixed | ios::showpoint) << setw(14) << value;
+    //   else
+    //     cout << setiosflags(ios::scientific) << setw(14) << value;
+    //
+    //   // print primal lower bounds variables
+    //   value = columnUpper[iColumn];
+    //   if (fabs(value) < 1.0e5)
+    //     cout << setiosflags(ios::fixed | ios::showpoint) << setw(14) << value;
+    //   else
+    //     cout << setiosflags(ios::scientific) << setw(14) << value;
+    //
+    //   // print objective variables
+    //   value = columnObjective[iColumn];
+    //   if (fabs(value) < 1.0e5)
+    //     cout << setiosflags(ios::fixed | ios::showpoint) << setw(14) << value;
+    //   else
+    //     cout << setiosflags(ios::scientific) << setw(14) << value;
+    //
+    //   cout << "\n";
+    //
+    // } // end each column
 
   } // end printCLPsolution function
 
