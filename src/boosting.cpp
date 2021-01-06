@@ -232,6 +232,7 @@ namespace boosting {
     // modelClp.dual();  //  invoke the dual simplex method.
 
     primalSol     = modelClp.objectiveValue();        // get objective value
+    vecPrimalVars = modelClp.primalColumnSolution();  // ger primal variables
     vecDualVars   = modelClp.dualRowSolution();       // dualColumnSolution();
 
     if (isPrintBoost()) {
@@ -244,10 +245,8 @@ namespace boosting {
       modelClp.writeMps(clpFile);
     }
 
-    if (debug>=1) {
-      vecPrimalVars = modelClp.primalColumnSolution();  // ger primal variables
+    if (debug>=1) 
       printRMPCheckInfo();
-    }
 
   } // end function Boosting::solveRMP()
 
