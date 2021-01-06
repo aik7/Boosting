@@ -28,6 +28,7 @@ namespace arg {
     /////////////////// parameters for Boosting ///////////////////
 
     // bool         isLPBoost()        const {return _isLPBoost;}
+    bool         isUseGurobi()      const {return _isUseGurobi;}
     bool         isREPR()           const {return _isREPR;}
     unsigned int getNumIterations() const {return _numIterations;}
     unsigned int getExponentP()     const {return _exponentP;}
@@ -57,19 +58,22 @@ namespace arg {
 
     //////////////////////// Evaluation parameters ////////////////////////
 
-    bool isEvalEachIter()  const {return _isEvalEachIter;}
-    bool isEvalFinalIter() const {return _isEvalFinalIter;}
+    bool isEvalEachIter()   const {return _isEvalEachIter;}
+    bool isEvalFinalIter()  const {return _isEvalFinalIter;}
 
     bool isSaveWts()        const {return _isSaveWts;}
     bool isSavePred()       const {return _isSavePredictions;}
     bool isSaveAllRMASols() const {return _isSaveAllRMASols;}
     bool isSaveClpMps()     const {return _isSaveClpMps;}
 
-    bool isStandData()     const {return _isStandData;}
+    bool isStandData()      const {return _isStandData;}
 
   protected:
 
     /////////////////// Parameters for Boosting ///////////////////
+
+    // if this is true, use Gurobi to solve RMP else use CLP
+    bool         _isUseGurobi;
 
     // if isREPR=true, run REPR; else, run LPBosot
     bool          _isREPR;

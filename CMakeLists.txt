@@ -22,9 +22,10 @@ set(Coin_INCLUDES ${Coin_ROOT}/Clp/src
                   ${Coin_ROOT}/CoinUtils/src
                   ${Coin_ROOT}/build/Clp/master/src/
                   ${Coin_ROOT}/build/CoinUtils/master/src/
-)
+                   )
 set(Coin_LIBRARIES ${Coin_ROOT}/dist/lib/libClp.so
-                   ${Coin_ROOT}/dist/lib/libCoinUtils.so )
+                   ${Coin_ROOT}/dist/lib/libCoinUtils.so
+                   )
 
 set(CMAKE_CXX_COMPILER mpicxx)
 
@@ -51,6 +52,24 @@ MESSAGE( STATUS "MPI libraries: ${MPI_LIBRARIES}")
 MESSAGE( STATUS "PEBBL include dir: ${PEBBL_INCLUDES}" )
 MESSAGE( STATUS "PEBBL libraries: ${PEBBL_LIBRARIES}")
 
+
+option(ENABLE_GUROBI "Enable Gurobi build. Will require Gurobi wrappers for compilers." ON)
+
+if(ENABLE_GUROBI)
+  message("GUROBI enabled.")
+  set(HAVE_GUROBI 1)
+  # install(FILES ${CMAKE_SOURCE_DIR}/src/boosting_config.h DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/src/)
+  set(GUROBI_ROOT  ${CMAKE_SOURCE_DIR}/../gurobi911)
+  set(GUROBI_INCLUDES ${GUROBI_ROOT}/linux64/src/cpp
+                      ${GUROBI_ROOT}/linux64/include )
+  set(GUROBI_LIBRARIES ${GUROBI_ROOT}/linux64/lib/libgurobi_c++.a
+                       ${GUROBI_ROOT}/linux64/lib/libgurobi91.so
+                       ${GUROBI_ROOT}/linux64/lib/libGurobiJni91.so
+                       ${GUROBI_ROOT}/linux64/lib/libgurobi91_light.so)
+endif()
+
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/src/boosting_config.h.in ${CMAKE_CURRENT_BINARY_DIR}/boosting_config.h)
+
 include_directories(
   src
   ${MPI_INCLUDE_PATH}
@@ -58,6 +77,10 @@ include_directories(
   ${PEBBL_INCLUDES}
   ${RMA_INCLUDES}
   ${Coin_INCLUDES}
+  ${CMAKE_CURRENT_BINARY_DIR}
+  if(ENABLE_GUROBI)
+    ${GUROBI_INCLUDES}
+  endif()
 )
 
 file(GLOB SOURCES "src/*.cpp")
@@ -65,9 +88,11 @@ add_executable(boosting ${SOURCES})
 target_link_libraries(boosting ${PEBBL_LIBRARIES})
 target_link_libraries(boosting ${RMA_LIBRARIES})
 target_link_libraries(boosting ${Coin_LIBRARIES})
+if(ENABLE_GUROBI)
+target_link_libraries(boosting ${GUROBI_LIBRARIES})
+endif()
 
-#add_dependencies(boosting coin_external)
-
+# add_dependencies(boosting coin_external)
 
 # find_package(PythonInterp REQUIRED)
 # include_directories(${PYTHON_INCLUDE_DIRS})

@@ -24,6 +24,12 @@
 #include <CoinPackedVector.hpp>
 #include <CoinHelperFunctions.hpp>
 
+#include "boosting_config.h"
+
+#ifdef HAVE_GUROBI
+  #include "gurobi_c++.h"
+#endif // HAVE_GUROBI
+
 #include "Time.h"
 #include "argRMA.h"
 #include "argBoost.h"
@@ -45,7 +51,12 @@ namespace boosting {
 
   public:
 
-    Boosting() {};
+    Boosting()
+#ifdef HAVE_GUROBI
+      : modelGrb(env)
+#endif // HAVE_GUROBI
+    {};
+
     Boosting(int& argc, char**& argv);
     virtual ~Boosting() {}
 
@@ -64,7 +75,14 @@ namespace boosting {
 
     // solve the restricted master problem,
     // and print out the solution and run time
-    void         solveRMP();
+    void         solveClpRMP();
+
+#ifdef HAVE_GUROBI
+    virtual void setGurobiRMP() = 0;
+    void         solveGurobiRMP();
+    void         resetGurobi();
+#endif // HAVE_GUROBI
+
 
     virtual void setWeights() = 0;
 
@@ -127,7 +145,9 @@ namespace boosting {
     // void checkObjValue(const unsigned int &k, vector<DataXw> intData);	// double-check objevtive value for (a, b)
 
     /************************ Printing functions ************************/
-    void printCLPsolution();
+
+    // print RMP objectiva value and CPU run time
+    void printRMPSolution();
 
     // print curret iteration, testing and testing errors
     void printBoostingErr();
@@ -180,7 +200,7 @@ namespace boosting {
     unsigned int  numBoxesIter;   // # of boxes entered in the current interaction
 
     ///////////////////// CLP variables /////////////////////
-    ClpSimplex       model;     // CLP model
+    ClpSimplex       modelClp;   // CLP model
     CoinPackedMatrix *matrix;   // CLP matrix
     ClpPackedMatrix *clpMatrix; // CLP matrix
     // CoinPackedVector row;
@@ -214,6 +234,17 @@ namespace boosting {
 
     // column to insert
     double       *columnInsert;
+
+    /*************************** Gurobi variables ******************/
+#ifdef HAVE_GUROBI
+    GRBEnv      env;
+    GRBModel    modelGrb;
+    GRBLinExpr 	lhs;
+    GRBConstr* 	constr;
+    GRBVar* 		vars;
+    GRBColumn 	col;
+    GRBQuadExpr obj;
+#endif // HAVE_GUROBI
 
     // store solution infomation for the master problem
     double *vecPrimalVars;     // dual variables

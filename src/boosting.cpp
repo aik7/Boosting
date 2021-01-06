@@ -10,7 +10,11 @@ namespace boosting {
 
   ///////////////////////// Set-up Boosting /////////////////////////
 
-  Boosting::Boosting(int& argc, char**& argv) {
+  Boosting::Boosting(int& argc, char**& argv)
+#ifdef HAVE_GUROBI
+  :  modelGrb(env)
+#endif // HAVE_GUROBI
+  {
 
     setup(argc, argv);     // setup all paramaters from PEBBL
 
@@ -40,10 +44,6 @@ namespace boosting {
 #ifdef ACRO_HAVE_MPI
     if (uMPI::rank==0) {
 #endif //  ACRO_HAVE_MPI
-
-    // vecDualVars = new double [numObs];
-    // vecDualVars.resize(numObs);
-    // vecIsCovered.resize(numObs);     // a vector indicate each observation is covered or not
 
     matIntLower.clear();    // matrix containes lower bound of box in integerized value
     matIntUpper.clear();    // matrix containes upper bound of box in integerized value
@@ -83,30 +83,40 @@ namespace boosting {
 
       // use rank 1 to solve RMP
 #ifdef ACRO_HAVE_MPI
-      if (uMPI::rank==0) {
+  if (uMPI::rank==0) {
 #endif //  ACRO_HAVE_MPI
 
         // standadize data for L1 regularization
-        if (isStandData()) {
-          data->setDataStandY();  // set data->dataStandTrain
-          data->setDataStandX();
-        } else { // not to standerdise for debugging purpose
-          data->dataStandTrain = data->dataOrigTrain;
-        }
+      if (isStandData()) {
+        data->setDataStandY();  // set data->dataStandTrain
+        data->setDataStandX();
+      } else { // not to standerdise for debugging purpose
+        data->dataStandTrain = data->dataOrigTrain;
+      }
 
-        setInitRMP();  // set the initial RMP
+      setInitRMP();  // set the initial RMP
 
-        solveRMP();    // solve the RMP
+#ifdef HAVE_GUROBI
+    if (isUseGurobi())
+      solveGurobiRMP();   // solve the RMP using Gurobi
+    else {
+#endif // HAVE_GUROBI
+      solveClpRMP();    // solve the RMP using CLP
+#ifdef HAVE_GUROBI
+    }
+#endif // HAVE_GUROBI
 
-        // if the option for evaluating each iteration is enabled
-        // evaluate the model
-        if (isEvalEachIter()) {
-          errTrain = evaluateEachIter(TRAIN, data->dataOrigTrain);
-          errTest  = evaluateEachIter(TEST,  data->dataOrigTest);
-        }
+      printRMPSolution();
+
+      // if the option for evaluating each iteration is enabled
+      // evaluate the model
+      if (isEvalEachIter()) {
+        errTrain = evaluateEachIter(TRAIN, data->dataOrigTrain);
+        errTest  = evaluateEachIter(TEST,  data->dataOrigTest);
+      }
 
 #ifdef ACRO_HAVE_MPI
-      }
+  } // end if (uMPI::rank==0)
 #endif //  ACRO_HAVE_MPI
 
       for (curIter=0; curIter<numIter; ++curIter) { // for each column generation iteration
@@ -140,23 +150,30 @@ namespace boosting {
     if (uMPI::rank==0) {
   #endif //  ACRO_HAVE_MPI
 
-          if (isStopCond==1) break;
+      if (isStopCond==1) break;
 
-          insertColumns(); // add RMA solutions and check duplicate
+      insertColumns(); // add RMA solutions and check duplicate
 
-          // map back from the discretized data into original
-          if (delta()!=-1) setOriginalBounds();
+      // map back from the discretized data into original
+      if (delta()!=-1) setOriginalBounds();
 
-          solveRMP();
+#ifdef HAVE_GUROBI
+      if (isUseGurobi())
+        solveGurobiRMP();   // solve the RMP using Gurobi
+      else {
+#endif // HAVE_GUROBI
+        solveClpRMP();
+#ifdef HAVE_GUROBI
+      }
+#endif // HAVE_GUROBI
 
-          if (isEvalEachIter()) { // if evalute the model each iteration
+      printRMPSolution();
 
-            errTrain = evaluateEachIter(TRAIN, data->dataOrigTrain);
-            errTest  = evaluateEachIter(TEST,  data->dataOrigTest);
-
-            printBoostingErr();
-
-          } // end if evalute the model each iteration
+      if (isEvalEachIter()) { // if evalute the model each iteration
+        errTrain = evaluateEachIter(TRAIN, data->dataOrigTrain);
+        errTest  = evaluateEachIter(TEST,  data->dataOrigTest);
+        printBoostingErr();
+      } // end if evalute the model each iteration
 
 #ifdef ACRO_HAVE_MPI
   } else { // if MPI rank is not 0, receive the info about the stopping condition
@@ -205,48 +222,84 @@ namespace boosting {
 
 
   // call CLP to solve Master Problems
-  void Boosting::solveRMP() {
+  void Boosting::solveClpRMP() {
 
     DEBUGPR(10, cout <<  "Solve Restricted Master Problem!\n");
 
     tc.startTime();
 
-    model.primal();
-    // model.dual();  //  invoke the dual simplex method.
+    modelClp.primal();
+    // modelClp.dual();  //  invoke the dual simplex method.
 
-    primalSol     = model.objectiveValue();        // get objective value
-    vecPrimalVars = model.primalColumnSolution();  // ger primal variables
-    vecDualVars   = model.dualRowSolution();       // dualColumnSolution(); 
+    primalSol     = modelClp.objectiveValue();        // get objective value
+    vecDualVars   = modelClp.dualRowSolution();       // dualColumnSolution();
 
-    // if (debug>=0) printCLPsolution();
-
-    cout << fixed << setprecision(4)
-          << "Master Solution: " << primalSol << "\t";
-    cout << fixed << setprecision(2)
-          << " CPU Time: " << tc.getCPUTime() << "\n";
-
-    if (debug>=0) {
+    if (isPrintBoost()) {
       int iter;
       char clpFile[12];
       strcpy(clpFile, "clp_");
       iter = (curIter>getNumIterations()) ? -1 : curIter;
       strcat(clpFile, to_string(iter).c_str());
       strcat(clpFile, ".mps");
-      model.writeMps(clpFile);
+      modelClp.writeMps(clpFile);
     }
 
-    if (debug>=10) {
-
-      unsigned int i;
-
-	    for (i=0; i<numCols; ++i) cout << vecPrimalVars[i];
-	    for (i=0; i<numRows; ++i) cout << vecDualVars[i];
-
+    if (debug>=1) {
+      vecPrimalVars = modelClp.primalColumnSolution();  // ger primal variables
+      printRMPCheckInfo();
     }
-
-    DEBUGPR(1, printRMPCheckInfo());
 
   } // end function Boosting::solveRMP()
+
+
+#ifdef HAVE_GUROBI
+
+  // reset Gurobi for the next column generation iteration
+  void Boosting::resetGurobi() {
+
+    for (unsigned int i=0; i<numRows; ++i)
+      modelGrb.remove(modelGrb.getConstrs()[i]);
+
+    for (unsigned int j=0; j<numCols; ++j)
+      modelGrb.remove(modelGrb.getVars()[j]);
+
+    modelGrb.reset();
+    modelGrb.update();
+
+  } // end resetGurobi function
+
+
+  // call GUROBI to solve Master Problems
+  void Boosting::solveGurobiRMP() {
+
+    // DEBUGPRX(10, data, "Solve Restricted Master Problem!\n");
+
+    tc.startTime();
+
+    modelGrb.optimize();
+
+    if (isPrintBoost()) modelGrb.write("master.lp");
+
+    vars   = modelGrb.getVars();
+    constr = modelGrb.getConstrs();
+
+    vecPrimalVars = new double[numCols];  // vecPrimal.resize(numCols);
+    vecDualVars   = new double[numRows];  // vecDual.resize(numRows);
+
+    if (modelGrb.get(GRB_IntAttr_Status) == GRB_OPTIMAL) {
+      primalSol = modelGrb.get(GRB_DoubleAttr_ObjVal);
+      for (unsigned int j = 0; j < numCols; ++j)  // for each column
+        vecPrimalVars[j] = vars[j].get(GRB_DoubleAttr_X);
+      for (unsigned int i = 0; i < numRows; ++i)  // for each row
+        vecDualVars[i]   = constr[i].get(GRB_DoubleAttr_Pi);
+    }
+
+    // DEBUGPRX(0, data, " Master Solution: " << primalSol << "\t");
+    // printRMPSolution();
+
+  } // end function Boosting::solveMaster()
+
+#endif // HAVE_GUROBI
 
 
   // set matIsCvdObsByBox, whether or not each observation is vecCovered
@@ -481,105 +534,20 @@ namespace boosting {
 
   /************************ Printing functions ************************/
 
+  // print RMP objectiva value and CPU run time
+  void Boosting::printRMPSolution() {
+    cout << fixed << setprecision(4)
+        << "Master Solution: " << primalSol << "\t";
+    cout << fixed << setprecision(2)
+        << " CPU Time: " << tc.getCPUTime() << "\n";
+  } // end printRMPSolution function
+
+
   // print curret iteration, testing and testing errors
   void Boosting::printBoostingErr() {
       ucout << "Iter: " << curIter
             << ":\tTest/Train Errors: " << errTest << " " << errTrain << "\n";
   } // end printBoostingErr function
-
-
-  // print function for CLP solutions
-  void Boosting::printCLPsolution() {
-
-    int numberRows = model.numberRows();
-    double * rowPrimal = model.primalRowSolution();
-    double * rowDual = model.dualRowSolution();
-
-    int iRow;
-
-    for (iRow=0;iRow<numberRows;iRow++)
-      printf("Row %d, primal %g, dual %g\n",iRow,
-    rowPrimal[iRow],rowDual[iRow]);
-
-    int numberColumns = model.numberColumns();
-    double * columnPrimal = model.primalColumnSolution();
-    double * columnDual = model.dualColumnSolution();
-
-    int iColumn;
-
-    for (iColumn=0;iColumn<numberColumns;iColumn++)
-      printf("Column %d, primal %g, dual %g\n",iColumn,
-    columnPrimal[iColumn],columnDual[iColumn]);
-
-    ///////////////////////////////////////////////////////////
-    //
-    // double value;
-    //
-    // // Print column solution
-    // int numberColumns = model.numberColumns();
-    //
-    // // Alternatively getColSolution()  // get Primal column solution
-    // double * columnPrimal   = model.primalColumnSolution();
-    // // Alternatively getReducedCost()  // get Dual row solution
-    // double * columnDual     = model.dualColumnSolution();
-    // // Alternatively getColLower()
-    // double * columnLower    = model.columnLower();
-    // // Alternatively getColUpper()
-    // double * columnUpper    = model.columnUpper();
-    // // Alternatively getObjCoefficients()
-    // double * columnObjective = model.objective();
-    //
-    // int iColumn;
-    //
-    // cout << "               Primal          Dual         Lower         Upper          Cost"
-    //           << endl;
-    //
-    // for (iColumn = 0; iColumn < numberColumns; iColumn++) { // for each column
-    //
-    //   cout << setw(6) << iColumn << " ";
-    //
-    //   // print primal variables
-    //   value = columnPrimal[iColumn];
-    //   if (fabs(value) < 1.0e5)
-    //     cout << setiosflags(ios::fixed | ios::showpoint) << setw(14) << value;
-    //   else
-    //     cout << setiosflags(ios::scientific) << setw(14) << value;
-    //
-    //   // print dual variables
-    //   value = columnDual[iColumn];
-    //   if (fabs(value) < 1.0e5)
-    //     cout << setiosflags(ios::fixed | ios::showpoint) << setw(14) << value;
-    //   else
-    //     cout << setiosflags(ios::scientific) << setw(14) << value;
-    //
-    //   // print primal lower bounds variables
-    //   value = columnLower[iColumn];
-    //   if (fabs(value) < 1.0e5)
-    //     cout << setiosflags(ios::fixed | ios::showpoint) << setw(14) << value;
-    //   else
-    //     cout << setiosflags(ios::scientific) << setw(14) << value;
-    //
-    //   // print primal lower bounds variables
-    //   value = columnUpper[iColumn];
-    //   if (fabs(value) < 1.0e5)
-    //     cout << setiosflags(ios::fixed | ios::showpoint) << setw(14) << value;
-    //   else
-    //     cout << setiosflags(ios::scientific) << setw(14) << value;
-    //
-    //   // print objective variables
-    //   value = columnObjective[iColumn];
-    //   if (fabs(value) < 1.0e5)
-    //     cout << setiosflags(ios::fixed | ios::showpoint) << setw(14) << value;
-    //   else
-    //     cout << setiosflags(ios::scientific) << setw(14) << value;
-    //
-    //   cout << "\n";
-    //
-    // } // end each column
-
-  } // end printCLPsolution function
-
-
 
 
   // save weights for current iteration (curIter)
@@ -599,15 +567,7 @@ namespace boosting {
   } // end saveWeights function
 
 
-
-
-
-
-
   /************************ Saving functions ************************/
-
-
-
 
   // save actual y values and predicted y values
   void Boosting::savePredictions(const bool &isTest, vector<DataXy> origData) {

@@ -52,10 +52,13 @@ namespace boosting {
     void insertPebblColumns();     // insert columns using PEBBL RMA solution
     void insertGreedyColumns();    // insert columns using Greedy RMA solution
 
-
     // insert a column in the CLP model using k-th RMA solution
     void insertColumnClpModel(const unsigned int &k);
 
+#ifdef HAVE_GUROBI
+    void setGurobiRMP();
+    void insertColumnGurobiModel(const unsigned int &k);
+#endif
     /************************* Evaluating methods **************************/
 
     // evaluate the current model each observation

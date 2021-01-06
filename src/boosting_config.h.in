@@ -1,0 +1,7 @@
+#ifndef BOOSTING_CONFIG_H
+#define BOOSTING_CONFIG_H
+
+// #cmakedefine ENABLE_GUROBI
+#cmakedefine HAVE_GUROBI @HAVE_GUROBI@
+
+#endif

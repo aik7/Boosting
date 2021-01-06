@@ -16,6 +16,7 @@ namespace arg {
 
   ArgBoost::ArgBoost():
 
+    _isUseGurobi(false),
     _isREPR(true),
     _numIterations(1),
     _exponentP(2),
@@ -52,6 +53,9 @@ namespace arg {
 
     // create_categorized_parameter("lpboost", _isLPBoost, "<bool>",
     //     "false",	"Run LPBoost", "LPBoost");
+
+    create_categorized_parameter("isUseGurobi", _isUseGurobi, "<bool>",
+        "false",	"whether or not to use Gurobi to solve the RMP", "REPR");
 
     create_categorized_parameter("repr", _isREPR, "<bool>",
         "true",	"Run REPR", "REPR");
@@ -133,6 +137,7 @@ namespace arg {
 
     create_categorized_parameter("isStandData", _isStandData, "<bool>",
         "true", "standerdize data", "Boosting");
+
   }  // end ArgBoost class
 
 }  // end namespace arg

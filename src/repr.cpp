@@ -27,6 +27,12 @@ namespace boosting {
 
     setInitRMPVariables();   // initialize variables for RMP
 
+#ifdef HAVE_GUROBI
+  if ( isUseGurobi() )
+    setGurobiRMP();
+  else {
+#endif // HAVE_GUROBI
+
     setClpParameters();      // set CLP parameters
 
     setInitRMPObjective();   // set Objective
@@ -39,7 +45,91 @@ namespace boosting {
 
     setInitRMPClpModel();    // set the CLP model
 
+#if HAVE_GUROBI
+  } // end Gurobi RMP
+#endif // HAVE_GUROBI
+
   }  // end function REPR::setInitialMaster()
+
+
+#ifdef HAVE_GUROBI
+
+  void REPR::setGurobiRMP() {
+
+    unsigned int i, j;
+    columnLower = new double[numCols];
+    columnUpper = new double[numCols];
+    char* vtype = NULL;
+
+    // DEBUGPRX(10, data, "Setup Initial Restricted Master Problem!" << "\n");
+
+    modelGrb.getEnv().set(GRB_IntParam_Method, 0);
+
+    columnLower[0] = -getInf(); // beta is free variable
+    for (i = 1; i < numCols; ++i) columnLower[i] = 0;
+    for (i = 0; i < numCols; ++i) columnUpper[i] = getInf();
+
+    // Add variables to the model
+    vars = modelGrb.addVars(columnLower, columnUpper,
+                            NULL, vtype, NULL, numCols);
+
+    // set constraits
+    for (i = 0; i < numObs; ++i) {
+      lhs = vars[0];   // beta_0
+      for (j = 0; j < numAttrib; ++j)      // beta^+_j
+        if (data->dataStandTrain[i].X[j] != 0)
+          lhs += data->dataStandTrain[i].X[j]*vars[1+j];
+      for (j = 0; j < numAttrib; ++j)      // beta^-_j
+        if (data->dataStandTrain[i].X[j] != 0)
+          lhs -= data->dataStandTrain[i].X[j]*vars[1+numAttrib+j];
+      for (j = 0; j < numObs; ++j)        // episilon
+        if (i==j)
+          lhs -= vars[1+2*numAttrib+j];
+
+      modelGrb.addConstr(lhs, GRB_LESS_EQUAL, data->dataStandTrain[i].y);
+    }
+
+    for (i = 0; i < numObs; ++i) {
+      lhs = -vars[0];                      // beta_0
+      for (j = 0; j < numAttrib; ++j)      // beta^+_j
+        if (data->dataStandTrain[i].X[j] != 0)
+          lhs -= data->dataStandTrain[i].X[j]*vars[1+j];
+      for (j = 0; j < numAttrib; ++j)      // beta^-_j
+        if (data->dataStandTrain[i].X[j] != 0)
+          lhs += data->dataStandTrain[i].X[j]*vars[1+numAttrib+j];
+      for (j = 0; j < numObs; ++j)         // episilon
+        if (i==j)
+          lhs -= vars[1+2*numAttrib+j];
+
+      modelGrb.addConstr(lhs, GRB_LESS_EQUAL, -data->dataStandTrain[i].y);
+    }
+
+    // set cobjectives
+    obj = 0;
+
+    if (C != 0) { // if C is not 0
+      for (j = 1; j < 2*numAttrib+1; ++j)
+        obj += C*vars[j];
+    } // end if C is not 0
+
+    if (D != 0) { // if D is not 0
+      for (j = 1; j < 2*numAttrib+1; ++j)	// for linear square coefficients
+        obj += D*vars[j]*vars[j];
+    } // end if D is not 0
+
+    for (j = 2*numAttrib+1; j < numCols; ++j) {
+      if (P==1)      obj += vars[j];
+      else if (P==2) obj += vars[j]*vars[j];
+    }
+
+    modelGrb.setObjective(obj);
+    modelGrb.update();
+    modelGrb.write("master.lp");
+    modelGrb.getEnv().set(GRB_IntParam_OutputFlag, 0);  // not to print out GUROBI
+
+  } // end setGruobiRMP function
+
+#endif // HAVE_GUROBI
 
 
   // set initial RMP variables
@@ -77,15 +167,15 @@ namespace boosting {
     // columns to insert
     columnInsert = new double[numRows];
 
-    model.setOptimizationDirection(1); // maximization
+    modelClp.setOptimizationDirection(1); // maximization
 
     // to turn off some output, 0 gives nothing and each increase
     // in value switches on more messages.
-    model.setLogLevel(0);
+    modelClp.setLogLevel(0);
     // matrix.setDimensions(numRows, numCols); // setDimensions (int numrows, int numcols)
 
     // set the dimension of the model
-    model.resize(numRows, numCols);
+    modelClp.resize(numRows, numCols);
 
   } // end resetCLPModel function
 
@@ -93,7 +183,7 @@ namespace boosting {
   // set Initial RMP objective
   void REPR::setInitRMPObjective() {
 
-    objective   = model.objective();
+    objective   = modelClp.objective();
 
     for (unsigned int k = 0; k < numCols; ++k) { // end for each column
       if (k==0)                 objective[k] = 0.0;  // for the constnt term
@@ -107,8 +197,8 @@ namespace boosting {
   // set column bounds for RMP
   void REPR::setInitRMPColumnBound() {
 
-    columnLower = model.columnLower();
-    columnUpper = model.columnUpper();
+    columnLower = modelClp.columnLower();
+    columnUpper = modelClp.columnUpper();
 
     columnLower[0] = -COIN_DBL_MAX;
 
@@ -136,8 +226,8 @@ namespace boosting {
   // set row bounds for RMP
   void REPR::setInitRMPRowBound() {
 
-    rowLower    = model.rowLower();
-    rowUpper    = model.rowUpper();
+    rowLower    = modelClp.rowLower();
+    rowUpper    = modelClp.rowUpper();
 
     for (unsigned int k = 0; k < numRows; k++) { // for each row
       if (k < numObs) {
@@ -225,12 +315,12 @@ namespace boosting {
     clpMatrix = new ClpPackedMatrix(matrix);
 
     // replace CLP matrix (current is deleted by deleteCurrent=true)
-    model.replaceMatrix(clpMatrix, true);
+    modelClp.replaceMatrix(clpMatrix, true);
 
     // matrix.assignMatrix(true, numRows, numCols, numElements,
     //                       elements, rows, starts, lengths);
     // // clpMatrix = ClpPackedMatrix(matrix);
-    // model.loadProblem(matrix,
+    // modelClp.loadProblem(matrix,
     //                   columnLower, columnUpper, objective,
     //                   rowLower, rowUpper);
 
@@ -356,7 +446,12 @@ namespace boosting {
       // by lower and upper bound (a, b)
       // setVecIsCovered(sl[k]->a, sl[k]->b);
 
-      insertColumnClpModel(k);
+#ifdef HAVE_GUROBI
+      if (isUseGurobi())
+        insertColumnGurobiModel(k);
+      else
+#endif // HAVE_GUROBI
+        insertColumnClpModel(k);
 
     } // end for each solution, k
 
@@ -398,7 +493,12 @@ namespace boosting {
 
     setMatIsCvdObsByBox(0);
 
-    insertColumnClpModel(0);
+#ifdef HAVE_GUROBI
+    if (isUseGurobi())
+      insertColumnGurobiModel(0);
+    else
+#endif // HAVE_GUROBI
+      insertColumnClpModel(0);
 
     // TODO: for now, add one observation per iteration, but can be fixed that later
     ++numBoxesSoFar;
@@ -410,19 +510,19 @@ namespace boosting {
   // insert a colum in CLP model
   void REPR::insertColumnClpModel(const unsigned int &k) {
 
-    matIsCvdObsByBox[numBoxesSoFar+k].resize(numObs);
+    // matIsCvdObsByBox[numBoxesSoFar+k].resize(numObs);
 
     for (unsigned int i = 0; i < numObs; ++i) { // for each observation
 
       if (matIsCvdObsByBox[numBoxesSoFar+k][i]) { // if this observatoin is covered
 
-        if (vecIsObjValPos[k]) { // if positive solution
+        if (vecIsObjValPos[numBoxesSoFar+k]) { // if it's positive box variable
       	  columnInsert[i]        = 1;
       	  columnInsert[numObs+i] = -1;
-        } else {  // if not a positive solution
+        } else {  // if not a box variable
       	  columnInsert[i]        = -1;
       	  columnInsert[numObs+i] = 1;
-      	} // end if positive or negative solution
+      	} // end if positive or negative box variable
 
       } else { // if this observation is not covered by k-th box
         columnInsert[i]        = 0;
@@ -436,10 +536,44 @@ namespace boosting {
     // columnInsert: column values to insert,
     // lower and upper bounds of this column variable = {0, COIN_DBL_MAX},
     // objective coefficient = {E})
-    model.addColumn(numRows, colIndex, columnInsert, 0.0, COIN_DBL_MAX, E);
+    modelClp.addColumn(numRows, colIndex, columnInsert, 0.0, COIN_DBL_MAX, E);
 
   } // end insertColumnClpModel function
 
+
+#ifdef HAVE_GUROBI
+
+  void REPR::insertColumnGurobiModel(const unsigned int &k) {
+
+    // add columns using GUROBI
+    col.clear();
+    constr = modelGrb.getConstrs();
+
+    for (unsigned int i = 0; i < numObs; ++i) { // for each observation
+
+      if (matIsCvdObsByBox[numBoxesSoFar+k][i]) { // if this observatoin is covered
+
+        if (vecIsObjValPos[numBoxesSoFar+k]) { // if it's positive box variable
+          col.addTerm( 1, constr[i]);
+          col.addTerm(-1, constr[i+numObs]);
+        } else {
+          col.addTerm(-1, constr[i]);
+          col.addTerm( 1, constr[i+numObs]);
+        } // end if covered observation or not
+
+      } // end if this observation is covered
+
+    } // end for each observation
+
+    // insert column
+    // lower and upper bounds of this column variable = {0.0, GRB_INFINITY}
+    // coefficient of the objective = {E}
+    // inserting the column in the constraint = {col}
+    modelGrb.addVar(0.0, GRB_INFINITY, E, GRB_CONTINUOUS, col);
+
+  } // end insertColumnGurobiModel function
+
+#endif // HAVE_GUROBI
 
   //////////////////////// Evaluating methods //////////////////////////////
 
@@ -525,7 +659,7 @@ namespace boosting {
 #endif //  ACRO_HAVE_MPI
       DEBUGPR(20, cout << "MSE: " <<  mse / (double) numIdx << "\n");
 #ifdef ACRO_HAVE_MPI
-    }
+    } // end if (uMPI::rank==0)
 #endif //  ACRO_HAVE_MPI
 
     return mse / (double) numIdx;
@@ -567,13 +701,13 @@ namespace boosting {
 
           for (j=0; j<numAttrib; ++j) { // for each attribute
             if (matOrigLower[k][j] <= origData[obs].X[j] &&
-        origData[obs].X[j] <= matOrigUpper[k][j] ) {
+                origData[obs].X[j] <= matOrigUpper[k][j] ) {
               if ( j==numAttrib-1) { // all features are covered by the box
-        if (vecIsObjValPos[k])
-          expY +=  vecPrimalVars[data->numTrainObs+2*numAttrib+k+1] ;
-        else
-          expY += -vecPrimalVars[data->numTrainObs+2*numAttrib+k+1] ;
-        DEBUGPR(20, cout << "kth box: " << k	<< " box exp: " << expY << "\n");
+                if (vecIsObjValPos[k])
+                  expY +=  vecPrimalVars[data->numTrainObs+2*numAttrib+k+1] ;
+                else
+                  expY += -vecPrimalVars[data->numTrainObs+2*numAttrib+k+1] ;
+                DEBUGPR(20, cout << "kth box: " << k	<< " box exp: " << expY << "\n");
               }
             } else break; // this observation is not covered
           } // end for each attribute
