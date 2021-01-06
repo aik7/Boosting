@@ -53,12 +53,12 @@ MESSAGE( STATUS "PEBBL include dir: ${PEBBL_INCLUDES}" )
 MESSAGE( STATUS "PEBBL libraries: ${PEBBL_LIBRARIES}")
 
 
-option(ENABLE_GUROBI "Enable Gurobi build. Will require Gurobi wrappers for compilers." ON)
+option(ENABLE_GUROBI "Enable Gurobi build. Will require Gurobi wrappers
+                      for compilers." OFF)
 
 if(ENABLE_GUROBI)
-  message("GUROBI enabled.")
+  MESSAGE("GUROBI enabled.")
   set(HAVE_GUROBI 1)
-  # install(FILES ${CMAKE_SOURCE_DIR}/src/boosting_config.h DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/src/)
   set(GUROBI_ROOT  ${CMAKE_SOURCE_DIR}/../gurobi911)
   set(GUROBI_INCLUDES ${GUROBI_ROOT}/linux64/src/cpp
                       ${GUROBI_ROOT}/linux64/include )
@@ -66,9 +66,13 @@ if(ENABLE_GUROBI)
                        ${GUROBI_ROOT}/linux64/lib/libgurobi91.so
                        ${GUROBI_ROOT}/linux64/lib/libGurobiJni91.so
                        ${GUROBI_ROOT}/linux64/lib/libgurobi91_light.so)
+  MESSAGE( STATUS "GUROBI include dir: ${PEBBL_INCLUDES}" )
+  MESSAGE( STATUS "GUROBI libraries:   ${PEBBL_LIBRARIES}")
+
 endif()
 
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/src/boosting_config.h.in ${CMAKE_CURRENT_BINARY_DIR}/boosting_config.h)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/src/boosting_config.h.in
+               ${CMAKE_CURRENT_BINARY_DIR}/boosting_config.h)
 
 include_directories(
   src
@@ -88,8 +92,9 @@ add_executable(boosting ${SOURCES})
 target_link_libraries(boosting ${PEBBL_LIBRARIES})
 target_link_libraries(boosting ${RMA_LIBRARIES})
 target_link_libraries(boosting ${Coin_LIBRARIES})
+
 if(ENABLE_GUROBI)
-target_link_libraries(boosting ${GUROBI_LIBRARIES})
+  target_link_libraries(boosting ${GUROBI_LIBRARIES})
 endif()
 
 # add_dependencies(boosting coin_external)

@@ -69,9 +69,13 @@ namespace boosting {
     void train(const unsigned int& iter, // const bool& isOuter,
                const unsigned int & greedyLevel);
 
+    void setDataStand();
+
     ////void discretizeData();
     //// virtual void   resetMaster() = 0;
     virtual void setInitRMP() = 0;
+
+    void         solveRMP();
 
     // solve the restricted master problem,
     // and print out the solution and run time
@@ -83,10 +87,11 @@ namespace boosting {
     void         resetGurobi();
 #endif // HAVE_GUROBI
 
-
     virtual void setWeights() = 0;
 
     virtual bool isStoppingCondition() = 0;
+
+    void         setStoppingCondition();
 
     // insert column
     void         insertColumns() {
@@ -125,6 +130,9 @@ namespace boosting {
     void   setVecRMAObjVals();
 
     /************************ Evaluating methods ************************/
+
+    // evaluate the model for training and testing data
+    void evaluateModel();
 
     // evaluate the error in each Boosting iteration
     virtual double evaluateEachIter(const bool &isTest,
@@ -198,6 +206,8 @@ namespace boosting {
 
     unsigned int  numBoxesSoFar;  // # of total boxes entered so far
     unsigned int  numBoxesIter;   // # of boxes entered in the current interaction
+
+    int isStopCond;  // stopping condition
 
     ///////////////////// CLP variables /////////////////////
     ClpSimplex       modelClp;   // CLP model

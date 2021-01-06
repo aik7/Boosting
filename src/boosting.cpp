@@ -73,9 +73,8 @@ namespace boosting {
   void Boosting::train(const unsigned int& numIter,
                        const unsigned int& greedyLevel) {
 
-    int isStopCond = 0;
-
-    curIter=-1;
+    isStopCond = 0;
+    curIter    = -1;
 
     setBoostingParameters();  // set Boosting parameters
 
@@ -86,34 +85,15 @@ namespace boosting {
   if (uMPI::rank==0) {
 #endif //  ACRO_HAVE_MPI
 
-        // standadize data for L1 regularization
-      if (isStandData()) {
-        data->setDataStandY();  // set data->dataStandTrain
-        data->setDataStandX();
-      } else { // not to standerdise for debugging purpose
-        data->dataStandTrain = data->dataOrigTrain;
-      }
+      setDataStand();  // set data->dataStandTrain, standardize data
 
-      setInitRMP();  // set the initial RMP
+      setInitRMP();    // set the initial RMP
 
-#ifdef HAVE_GUROBI
-    if (isUseGurobi())
-      solveGurobiRMP();   // solve the RMP using Gurobi
-    else {
-#endif // HAVE_GUROBI
-      solveClpRMP();    // solve the RMP using CLP
-#ifdef HAVE_GUROBI
-    }
-#endif // HAVE_GUROBI
-
-      printRMPSolution();
+      solveRMP();      // solve RMP using CLP or Gurobi
 
       // if the option for evaluating each iteration is enabled
       // evaluate the model
-      if (isEvalEachIter()) {
-        errTrain = evaluateEachIter(TRAIN, data->dataOrigTrain);
-        errTest  = evaluateEachIter(TEST,  data->dataOrigTest);
-      }
+      if (isEvalEachIter()) evaluateModel();
 
 #ifdef ACRO_HAVE_MPI
   } // end if (uMPI::rank==0)
@@ -134,57 +114,35 @@ namespace boosting {
 #endif //  ACRO_HAVE_MPI
 
         // save the weights for the current iteration
-        if (isSaveWts()) saveWeights(curIter);
+        if (isSaveWts())           saveWeights(curIter);
 
-        if (isSaveAllRMASols()) setVecRMAObjVals();
+        if (isSaveAllRMASols())    setVecRMAObjVals();
 
         if (isStoppingCondition()) isStopCond = 1;
 
-  #ifdef ACRO_HAVE_MPI
-        // If we are the root process, send our data to everyone
-        for (int k = 0; k < uMPI::size; ++k)
-          if (k != 0)
-            MPI_Send(&isStopCond, 1, MPI_INT, k, 0, MPI_COMM_WORLD);
-    } // end if (uMPI::rank==0)
+#ifdef ACRO_HAVE_MPI
+  } // end if (uMPI::rank==0)
+#endif //  ACRO_HAVE_MPI
 
-    if (uMPI::rank==0) {
-  #endif //  ACRO_HAVE_MPI
+        setStoppingCondition();
 
-      if (isStopCond==1) break;
-
-      insertColumns(); // add RMA solutions and check duplicate
-
-      // map back from the discretized data into original
-      if (delta()!=-1) setOriginalBounds();
-
-#ifdef HAVE_GUROBI
-      if (isUseGurobi())
-        solveGurobiRMP();   // solve the RMP using Gurobi
-      else {
-#endif // HAVE_GUROBI
-        solveClpRMP();
-#ifdef HAVE_GUROBI
-      }
-#endif // HAVE_GUROBI
-
-      printRMPSolution();
-
-      if (isEvalEachIter()) { // if evalute the model each iteration
-        errTrain = evaluateEachIter(TRAIN, data->dataOrigTrain);
-        errTest  = evaluateEachIter(TEST,  data->dataOrigTest);
-        printBoostingErr();
-      } // end if evalute the model each iteration
+        if (isStopCond==1) break;
 
 #ifdef ACRO_HAVE_MPI
-  } else { // if MPI rank is not 0, receive the info about the stopping condition
+  if (uMPI::rank==0) {
+#endif //  ACRO_HAVE_MPI
 
-          // If we are a receiver process, receive the data from the root
-          MPI_Recv(&isStopCond, 1, MPI_INT, 0, 0, MPI_COMM_WORLD,
-                   MPI_STATUS_IGNORE);
+      insertColumns();  // insert columns using RMA solutions
 
-          if (isStopCond==1) break;
+      // map back from the discretized data into original
+      solveRMP();
 
-  } // save if MPI rank is not 0
+      if (delta()!=-1) setOriginalBounds();
+
+      if (isEvalEachIter()) evaluateModel();
+
+#ifdef ACRO_HAVE_MPI
+  } // end if (uMPI::rank==0)
 #endif //  ACRO_HAVE_MPI
 
       } // end for each column generation iteration
@@ -200,15 +158,7 @@ namespace boosting {
 
     // if eavluating the final iteration option is enabled
     // and  eavluating the final iteration option is disabled
-    if ( isEvalFinalIter() && !isEvalEachIter() ) {
-
-      // get train and tes errors
-      errTrain = evaluateAtFinal(TRAIN, data->dataOrigTrain);
-      errTest  = evaluateAtFinal(TEST,  data->dataOrigTest);
-
-      printBoostingErr();
-
-    } // end if
+    if ( isEvalFinalIter() && !isEvalEachIter() ) evaluateModel();
 
     saveGERMAObjVals();   // save Greedy and PEBBL RMA solutions for each iteration
 
@@ -219,6 +169,66 @@ namespace boosting {
 #endif //  ACRO_HAVE_MPI
 
   } // end trainData function
+
+
+  // evalute the model each iteration
+  void Boosting::evaluateModel() {
+    errTrain = evaluateEachIter(TRAIN, data->dataOrigTrain);
+    errTest  = evaluateEachIter(TEST,  data->dataOrigTest);
+    printBoostingErr();
+  } // end evaluateModel function
+
+
+  void Boosting::setStoppingCondition() {
+
+    if (uMPI::rank==0) {
+
+      // If we are the root process, send our data to everyone
+      for (int k = 0; k < uMPI::size; ++k)
+        if (k != 0)
+          MPI_Send(&isStopCond, 1, MPI_INT, k, 0, MPI_COMM_WORLD);
+
+    } else { // if MPI rank is not 0, receive the info about the stopping condition
+
+        // If we are a receiver process, receive the data from the root
+        MPI_Recv(&isStopCond, 1, MPI_INT, 0, 0, MPI_COMM_WORLD,
+                  MPI_STATUS_IGNORE);
+
+    } // save if MPI rank is not 0
+
+  } // end setIsStopCond function
+
+
+  // solve RMP using CLP or Gurobi
+  void Boosting::solveRMP() {
+
+#ifdef HAVE_GUROBI
+    if (isUseGurobi())
+      solveGurobiRMP();   // solve the RMP using Gurobi
+    else {
+#endif // HAVE_GUROBI
+      solveClpRMP();    // solve the RMP using CLP
+#ifdef HAVE_GUROBI
+    }
+#endif // HAVE_GUROBI
+
+    printRMPSolution();
+
+  } // end solveRMP function
+
+
+  // set dataStandTrain
+  void Boosting::setDataStand() {
+
+    // standadize data for L1 regularization
+    if (isStandData()) {
+      data->setDataStandY();  // set data->dataStandTrain
+      data->setDataStandX();
+    } else { // not to standerdise for debugging purpose
+      data->dataStandTrain = data->dataOrigTrain;
+    }
+
+  } // end setDataStand function
 
 
   // call CLP to solve Master Problems
@@ -245,7 +255,7 @@ namespace boosting {
       modelClp.writeMps(clpFile);
     }
 
-    if (debug>=1) 
+    if (debug>=1)
       printRMPCheckInfo();
 
   } // end function Boosting::solveRMP()
