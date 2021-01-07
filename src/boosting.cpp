@@ -323,6 +323,25 @@ namespace boosting {
   } // end setIsStopCond function
 
 
+  // set vecIsObjValPos by box idx (k) and
+  // isPosObjVal (wehther or not the current solution is positive)
+  void Boosting::setVecIsObjValPos(const unsigned int &k,
+                               const bool &isPosObjVal) {
+    vecIsObjValPos[numBoxesSoFar+k] = isPosObjVal;
+    DEBUGPR(1, cout << "vecIsObjValPos: " << vecIsObjValPos );
+  } // enf setVecIsObjValPos function
+
+
+  void Boosting::setMatIntBounds(const unsigned int &k,
+                             const vector<unsigned int> &lower,
+                             const vector<unsigned int> &upper) {
+    matIntLower[numBoxesSoFar+k] = lower;
+    matIntUpper[numBoxesSoFar+k] = upper;
+    DEBUGPR(1, cout << "matIntLower: " << matIntLower );
+    DEBUGPR(1, cout << "matIntUpper: " << matIntUpper );
+  } // end setMatIntBounds function
+
+
   // set matIsCvdObsByBox, whether or not each observation is vecCovered
   // by the lower and upper bounds, a and b of the current box k
   void Boosting::setMatIsCvdObsByBox(const unsigned int &k) {
@@ -356,22 +375,6 @@ namespace boosting {
     DEBUGPR(1, cout << "matIsCvdObsByBox: " << matIsCvdObsByBox << "\n" );
 
   } // end setMatIsCvdObsByBox function
-
-
-  // set vecIsObjValPos by box idx (k) and
-  // isPosObjVal (wehther or not the current solution is positive)
-  void Boosting::setVecIsObjValPos(const unsigned int &k,
-                               const bool &isPosObjVal) {
-    vecIsObjValPos[numBoxesSoFar+k] = isPosObjVal;
-  } // enf setVecIsObjValPos function
-
-
-  void Boosting::setMatIntBounds(const unsigned int &k,
-                             const vector<unsigned int> &lower,
-                             const vector<unsigned int> &upper) {
-    matIntLower[matIntLower.size()-numBoxesIter+k] = lower;
-    matIntUpper[matIntUpper.size()-numBoxesIter+k] = upper;
-  } // end setVecIsObjValPos function
 
 
   // set original lower and upper bounds matrices

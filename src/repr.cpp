@@ -488,9 +488,10 @@ namespace boosting {
       } // end debug
     } // end if not the first iteration
 
-    vecIsObjValPos.resize(vecIsObjValPos.size()+numBoxesIter);
-    matIntUpper.resize(matIntUpper.size()+numBoxesIter);
-    matIntLower.resize(matIntLower.size()+numBoxesIter);
+    vecIsObjValPos.  resize(numBoxesSoFar+numBoxesIter);
+    matIntUpper.     resize(numBoxesSoFar+numBoxesIter);
+    matIntLower.     resize(numBoxesSoFar+numBoxesIter);
+    matIsCvdObsByBox.resize(numBoxesSoFar+numBoxesIter);
 
     setVecIsObjValPos(0, grma->isPostObjVal());
 
@@ -521,13 +522,13 @@ namespace boosting {
 
       if (matIsCvdObsByBox[numBoxesSoFar+k][i]) { // if this observatoin is covered
 
-        if (vecIsObjValPos[numBoxesSoFar+k]) { // if it's positive box variable
-      	  columnInsert[i]        = 1;
-      	  columnInsert[numObs+i] = -1;
+        if (vecIsObjValPos[numBoxesSoFar+k]) { // if it's a positive box variable
+          columnInsert[i]        = 1;
+          columnInsert[numObs+i] = -1;
         } else {  // if not a box variable
-      	  columnInsert[i]        = -1;
-      	  columnInsert[numObs+i] = 1;
-      	} // end if positive or negative box variable
+          columnInsert[i]        = -1;
+          columnInsert[numObs+i] = 1;
+        } // end if positive or negative box variable
 
       } else { // if this observation is not covered by k-th box
         columnInsert[i]        = 0;
