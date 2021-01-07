@@ -247,19 +247,19 @@ namespace boosting {
 
     /*************************** Gurobi variables ******************/
 #ifdef HAVE_GUROBI
-    GRBEnv      env;
-    GRBModel    modelGrb;
-    GRBLinExpr 	lhs;
-    GRBConstr* 	constr;
-    GRBVar* 		vars;
-    GRBColumn 	col;
+    GRBEnv      env;       // Gurobi environment
+    GRBModel    modelGrb;  // Gurobi model
+    GRBLinExpr  lhs;       // Gurobi linear variables
+    GRBConstr*  constr;    // Gurobi constraints
+    GRBVar*     vars;      // Gurobi variables
+    GRBColumn   col;
     GRBQuadExpr obj;
 #endif // HAVE_GUROBI
 
     // store solution infomation for the master problem
     double *vecPrimalVars;     // dual variables
     double *vecDualVars;       // primal variables
-    double primalSol;	        // primal solution value
+    double primalObjVal;       // primal solution value
 
     ///////////////////// For RMA /////////////////////
 
@@ -317,11 +317,8 @@ namespace boosting {
 
     } // end getDataTime function
 
-
   }; // end Boosting class
 
-
 } // namespace boosting
-
 
 #endif  // Boosting_h

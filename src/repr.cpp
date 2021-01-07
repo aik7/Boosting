@@ -33,6 +33,8 @@ namespace boosting {
   else {
 #endif // HAVE_GUROBI
 
+    /************************* using CLP **************************/
+
     setClpParameters();      // set CLP parameters
 
     setInitRMPObjective();   // set Objective
@@ -43,7 +45,7 @@ namespace boosting {
 
     setConstraintsLHS();     // set the left hand side of the constraints
 
-    setInitRMPClpModel();    // set the CLP model
+    setInitRMPClpModel();    // set the RMP using CLP
 
 #if HAVE_GUROBI
   } // end Gurobi RMP
@@ -113,7 +115,7 @@ namespace boosting {
     } // end if C is not 0
 
     if (D != 0) { // if D is not 0
-      for (j = 1; j < 2*numAttrib+1; ++j)	// for linear square coefficients
+      for (j = 1; j < 2*numAttrib+1; ++j) // for linear square coefficients
         obj += D*vars[j]*vars[j];
     } // end if D is not 0
 
@@ -122,7 +124,7 @@ namespace boosting {
       else if (P==2) obj += vars[j]*vars[j];
     }
 
-    modelGrb.setObjective(obj);
+    modelGrb.setObjective(obj); // optimization sense = None, minimization
     modelGrb.update();
     modelGrb.write("master.lp");
     modelGrb.getEnv().set(GRB_IntParam_OutputFlag, 0);  // not to print out GUROBI
@@ -167,7 +169,7 @@ namespace boosting {
     // columns to insert
     columnInsert = new double[numRows];
 
-    modelClp.setOptimizationDirection(1); // maximization
+    modelClp.setOptimizationDirection(1); // 1:minimize, -1:maximize
 
     // to turn off some output, 0 gives nothing and each increase
     // in value switches on more messages.
@@ -274,19 +276,22 @@ namespace boosting {
 
         if (j==0) // for the constant terms
           elements[idxClp] = (i < numObs) ? 1.0 : -1.0;
+
         else if (j<1+numAttrib) {    // for positive linear variables
           if (i < numObs)
             elements[idxClp] = data->dataStandTrain[idx].X[j-1];  // -1 for constant term
           else
             elements[idxClp] = -data->dataStandTrain[idx].X[j-1];
+
         } else if (j<1+2*numAttrib) { // for negative linear variables
           if (i < numObs)
             elements[idxClp] = -data->dataStandTrain[idx].X[j-1-numAttrib];
           else
             elements[idxClp] = data->dataStandTrain[idx].X[j-1-numAttrib];
-        } else { // for oservation error variables, episilon_i
+
+        } else { // for observation error variables, episilon_i
           if (j-1-2*numAttrib==idx)
-            elements[idxClp] = (j < numObs) ? 1.0 : -1.0;
+            elements[idxClp] = -1;
           else
             elements[idxClp] = 0;
         }

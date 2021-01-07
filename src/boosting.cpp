@@ -26,6 +26,8 @@ namespace boosting {
 
     resetBoosting(); // reset Boosting
 
+    cout << (isUseGurobi() ? "Gurobi" : "CLP") << " solver\n";
+
     if (prma!=NULL) prma->printConfiguration(); // TODO: do not know why...
 
   } // end Boosting constructor
@@ -51,10 +53,7 @@ namespace boosting {
     matOrigLower.clear();   // matrix containes lower bound of box in original value
     matOrigUpper.clear();   // matrix containes upper bound of box in original value
 
-    // if (isEvalEachIter()) { // evaluate each iteration
     matIsCvdObsByBox.clear();
-    // matIsCvdObsByB    ox.resize(numObs);
-    // } // end if eacluate each iteration
 
     // if the isSaveAllRMASols is enabled,
     // allocate vecERMAObjVal and vecGRMAObjVal
@@ -170,33 +169,18 @@ namespace boosting {
 
   } // end trainData function
 
+  // set dataStandTrain
+  void Boosting::setDataStand() {
 
-  // evalute the model each iteration
-  void Boosting::evaluateModel() {
-    errTrain = evaluateEachIter(TRAIN, data->dataOrigTrain);
-    errTest  = evaluateEachIter(TEST,  data->dataOrigTest);
-    printBoostingErr();
-  } // end evaluateModel function
+    // standadize data for L1 regularization
+    if (isStandData()) {
+      data->setDataStandY();  // set data->dataStandTrain
+      data->setDataStandX();
+    } else { // not to standerdise for debugging purpose
+      data->dataStandTrain = data->dataOrigTrain;
+    }
 
-
-  void Boosting::setStoppingCondition() {
-
-    if (uMPI::rank==0) {
-
-      // If we are the root process, send our data to everyone
-      for (int k = 0; k < uMPI::size; ++k)
-        if (k != 0)
-          MPI_Send(&isStopCond, 1, MPI_INT, k, 0, MPI_COMM_WORLD);
-
-    } else { // if MPI rank is not 0, receive the info about the stopping condition
-
-        // If we are a receiver process, receive the data from the root
-        MPI_Recv(&isStopCond, 1, MPI_INT, 0, 0, MPI_COMM_WORLD,
-                  MPI_STATUS_IGNORE);
-
-    } // save if MPI rank is not 0
-
-  } // end setIsStopCond function
+  } // end setDataStand function
 
 
   // solve RMP using CLP or Gurobi
@@ -217,21 +201,8 @@ namespace boosting {
   } // end solveRMP function
 
 
-  // set dataStandTrain
-  void Boosting::setDataStand() {
-
-    // standadize data for L1 regularization
-    if (isStandData()) {
-      data->setDataStandY();  // set data->dataStandTrain
-      data->setDataStandX();
-    } else { // not to standerdise for debugging purpose
-      data->dataStandTrain = data->dataOrigTrain;
-    }
-
-  } // end setDataStand function
-
-
   // call CLP to solve Master Problems
+  // and get objective value, primal and dual variables
   void Boosting::solveClpRMP() {
 
     DEBUGPR(10, cout <<  "Solve Restricted Master Problem!\n");
@@ -241,7 +212,7 @@ namespace boosting {
     modelClp.primal();
     // modelClp.dual();  //  invoke the dual simplex method.
 
-    primalSol     = modelClp.objectiveValue();        // get objective value
+    primalObjVal  = modelClp.objectiveValue();        // get objective value
     vecPrimalVars = modelClp.primalColumnSolution();  // ger primal variables
     vecDualVars   = modelClp.dualRowSolution();       // dualColumnSolution();
 
@@ -266,49 +237,90 @@ namespace boosting {
   // reset Gurobi for the next column generation iteration
   void Boosting::resetGurobi() {
 
-    for (unsigned int i=0; i<numRows; ++i)
+    // remove constraints
+    for (unsigned int i=0; i<numRows; ++i) // for each row
       modelGrb.remove(modelGrb.getConstrs()[i]);
 
-    for (unsigned int j=0; j<numCols; ++j)
+    // remote variables
+    for (unsigned int j=0; j<numCols; ++j) // for each column
       modelGrb.remove(modelGrb.getVars()[j]);
 
-    modelGrb.reset();
-    modelGrb.update();
+    modelGrb.reset();  // reset the Gurobi model
+    modelGrb.update(); // update the Gurobi model
 
   } // end resetGurobi function
 
 
   // call GUROBI to solve Master Problems
+  // and get objective value, primal and dual variables
   void Boosting::solveGurobiRMP() {
 
     // DEBUGPRX(10, data, "Solve Restricted Master Problem!\n");
 
     tc.startTime();
 
-    modelGrb.optimize();
+    modelGrb.optimize();  // run the Gurobi solver
 
-    if (isPrintBoost()) modelGrb.write("master.lp");
+    vecPrimalVars = new double[numCols];  // allocate space for primal variables
+    vecDualVars   = new double[numRows];  // allocate space for dual variables
 
-    vars   = modelGrb.getVars();
-    constr = modelGrb.getConstrs();
+    vars   = modelGrb.getVars();     // get all variables
+    constr = modelGrb.getConstrs();  // get all constraints
 
-    vecPrimalVars = new double[numCols];  // vecPrimal.resize(numCols);
-    vecDualVars   = new double[numRows];  // vecDual.resize(numRows);
-
+    // if Gurobi status is optimal, get the solutions
     if (modelGrb.get(GRB_IntAttr_Status) == GRB_OPTIMAL) {
-      primalSol = modelGrb.get(GRB_DoubleAttr_ObjVal);
+
+      primalObjVal = modelGrb.get(GRB_DoubleAttr_ObjVal);
+
+      // get primal variables
       for (unsigned int j = 0; j < numCols; ++j)  // for each column
         vecPrimalVars[j] = vars[j].get(GRB_DoubleAttr_X);
+
+      // get dual variables
       for (unsigned int i = 0; i < numRows; ++i)  // for each row
         vecDualVars[i]   = constr[i].get(GRB_DoubleAttr_Pi);
+
+    } // end if Gurobi status is optimal
+
+    if (isPrintBoost()) {
+      int iter;
+      char grbFile[12];
+      strcpy(grbFile, "grb_");
+      iter = (curIter>getNumIterations()) ? -1 : curIter;
+      strcat(grbFile, to_string(iter).c_str());
+      strcat(grbFile, ".mps"); // .lp, .mps, or .rew
+      modelGrb.write(grbFile);
     }
 
-    // DEBUGPRX(0, data, " Master Solution: " << primalSol << "\t");
+    if (debug>=1)
+      printRMPCheckInfo();
+
+    // DEBUGPRX(0, data, " Master Solution: " <<primalObjVal << "\t");
     // printRMPSolution();
 
   } // end function Boosting::solveMaster()
 
 #endif // HAVE_GUROBI
+
+
+  void Boosting::setStoppingCondition() {
+
+    if (uMPI::rank==0) {
+
+      // If we are the root process, send our data to everyone
+      for (int k = 0; k < uMPI::size; ++k)
+        if (k != 0)
+          MPI_Send(&isStopCond, 1, MPI_INT, k, 0, MPI_COMM_WORLD);
+
+    } else { // if MPI rank is not 0, receive the info about the stopping condition
+
+      // If we are a receiver process, receive the data from the root
+      MPI_Recv(&isStopCond, 1, MPI_INT, 0, 0, MPI_COMM_WORLD,
+                MPI_STATUS_IGNORE);
+
+    } // save if MPI rank is not 0
+
+  } // end setIsStopCond function
 
 
   // set matIsCvdObsByBox, whether or not each observation is vecCovered
@@ -541,12 +553,20 @@ namespace boosting {
 
   } // end checkObjValue function
 
+
+    // evalute the model each iteration
+    void Boosting::evaluateModel() {
+      errTrain = evaluateEachIter(TRAIN, data->dataOrigTrain);
+      errTest  = evaluateEachIter(TEST,  data->dataOrigTest);
+      printBoostingErr();
+    } // end evaluateModel function
+
   /************************ Printing functions ************************/
 
   // print RMP objectiva value and CPU run time
   void Boosting::printRMPSolution() {
     cout << fixed << setprecision(4)
-        << "Master Solution: " << primalSol << "\t";
+        << "Master Solution: " <<primalObjVal << "\t";
     cout << fixed << setprecision(2)
         << " CPU Time: " << tc.getCPUTime() << "\n";
   } // end printRMPSolution function
