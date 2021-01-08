@@ -50,7 +50,7 @@ cd Boosting
 sh scripts/build.sh
 ```
 
-## Example commands to run RMA:
+## Example run commands:
 
 ### Serial implementation
 ```
