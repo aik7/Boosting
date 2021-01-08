@@ -36,7 +36,7 @@ REPR is a prediction algorithm using linear regression with both linear and boxe
 ## The description and user guide of Boosting algorithms
 * [Presentation](https://github.com/aik7/Boosting/blob/master/Boosting.pdf)
 * User Guide
-* Please find information about the subprocedure of [RMA](https://github.com/aik7/RMA)
+* Information about [RMA](https://github.com/aik7/RMA) sub-package
 
 ## How to download and build Boosting algorithm
 
