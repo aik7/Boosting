@@ -15,6 +15,7 @@
 
 #include "Time.h"
 #include "boosting.h"
+#include "utility.h"
 
 
 using namespace std;

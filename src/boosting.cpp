@@ -621,7 +621,7 @@ namespace boosting {
 
     for (unsigned int i=0; i < numIdx; ++i) { // for each observation
 
-      if (isTest) os << origData[i].y  << " " << predTest[i] << "\n";
+      if (isTest) os << origData[i].y << " " << predTest[i] << "\n";
       else        os << origData[i].y << " " << predTrain[i] << "\n";
 
     } // end for each observation

@@ -47,6 +47,10 @@ public:
   // set predicted y-value of each observation
   void setVecPredY();
 
+  void standerdizeX();
+
+  void mapToOriginalY();
+
   // return vecPredY (retun size: # of observations)
   vector<double> predict();
 
@@ -54,7 +58,9 @@ public:
 
   void printVecPredY ()     { cout << "vecPredY: " << vecPredY; }
 
-  void printVecCoeff ()     { cout << "vecCoeff: " << vecCoeff; }
+  void printVecCoeffLinear () { cout << "vecCoeffLinear: " << vecCoeffLinear; }
+
+  void printVecCoeffBox    () { cout << "vecCoeffBox: "    << vecCoeffBox; }
 
   void printMatTestDataX () { cout << "matTestDataX: " << matTestDataX; }
 
@@ -72,8 +78,16 @@ private:
   // a vector of predicted y-values (size: # of observations)
   vector<double>          vecPredY;
 
-  // a vector of cofficients of the REPR model (size: # of REPR varaiebls)
-  vector<double>          vecCoeff;
+  // bias term for the REPR model
+  double                  bias;
+
+  // a vector which contains the cofficients of the linear variables
+  // in the REPR model (size: # of linear varaiebls)
+  vector<double>          vecCoeffLinear;
+
+  // a vector which contains the cofficients of the box variables
+  // in the REPR model (size: # of box varaiebls)
+  vector<double>          vecCoeffBox;
 
   // X matrix for testing (size: [# of observations] * [# of attributes])
   vector<vector<double> > matTestDataX;
@@ -87,6 +101,10 @@ private:
   // (size: [# of boxes] * [# of attributes])
   vector<vector<double> > matLower;
   vector<vector<double> > matUpper;
+
+  vector<double>          vecAvgX;  // avg of X
+  vector<double>          vecSdX;   // sd of X
+  double avgY, sdY;                 // avg and sd of Y
 
 }; // end TrainedREPR class
 

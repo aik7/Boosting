@@ -28,7 +28,6 @@ REPR is a prediction algorithm using linear regression with both linear and boxe
 
 ### Optional packages
 * (Optional): [Gurobi](http://www.gurobi.com/)
-* (Optional): R with RuleFit, randomForest, gbm, and fastAdaboost packages
 
 ### Note
 * The build was tested on Ubuntu 18.04 (Bionic) as shown in [our TravisCI file](https://github.com/aik7/Boosting/blob/devel/.travis.yml)
@@ -50,6 +49,10 @@ cd Boosting
 sh scripts/build.sh
 ```
 
+* If you want to use Gurobi to solve the restricted master problem,
+set the Gurobi directory in the cmake file
+and use `-DENABLE_GUROBI=true` when you cmake.
+
 ## Example run commands:
 
 ### Serial implementation
@@ -57,12 +60,19 @@ sh scripts/build.sh
 ./build/boosting <data_filename>
 ```
 
+* You can use a sample data, `./data/servo.data` for `<data_filename>`.
+
 ### Parallel implementation
 ```
 mpirun -np 4 ./build/boosting <data_filename>
 ```
 
-Please read the user guide about how to use parameters for the Boosting solver.
+### Using parameters
+```
+./build/boosting --numIterations=10 <data_filename>
+```
+
+* You can set the number of boosting iterations using `numIterations`.
 
 ## Class Diagram
 
