@@ -5,6 +5,7 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include <cmath>
 
 using namespace std;
 
@@ -29,6 +30,7 @@ public:
   TrainedREPR(int argc, char **argv){
     readSavedModel(argc, argv);  // read the saved model
     readX(argc, argv);           // read X-values
+    readY(argc, argv);           // read Y-values
   }
 
   ~TrainedREPR(){}
@@ -38,6 +40,9 @@ public:
 
   // read X-values
   void readX(int argc, char **argv);
+
+  // read Y-values
+  void readY(int argc, char **argv);
 
   // set matIsObsCovered (info of each observation is covered by each box)
   void setMatIsObsCovered();
@@ -55,9 +60,11 @@ public:
   // return vecPredY (retun size: # of observations)
   vector<double> predict();
 
+  void computeMSE();
+
   /******************* print functions ******************/
 
-  void printVecPredY ()     { cout << "vecPredY: " << vecPredY; }
+  void printVecPredY ()       { cout << "vecPredY: " << vecPredY; }
 
   void printVecCoeffLinear () { cout << "vecCoeffLinear: " << vecCoeffLinear; }
 
@@ -70,6 +77,8 @@ public:
   void printMatLower ()     { cout << "matLower: " << matLower; }
 
   void printMatUpper ()     { cout << "matUpper: " << matUpper; }
+
+  void printMSE ()          { cout << "MSE: " << mse << "\n"; }
 
 private:
 
@@ -93,6 +102,9 @@ private:
   // X matrix for testing (size: [# of observations] * [# of attributes])
   vector<vector<double> > matTestDataX;
 
+  // Y values for testing (size: [# of observations])
+  vector<double >        vecTestDataY;
+
   // a matrix includes info of whether or not
   // each observation is covered by each box
   // (size: [# of boxes] * [# of observations])
@@ -106,6 +118,8 @@ private:
   vector<double>          vecAvgX;  // avg of X
   vector<double>          vecSdX;   // sd of X
   double avgY, sdY;                 // avg and sd of Y
+
+  double mse;
 
 }; // end TrainedREPR class
 

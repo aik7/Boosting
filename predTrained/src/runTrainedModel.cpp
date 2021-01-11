@@ -109,12 +109,12 @@ void TrainedREPR::readSavedModel(int argc, char **argv) {
 
   s.close(); // close the data file
 
-  cout << "bias: "    << bias << "\n";
-  printVecCoeffLinear();
-  printVecCoeffBox();
-
-  printMatLower();
-  printMatUpper();
+  // cout << "bias: "    << bias << "\n";
+  // printVecCoeffLinear();
+  // printVecCoeffBox();
+  //
+  // printMatLower();
+  // printMatUpper();
 
 } // end readSavedModel function
 
@@ -171,6 +171,43 @@ void TrainedREPR::readX(int argc, char **argv) {
       s >> matTestDataX[i][j]; // read X_{ij}
 
     s >> tmp;
+
+  } // end for each observation
+
+  s.close(); // close the data file
+
+  // printMatTestDataX();
+
+} // end readX function
+
+
+// read Y-values from a file
+void TrainedREPR::readY(int argc, char **argv) {
+
+  string line;
+  double tmp;
+
+  cout << "reading the test data...\n";
+  ifstream s(argv[2]);              // open the data file
+
+  // check whether or not the file is opened correctly
+  if (!s) {
+    cerr << "Could not open file \"" << argv[2] << "\n";
+    return;
+  }
+
+  // read data from the data file
+  if (argc <= 2) {
+    cerr << "No filename specified\n";
+    return;
+  }
+
+  vecTestDataY.resize(numObs);  // resize the row of matTestDataX
+
+  for (int i = 0; i < numObs; ++i) { // for each observation
+
+    for (int j = 0; j < numAttrib+1; j++)  // for each attribute
+      s >> vecTestDataY[i]; // read y_{i}
 
   } // end for each observation
 
@@ -248,9 +285,24 @@ void TrainedREPR::setVecPredY() {
 
   }  // end for each observation
 
-  printVecPredY();
+  // printVecPredY();
 
 }  // end setVecPredY function
+
+
+// compute MSE
+void TrainedREPR::computeMSE() {
+
+  // for (unsigned int i=0; i<numObs; ++i)
+  //   cout << vecPredY[i] << " " << vecTestDataY[i] << "\n";
+
+  mse = 0;
+  for (unsigned int i=0; i<numObs; ++i)
+    mse += pow(vecPredY[i] - vecTestDataY[i], 2);
+
+  mse /= numObs;
+
+}
 
 
 // predict y value using X (return the vector of predicted y-values)
