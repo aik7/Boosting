@@ -929,10 +929,12 @@ void REPR::saveModel() {
   os << data->sdY;
 
   os << "\n\nthe_average_value_of_each_attribute:\n";
-  os << data->vecAvgX;
+  for (unsigned int j=0; j<numAttrib; ++j)
+    os << data->vecAvgX[j] << " ";
 
   os << "\n\nthe_standard_deviation_of_each_attribute:\n";
-  os << data->vecSdX;
+  for (unsigned int j=0; j<numAttrib; ++j)
+    os << data->vecSdX[j] << " ";
 
   os << "\n\n" ;  // go to the next line
 
@@ -943,8 +945,25 @@ void REPR::saveModel() {
       os << "Box " << k << "_a: " << matOrigLower[k] << "\n" ;
       os << "Box " << k << "_b: " << matOrigUpper[k] << "\n" ;
     } else {
-      os << "Box_" << k << "_a: " << matIntLower[k] << "\n" ;
-      os << "Box_" << k << "_b: " << matIntUpper[k] << "\n" ;
+
+      os << "Box_" << k << "_a: " ;
+      for (unsigned int j=0; j<numAttrib; ++j) {
+        if (matIntLower[k][j]==0)
+          os << -getInf() << " ";
+        else
+          os << matIntLower[k][j] << " ";
+      }
+
+      os << "\nBox_" << k << "_b: " ;
+      for (unsigned int j=0; j<numAttrib; ++j) {
+        if (matIntUpper[k][j]==data->vecNumDistVals[j]-1)
+          os << getInf() << " ";
+        else
+          os << matIntUpper[k][j] << " ";
+      }
+
+      os << "\n" ;
+
     } // end if
 
   } // end for each Boosting iteration

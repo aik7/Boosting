@@ -49,13 +49,13 @@ void TrainedREPR::readSavedModel(int argc, char **argv) {
   s >> tmp >> sdY;
 
   // skip first few strings of each line
-  s >> tmp >> tmp >> tmp;
+  s >> tmp;
   vecAvgX.resize(numAttrib);
   for (unsigned int j = 0; j < numAttrib; ++j)  // for each coefficient
     s >> vecAvgX[j];
 
   // skip first few strings of each line
-  s >> tmp >> tmp >> tmp;
+  s >> tmp;
   vecSdX.resize(numAttrib);
   for (unsigned int j = 0; j < numAttrib; ++j)  // for each coefficient
     s >> vecSdX[j];
@@ -63,36 +63,45 @@ void TrainedREPR::readSavedModel(int argc, char **argv) {
   /************************** read box info *******************/
   // resize the lower and upper bounds matrices
   matLower.resize(numBox);
+  matUpper.resize(numBox);
 
   // set matLower by reading from the file
   for (unsigned int k=0; k<numBox; ++k) { // for each box
 
     // skip first few strings of each line
-    s >> tmp >> tmp >> tmp;
+    s >> tmp;
 
     // set the dimension of lower bounds for each observations
     matLower[k].resize(numAttrib);
 
-    for (unsigned int j=0; j<numAttrib; ++j)  // for each attribute
-      s >> matLower[k][j];
+    for (unsigned int j=0; j<numAttrib; ++j) { // for each attribute
+
       // set the lower bound of observation i and its attribute j
+      s >> tmp;
 
-  } // end for each box
+      if (tmp=="-inf")
+        matLower[k][j] = -numeric_limits<double>::infinity();
+      else
+        matLower[k][j] = stod(tmp);
 
-  matUpper.resize(numBox);
-
-  // set matUpper by reading from the file
-  for (unsigned int k=0; k<numBox; ++k) { // for each box
+    } // end for each attribute
 
     // skip first few strings of each line
-    s >> tmp >> tmp >> tmp;
+    s >> tmp;
 
     // set the dimension of lower bounds for each observations
     matUpper[k].resize(numAttrib);
 
-    for (unsigned int j=0; j<numAttrib; ++j) // for each attribute
-      s >> matUpper[k][j];
+    for (unsigned int j=0; j<numAttrib; ++j) { // for each attribute
+
       // set the upper bound of observation i and its attribute j
+      s >> tmp;
+
+      if (tmp=="inf")
+        matUpper[k][j] = numeric_limits<double>::infinity();
+      else
+        matUpper[k][j] = stod(tmp);
+    } // end for each attribute
 
   } // end for each box
 
@@ -100,12 +109,12 @@ void TrainedREPR::readSavedModel(int argc, char **argv) {
 
   s.close(); // close the data file
 
-  // cout << "bias: "    << bias << "\n";
-  // printVecCoeffLinear();
-  // printVecCoeffBox();
+  cout << "bias: "    << bias << "\n";
+  printVecCoeffLinear();
+  printVecCoeffBox();
 
-  // printMatLower();
-  // printMatUpper();
+  printMatLower();
+  printMatUpper();
 
 } // end readSavedModel function
 
@@ -239,7 +248,7 @@ void TrainedREPR::setVecPredY() {
 
   }  // end for each observation
 
-  // printVecPredY();
+  printVecPredY();
 
 }  // end setVecPredY function
 
