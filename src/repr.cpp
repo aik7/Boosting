@@ -1,5 +1,4 @@
 /*
- *  File name:   repr.cpp
  *  Author:      Ai Kagawa
  *  Description: a source file for REPR class
  */
@@ -8,447 +7,642 @@
 
 namespace boosting {
 
-  ///////////////////////// Training methods /////////////////////////
 
+  // set REPR parameters
   void REPR::setBoostingParameters() {
+    P = 1;
     C = getCoefficientC();
     D = 0; //getCoefficientD();
     E = getCoefficientE();
     F = 0; //getCoefficientF();
-  }
+  } // end setBoostingParameters function
 
 
-  bool REPR::isStoppingCondition() {
-    if (greedyLevel==EXACT) {
-      if (rma->incumbentValue <= E + .00001) {
-        ucout << "Stopping Condition!\n";
-        return true;
-      }
-    }
-    if (greedyLevel==Greedy) {
-      if (curIter>0 && grma->L == matIntLower[curIter-1] &&
-	  grma->U == matIntUpper[curIter-1] ) {
-	ucout << "Stopping Condition!\n";
-	return true;
-      }
-    }
-    return false;
-  }
+  /****************** set initial RMP in CLP (begin) ***********************/
 
-
-  // set up for the initial master problem
+  // set the initial restricted master problem (RMP)
   void REPR::setInitRMP() {
 
-    DEBUGPR(10, cout << "Setup Initial Restricted Master Problem!" << "\n");
+    DEBUGPR(10, cout << "Set Initial Restricted Master Problem!" << "\n");
 
-    int i, j, k, obs;
-    numCols = 1+2*NumAttrib+NumObs; // vecPrimalVars.size();
-    numRows = isLPBoost() ? NumObs+1 : 2*NumObs ; // //NumVar+1;	// +1 for constant term
+    setInitRMPVariables();   // initialize variables for RMP
 
-    objValue    = new double[numCols];
-    lowerColumn = new double[numCols];
-    upperColumn = new double[numCols];
-    lowerRow    = new double[numRows];
-    upperRow    = new double[numRows];
-    dataWts     = new double[NumObs];
+#ifdef HAVE_GUROBI
+  if ( isUseGurobi() )
+    setGurobiRMP();
+  else {
+#endif // HAVE_GUROBI
 
-    colIndex    = new int[numRows];
-    rowIndex    = new int[numCols];
-    for (i=0; i<numRows; ++i)
-      colIndex[i] = i;
-    for (i=0; i<numCols; ++i)
-      rowIndex[i] = i;
+    /************************* using CLP **************************/
 
-    //matrix.setDimensions(0, numCols);
+    setClpParameters();      // set CLP parameters
 
-    model.setOptimizationDirection(1);               // maximization
-    model.setLogLevel(0); // to turn off some output, 0 gives nothing and each increase in value switches on more messages.
-    //matrix.setDimensions(numRows, numCols); // setDimensions (int numrows, int numcols)
+    setInitRMPObjective();   // set Objective
 
-    // Create space for 3 columns and 10000 rows
-    //int numberRows = 10000;
-    //int numberColumns = 3;
-    // This is fully dense - but would not normally be so
-    unsigned long long int numberElements = numRows * numCols;
-    // Arrays will be set to default values
-    model.resize(numRows, numCols);
+    setInitRMPColumnBound(); // set column bounds
 
-    double * elements      = new double [numberElements];
-    CoinBigIndex * starts  = new CoinBigIndex [numCols+1];
-    int * rows             = new int [numberElements];;
-    int * lengths          = new int[numCols];
-    // Now fill in - totally unsafe but ....
-    // no need as defaults to 0.0 double * columnLower = model2.columnLower();
-    double * columnLower = model.columnLower();
-    double * columnUpper = model.columnUpper();
-    double * objective   = model.objective();
-    double * rowLower    = model.rowLower();
-    double * rowUpper    = model.rowUpper();
+    setInitRMPRowBound();    // set row bounds
 
-    // Columns - objective was packed
-    for (k = 0; k < numCols; k++) {
-      if (k==0)                 objective[k] = 0.0;
-      else if (k<1+2*NumAttrib) objective[k] = C;
-      else                      objective[k] = 1.0;
-    }
+    setConstraintsLHS();     // set the left hand side of the constraints
 
-    for (k = 0; k < numCols; k++) {
-      columnLower[k] = (k==0) ? -COIN_DBL_MAX : 0.0;
-      columnUpper[k] = COIN_DBL_MAX; //upperColumn[k];
-    }
+    setInitRMPClpModel();    // set the RMP using CLP
 
-    // Rows
-    for (k = 0; k < numRows; k++) {
-      if (k < NumObs) {
-	obs = data->vecTrainData[k];
-	rowLower[k] = -COIN_DBL_MAX; //-inf;
-	rowUpper[k] = data->standTrainData[obs].y;
-      } else {
-	obs = data->vecTrainData[k-NumObs];
-	rowLower[k] = -COIN_DBL_MAX; //-inf;
-	rowUpper[k] = -data->standTrainData[obs].y;
-      }
-    }
-
-    //double rowValue[] = {1.0, -5.0, 1.0};
-    CoinBigIndex put = 0;
-    for (j = 0; j < numCols; j++) { // for each column
-      starts[j]  = put;
-      lengths[j] = numRows;
-      for (int i = 0; i < numRows; ++i) { // for each row
-	int index = (i <NumObs) ? i : i-NumObs;
-	obs = data->vecTrainData[index];
-	rows[put] = i;
-	if (j==0)
-	  elements[put] = (i < NumObs) ? 1.0 : -1.0;
-	else if (j<1+NumAttrib)
-	  elements[put] = (i < NumObs) ? data->standTrainData[obs].X[j-1]
-	    : -data->standTrainData[obs].X[j-1];
-	else if (j<1+2*NumAttrib)
-	  elements[put] = (i < NumObs) ? -data->standTrainData[obs].X[j-1-NumAttrib]
-	    : data->standTrainData[obs].X[j-1-NumAttrib];
-	else // episilon (error variable)
-	  if (j-1-2*NumAttrib==index)  elements[put] = (j < NumObs) ? 1.0 : -1.0;
-	  else                         elements[put] = 0;
-	put++;
-      } // end for each row
-    } // end for each column
-    starts[numCols] = put;
-
-    if (debug>=100) {
-      cout << "element:\n";
-      put = 0;
-      for (j = 0; j < numCols; j++) {
-	for (int i = 0; i < numRows; ++i) {
-	  cout << elements[put] << " ";
-	  put++;
-	}
-	cout << endl;
-      }
-      cout << "end element:\n";
-    }
-
-    // assign to matrix
-    matrix = new CoinPackedMatrix(true, 0.0, 0.0);
-    matrix->assignMatrix(true, numRows, numCols, numberElements,
-			 elements, rows, starts, lengths);
-    //CoinPackedMatrix * matrix = new CoinPackedMatrix(true, 0.0, 0.0);
-    //matrix->assignMatrix(true, numRows, numCols, numberElements,
-    //                    elements, rows, starts, lengths);
-    ClpPackedMatrix *clpMatrix = new ClpPackedMatrix(matrix);
-    model.replaceMatrix(clpMatrix, true);
-    //printf("Time for 10000 addRow using hand written code is %g\n", CoinCpuTime() - time1);
-    // If matrix is really big could switch off creation of row copy
-    // model2.setSpecialOptions(256);
+#if HAVE_GUROBI
+  } // end Gurobi RMP
+#endif // HAVE_GUROBI
 
   }  // end function REPR::setInitialMaster()
 
 
-  void REPR::setDataWts() {
+#ifdef HAVE_GUROBI
 
-    int obs;
+  void REPR::setGurobiRMP() {
+
+    unsigned int i, j;
+    columnLower = new double[numCols];
+    columnUpper = new double[numCols];
+    char* vtype = NULL;
+
+    // DEBUGPRX(10, data, "Setup Initial Restricted Master Problem!" << "\n");
+
+    modelGrb.getEnv().set(GRB_IntParam_Method, 0);
+
+    columnLower[0] = -getInf(); // beta is free variable
+    for (i = 1; i < numCols; ++i) columnLower[i] = 0;
+    for (i = 0; i < numCols; ++i) columnUpper[i] = getInf();
+
+    // Add variables to the model
+    vars = modelGrb.addVars(columnLower, columnUpper,
+                            NULL, vtype, NULL, numCols);
+
+    // set constraits
+    for (i = 0; i < numObs; ++i) {
+      lhs = vars[0];   // beta_0
+      for (j = 0; j < numAttrib; ++j)      // beta^+_j
+        if (data->dataStandTrain[i].X[j] != 0)
+          lhs += data->dataStandTrain[i].X[j]*vars[1+j];
+      for (j = 0; j < numAttrib; ++j)      // beta^-_j
+        if (data->dataStandTrain[i].X[j] != 0)
+          lhs -= data->dataStandTrain[i].X[j]*vars[1+numAttrib+j];
+      for (j = 0; j < numObs; ++j)        // episilon
+        if (i==j)
+          lhs -= vars[1+2*numAttrib+j];
+
+      modelGrb.addConstr(lhs, GRB_LESS_EQUAL, data->dataStandTrain[i].y);
+    }
+
+    for (i = 0; i < numObs; ++i) {
+      lhs = -vars[0];                      // beta_0
+      for (j = 0; j < numAttrib; ++j)      // beta^+_j
+        if (data->dataStandTrain[i].X[j] != 0)
+          lhs -= data->dataStandTrain[i].X[j]*vars[1+j];
+      for (j = 0; j < numAttrib; ++j)      // beta^-_j
+        if (data->dataStandTrain[i].X[j] != 0)
+          lhs += data->dataStandTrain[i].X[j]*vars[1+numAttrib+j];
+      for (j = 0; j < numObs; ++j)         // episilon
+        if (i==j)
+          lhs -= vars[1+2*numAttrib+j];
+
+      modelGrb.addConstr(lhs, GRB_LESS_EQUAL, -data->dataStandTrain[i].y);
+    }
+
+    // set cobjectives
+    obj = 0;
+
+    if (C != 0) { // if C is not 0
+      for (j = 1; j < 2*numAttrib+1; ++j)
+        obj += C*vars[j];
+    } // end if C is not 0
+
+    if (D != 0) { // if D is not 0
+      for (j = 1; j < 2*numAttrib+1; ++j) // for linear square coefficients
+        obj += D*vars[j]*vars[j];
+    } // end if D is not 0
+
+    for (j = 2*numAttrib+1; j < numCols; ++j) {
+      if (P==1)      obj += vars[j];
+      else if (P==2) obj += vars[j]*vars[j];
+    }
+
+    modelGrb.setObjective(obj); // optimization sense = None, minimization
+    modelGrb.update();
+    modelGrb.write("master.lp");
+    modelGrb.getEnv().set(GRB_IntParam_OutputFlag, 0);  // not to print out GUROBI
+
+  } // end setGruobiRMP function
+
+#endif // HAVE_GUROBI
+
+
+  // set initial RMP variables
+  void REPR::setInitRMPVariables() {
+
+    // # of columns for RMP
+    numCols = 1 + 2 * numAttrib + numObs;      // vecPrimalVars.size();
+
+    // # of rows
+    numRows = 2 * numObs ; // //NumVar+1; // +1 for constant term
+
+    DEBUGPR(1, cout << "numAttrib: " << numAttrib << "\n");
+    DEBUGPR(1, cout << "numObs: "    << numObs    << "\n");
+    DEBUGPR(1, cout << "numCols: "   << numCols   << "\n");
+
+  } // end setInitRMPVariables function
+
+
+  // set CLP model
+  void REPR::setClpParameters() {
+
+    colIndex    = new int[numRows];  // row index for this colum
+
+    for (unsigned int i=0; i<numRows; ++i) // for each row
+      colIndex[i] = i;
+
+    // This is fully dense - but would not normally be so
+    numElements = numRows * numCols;
+
+    elements = new double [numElements];  // elements in the constraints
+    rows     = new int [numElements];
+    starts   = new CoinBigIndex [numCols+1]; // the first index of this column
+    lengths  = new int [numCols];            // # of rows in each column
+
+    // columns to insert
+    columnInsert = new double[numRows];
+
+    modelClp.setOptimizationDirection(1); // 1:minimize, -1:maximize
+
+    // to turn off some output, 0 gives nothing and each increase
+    // in value switches on more messages.
+    modelClp.setLogLevel(0);
+    // matrix.setDimensions(numRows, numCols); // setDimensions (int numrows, int numcols)
+
+    // set the dimension of the model
+    modelClp.resize(numRows, numCols);
+
+  } // end resetCLPModel function
+
+
+  // set Initial RMP objective
+  void REPR::setInitRMPObjective() {
+
+    objective   = modelClp.objective();
+
+    for (unsigned int k = 0; k < numCols; ++k) { // end for each column
+      if (k==0)                 objective[k] = 0.0;  // for the constnt term
+      else if (k<1+2*numAttrib) objective[k] = C;    // for the linear variables
+      else                      objective[k] = 1;    // for the observation variables
+    } // end for each column
+
+  } // end setInitRMPObjective
+
+
+  // set column bounds for RMP
+  void REPR::setInitRMPColumnBound() {
+
+    columnLower = modelClp.columnLower();
+    columnUpper = modelClp.columnUpper();
+
+    columnLower[0] = -COIN_DBL_MAX;
+
+    // set lower and upper bounds for each variables
+    // for (unsigned int k = 0; k < numCols; ++k) { // for each colum
+    //   columnLower[k] = (k==0) ? -COIN_DBL_MAX : 0.0;
+    //   columnUpper[k] = COIN_DBL_MAX;
+    // } // end each column
+
+    if (debug>=5)  {
+      cout << "column lower: ";
+      for (unsigned int i = 0; i<numCols; ++i)
+        if (columnLower[i] == -COIN_DBL_MAX) cout << "-inf, ";
+        else                                 cout << columnLower[i] << ", ";
+      cout << "\ncolumn upper: ";
+      for (unsigned int i = 0; i<numCols; ++i)
+        if (columnUpper[i] == COIN_DBL_MAX) cout << "inf, ";
+        else                                cout << columnUpper[i] << ", ";
+      cout << "\n";
+    }
+
+  } // end setInitRMPColumnBound function
+
+
+  // set row bounds for RMP
+  void REPR::setInitRMPRowBound() {
+
+    rowLower    = modelClp.rowLower();
+    rowUpper    = modelClp.rowUpper();
+
+    for (unsigned int k = 0; k < numRows; k++) { // for each row
+      if (k < numObs) {
+        rowLower[k] = -COIN_DBL_MAX; //-inf;
+        rowUpper[k] = data->dataStandTrain[k].y;
+      } else {
+        rowLower[k] = -COIN_DBL_MAX; //-inf;
+        rowUpper[k] = -data->dataStandTrain[k-numObs].y;
+      } // end if
+    } // end each row
+
+    if (debug>=5) {
+      cout << "\nrow lower: ";
+      for (unsigned int i = 0; i<numRows; ++i)
+        if (rowLower[i] == -COIN_DBL_MAX) cout << "-inf, ";
+        else                              cout << rowLower[i] << ", ";
+      cout << "\nrow: upper";
+      for (unsigned int i = 0; i<numRows; ++i)
+        if (rowUpper[i] == COIN_DBL_MAX) cout << "inf, ";
+        else                             cout << rowUpper[i] << ", ";
+      cout << "\n";
+    }
+
+  } // end setInitRMPRowBound function
+
+
+  // set LHS (left-hand side) constraints (elements),
+  // and set starts, lengths, and rows
+  void REPR::setConstraintsLHS() {
+
+    unsigned int idx;
+    CoinBigIndex idxClp = 0;
+
+    for (unsigned int j = 0; j < numCols; j++) { // for each column
+
+      starts[j]  = idxClp;    // set each column index starts
+      lengths[j] = numRows;   // set # of rows in each column
+
+      for (unsigned int i = 0; i < numRows; ++i) { // for each row
+
+        idx = (i <numObs) ? i : i-numObs;
+
+        rows[idxClp] = i;     // set each element's row index
+
+        if (j==0) // for the constant terms
+          elements[idxClp] = (i < numObs) ? 1.0 : -1.0;
+
+        else if (j<1+numAttrib) {    // for positive linear variables
+          if (i < numObs)
+            elements[idxClp] = data->dataStandTrain[idx].X[j-1];  // -1 for constant term
+          else
+            elements[idxClp] = -data->dataStandTrain[idx].X[j-1];
+
+        } else if (j<1+2*numAttrib) { // for negative linear variables
+          if (i < numObs)
+            elements[idxClp] = -data->dataStandTrain[idx].X[j-1-numAttrib];
+          else
+            elements[idxClp] = data->dataStandTrain[idx].X[j-1-numAttrib];
+
+        } else { // for observation error variables, episilon_i
+          if (j-1-2*numAttrib==idx)
+            elements[idxClp] = -1;
+          else
+            elements[idxClp] = 0;
+        }
+
+        ++idxClp; // increment the CLP index
+
+      } // end for each row
+
+    } // end for each column
+
+    starts[numCols] = idxClp;  // last column's index starts ...
+
+    if (debug>=10) printClpElements();  // print the element matrix
+
+  } // end setConstraintsLHS function
+
+
+  // set CLP model
+  void REPR::setInitRMPClpModel() {
+
+    // assign to matrix
+    matrix = new CoinPackedMatrix(true, 0.0, 0.0);
+    matrix->assignMatrix(true, numRows, numCols, numElements,
+                         elements, rows, starts, lengths);
+
+    clpMatrix = new ClpPackedMatrix(matrix);
+
+    // replace CLP matrix (current is deleted by deleteCurrent=true)
+    modelClp.replaceMatrix(clpMatrix, true);
+
+    // matrix.assignMatrix(true, numRows, numCols, numElements,
+    //                       elements, rows, starts, lengths);
+    // // clpMatrix = ClpPackedMatrix(matrix);
+    // modelClp.loadProblem(matrix,
+    //                   columnLower, columnUpper, objective,
+    //                   rowLower, rowUpper);
+
+  } // end setInitRMPModel function
+
+  /****************** set initial RMP in CLP (end) ***********************/
+
+  // set a weight of each observation for RMA
+  // if rank 0, send the weights to the other ranks
+  // if not rank 0, receive the weights from the rank 0
+  void REPR::setWeights() {
 
 #ifdef ACRO_HAVE_MPI
     if (uMPI::rank==0) {
 #endif //  ACRO_HAVE_MPI
-      for (int i=0; i < NumObs ; ++i) {
-      	obs = rma::DriverRMA::data->vecTrainData[i];
-      	rma::DriverRMA::data->intTrainData[obs].w = vecDualVars[i]-vecDualVars[NumObs+i];
-      }
+
+      // assign a weight for each observation ($/mu-/nu$, dual variables)
+      for (unsigned int i=0; i < numObs ; ++i) // for each observation
+        data->dataIntTrain[i].w = vecDualVars[i] - vecDualVars[numObs+i];
+
 #ifdef ACRO_HAVE_MPI
     }
 #endif //  ACRO_HAVE_MPI
 
 #ifdef ACRO_HAVE_MPI
-    for (unsigned int i = 0; i < data->numTrainObs; ++i) {
 
-      if ((uMPI::rank==0)) {
+    for (unsigned int i = 0; i < numObs; ++i) { // for each observation
 
-	// If we are the root process, send our data to everyone
-	for (int k = 0; k < uMPI::size; ++k)
-	  if (k != 0)
-	    MPI_Send(&rma::DriverRMA::data->intTrainData[i].w, 1, MPI_DOUBLE, k, 0, MPI_COMM_WORLD);
-    } else {
+      if ((uMPI::rank==0)) { // if rank 0
 
-    	// If we are a receiver process, receive the data from the root
-    	MPI_Recv(&rma::DriverRMA::data->intTrainData[i].w, 1, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD,
-		           MPI_STATUS_IGNORE);
+        // If we are the root process, send the observation weights to everyone
+        for (int k = 0; k < uMPI::size; ++k)
+          if (k != 0)
+            MPI_Send(&data->dataIntTrain[i].w,
+                     1, MPI_DOUBLE, k, 0, MPI_COMM_WORLD);
+
+      } else { // else (if not rank 0)
+
+        // If we are a receiver process, receive the data from the root
+        MPI_Recv(&data->dataIntTrain[i].w,
+                 1, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+      } // end if rank 0 else ...
+
+    } // end for each observation
+
+#endif //  ACRO_HAVE_MPI
+
+#ifdef ACRO_HAVE_MPI
+    if (uMPI::rank==0) {
+#endif //  ACRO_HAVE_MPI
+
+    if(debug>=1) {
+      ucout << "Weight: ";
+      for (unsigned int i=0; i < numObs ; ++i)
+            ucout << data->dataIntTrain[i].w << ", ";
+      ucout << "\n";
+    } // end debug
+
+#ifdef ACRO_HAVE_MPI
     }
-  }
-#endif //  ACRO_H
+#endif //  ACRO_HAVE_MPI
 
-    DEBUGPR(1, ucout << "wt: ");
-    DEBUGPR(1,
-	    for (int i=0; i < NumObs ; ++i) {
-	      obs = data->vecTrainData[i];
-	      ucout << data->intTrainData[obs].w << ", ";
-	    });
-    DEBUGPR(1, ucout << "\n");
+  } // end setWeights function
 
-  }
+
+  // check wether or not to spop the REPR iteration
+  bool REPR::isStoppingCondition() {
+
+    if (greedyLevel==EXACT) {  // if PEBBL RMA
+      // if the incumbent is less tha E + threthold
+      if (rma->incumbentValue <= E ) {
+        ucout << "PEBBL Stopping Condition!\n";
+        return true;
+      } // end if the stopping condition
+    } // end if PEBBL RMA
+
+    if (greedyLevel==Greedy) { // if greedy RMA
+      // if the current iteration is greater than 0,
+      // and the current lower and upper bounads are the same
+      // as the previous iteration's
+      if (curIter>0
+          && grma->getLowerBounds() == matIntLower[curIter-1]
+          && grma->getUpperBounds() == matIntUpper[curIter-1] ) {
+        ucout << "Greedy Stopping Condition!\n";
+        return true;
+      } // end if the stopping condition
+    } // end if greedy RMA
+
+    return false;
+
+  } // end isStoppingCondition function
+
 
 
   // insert columns in each column iteration
-  void REPR::insertExactColumns() { //const int& GreedyLevel) {
+  void REPR::insertPebblColumns() { //const int& GreedyLevel) {
 
-    int obs;
-    numRMASols=0;
+    if ( curIter!=0 ) { // if not the first iteration
+      // check whether or not the current iterations has any duplicate boxes
+      if (debug>=1) {
+        for (unsigned int k=0; k<numBoxesIter; ++k)
+          checkDuplicateBoxes(sl[k]->a, sl[k]->b);
+      } // end debug
+    } // end if not the first iteration
 
-    ///////////////////////////// constraints /////////////////////////////
-    rma->getAllSolutions(s);
-    sl.resize(s.size());
+    vecIsObjValPos.  resize(numBoxesSoFar+numBoxesIter);
+    matIntUpper.     resize(numBoxesSoFar+numBoxesIter);
+    matIntLower.     resize(numBoxesSoFar+numBoxesIter);
+    matIsCvdObsByBox.resize(numBoxesSoFar+numBoxesIter);
 
-    for (unsigned int k=0; k<s.size(); ++k)
-      sl[k] = dynamic_cast<pebblRMA::rmaSolution*>(s[k]);
+    for (unsigned int k=0; k<numBoxesIter; ++k) { // for each solution
 
-    if ( curIter!=0 )
-      for (unsigned int k=0; k<s.size(); ++k)
-	if ( vecCoveredSign[numBox-1]==sl[k]->isPosIncumb
-	     && matIntLower[matIntLower.size()-1] == sl[k]->a
-	     && matIntUpper[matIntUpper.size()-1] == sl[k]->b ) {
-	  flagDuplicate=true;
-#ifdef ACRO_HAVE_MPI
-	  if (uMPI::rank==0) {
-#endif //  ACRO_HAVE_MPI
-	    ucout << "insertColumns::Duplicated!\n";
-#ifdef ACRO_HAVE_MPI
-	  }
-#endif //  ACRO_HAVE_MPI
-	  return;
-	}
+      //if (!checkDuplicateBoxes(k)) { // if this rule is not duplicates
 
-    vecCoveredSign.resize(vecCoveredSign.size()+s.size());
-    matIntUpper.resize(matIntUpper.size()+s.size());
-    matIntLower.resize(matIntLower.size()+s.size());
+      setVecIsObjValPos(k, sl[k]->isPosIncumb);
 
-    for (unsigned int k=0; k<s.size(); ++k) { // for each solution
+      setMatIntBounds(k, sl[k]->a, sl[k]->b);
 
-      //if (k==0 && !isDuplicate()) { // if this rule is not duplicates
+      setMatIsCvdObsByBox(k);
 
-      for (int i=0; i< NumObs; ++i) { // for each observation
-      	obs = data->vecTrainData[i];
-      	for (int j=0; j< NumAttrib; ++j) { // for each attribute
-      	  if ( sl[k]->a[j] <=  data->intTrainData[obs].X[j] &&
-      	       data->intTrainData[obs].X[j] <= sl[k]->b[j] ) {
-      	    if ( j==NumAttrib-1)
-      	      vecIsCovered[i]= true;
-      	  } else {
-      	    vecIsCovered[i]= false;
-      	    break;
-      	  }
-      	} // end for each attribute, j
-      } // end for each observation, i
+      // set vecIsCovered, wether or not each observation is covered
+      // by lower and upper bound (a, b)
+      // setVecIsCovered(sl[k]->a, sl[k]->b);
 
-      if (sl[k]->isPosIncumb) {
-      	DEBUGPR(1, cout << "Positive Box\n");
-      	vecCoveredSign[numBox+numRMASols] = true;
-      } else {
-      	DEBUGPR(1, cout << "Negative Box\n");
-      	vecCoveredSign[numBox+numRMASols] = false;
-      }
-
-      matIntLower[matIntLower.size()-s.size()+k] = sl[k]->a;
-      matIntUpper[matIntUpper.size()-s.size()+k] = sl[k]->b;
-      ++numRMASols;  // number of RMA solutions
-
-      DEBUGPR(1, cout << "vecIsCovered: " << vecIsCovered << "\n" );
-
-      // add columns using CLP
-
-      double *columnValue = new double[numRows];
-      for (int i = 0; i < numRows; ++i) columnValue[i] = 0;
-
-      for (int i = 0; i < NumObs; ++i) {
-      	obs = data->vecTrainData[i];
-      	if (vecIsCovered[i]==true) {
-      	  if (sl[k]->isPosIncumb) {
-      	    columnValue[i]        = 1;
-      	    columnValue[NumObs+i] = -1;
-      	  } else {
-      	    columnValue[i]        = -1;
-      	    columnValue[NumObs+i] = 1;
-      	  }
-      	}
-      }
-
-      //colIndex = colIndex + numBox;
-
-      //numCols+numBox+k
-      model.addColumn(numRows, colIndex, columnValue, 0.0, COIN_DBL_MAX, E);
-      //model.addVar(0.0, GRB_INFINITY, E, GRB_CONTINUOUS, col);
-
-      //} // end if duplicate rules
+#ifdef HAVE_GUROBI
+      if (isUseGurobi())
+        insertColumnGurobiModel(k);
+      else
+#endif // HAVE_GUROBI
+        insertColumnClpModel(k);
 
     } // end for each solution, k
 
-    numBox  += numRMASols;
-    numCols += numRMASols;
+    numBoxesSoFar  += numBoxesIter;
+    numCols        += numBoxesIter;
 
-    if (s.size()!=numRMASols) { // remove extra space due to duplicates
-      matIntUpper.resize(matIntUpper.size()-(s.size()-numRMASols));
-      matIntLower.resize(matIntLower.size()-(s.size()-numRMASols));
-      vecCoveredSign.resize(vecCoveredSign.size()-(s.size()-numRMASols));
-    }
+    // if (s.size()!=numBoxesIter) { // remove extra space due to duplicates
+    //   matIntUpper.resize(matIntUpper.size()-(s.size()-numBoxesIter));
+    //   matIntLower.resize(matIntLower.size()-(s.size()-numBoxesIter));
+    //   vecIsObjValPos.resize(vecIsObjValPos.size()-(s.size()-numBoxesIter));
+    // }
 
     for (unsigned int k=0; k<s.size(); ++k)
       sl[k]->dispose();
 
-  }
+  } // end insertPebblColumns function
 
 
   // insert columns in each column iteration
   void REPR::insertGreedyColumns() { //const int& GreedyLevel) {
 
-    int obs;
-    numRMASols=0;
+    numBoxesIter = 1;
 
-    ///////////////////////////// constraints /////////////////////////////
-    vecCoveredSign.resize(vecCoveredSign.size()+1);
-    matIntUpper.resize(matIntUpper.size()+1);
-    matIntLower.resize(matIntLower.size()+1);
+    if ( curIter!=0 ) { // if not the first iteration
+      // check whether or not the current iterations has any duplicate boxes
+      if (debug>=1) {
+        for (unsigned int k=0; k<numBoxesIter; ++k)
+          checkDuplicateBoxes(grma->getLowerBounds(), grma->getUpperBounds());
+      } // end debug
+    } // end if not the first iteration
 
-    for (int i=0; i< NumObs; ++i) { // for each observation
-      obs = data->vecTrainData[i];
-      for (int j=0; j< NumAttrib; ++j) { // for each attribute
-	if ( grma->L[j] <=  data->intTrainData[obs].X[j] &&
-	     data->intTrainData[obs].X[j] <= grma->U[j] ) {
-	  if ( j==NumAttrib-1)
-	    vecIsCovered[i]= true;
-	} else {
-	  vecIsCovered[i]= false;
-	  break;
-	}
-      } // end for each attribute, j
-    } // end for each observation, i
+    vecIsObjValPos.  resize(numBoxesSoFar+numBoxesIter);
+    matIntUpper.     resize(numBoxesSoFar+numBoxesIter);
+    matIntLower.     resize(numBoxesSoFar+numBoxesIter);
+    matIsCvdObsByBox.resize(numBoxesSoFar+numBoxesIter);
 
-    if (grma->isPosIncumb) {
-      DEBUGPR(1, cout << "Positive Box\n");
-      vecCoveredSign[numBox] = true;
-    } else {
-      DEBUGPR(1, cout << "Negative Box\n");
-      vecCoveredSign[numBox] = false;
-    }
+    setVecIsObjValPos(0, grma->isPostObjVal());
 
-    matIntLower[matIntLower.size()-1] = grma->L;
-    matIntUpper[matIntUpper.size()-1] = grma->U;
+    setMatIntBounds(0, grma->getLowerBounds(), grma->getUpperBounds());
 
-    DEBUGPR(1, cout << "vecIsCovered: " << vecIsCovered );
+    setMatIsCvdObsByBox(0);
 
-    /*
-    // add columns using GUROBI
-    //col.clear();
-    //constr = model.getConstrs();
-    for (int i = 0; i < NumObs; ++i) {
-      obs = data->vecTrainData[i];
-      if (vecIsCovered[i]==true) {
-	if (grma->isPosIncumb) {
-	  //col.addTerm(1, constr[i]);
-	  //col.addTerm(-1, constr[i+NumObs]);
-	} else {
-	  //col.addTerm(-1, constr[i]);
-	  //col.addTerm(1, constr[i+NumObs]);
-	}
-      }
-    }
-    */
-    //model.addVar(0.0, GRB_INFINITY, E, GRB_CONTINUOUS, col);
+#ifdef HAVE_GUROBI
+    if (isUseGurobi())
+      insertColumnGurobiModel(0);
+    else
+#endif // HAVE_GUROBI
+      insertColumnClpModel(0);
 
-    double *columnValue = new double[numRows];
-    for (int i = 0; i < numRows; ++i) columnValue[i] = 0;
-
-    for (int i = 0; i < NumObs; ++i) {
-    	obs = data->vecTrainData[i];
-    	if (vecIsCovered[i]==true) {
-    	  if (grma->isPosIncumb) {
-    	    columnValue[i]        = 1;
-    	    columnValue[NumObs+i] = -1;
-    	  } else {
-    	    columnValue[i]        = -1;
-    	    columnValue[NumObs+i] = 1;
-    	  }
-    	}
-    }
-
-    model.addColumn(numRows, colIndex, columnValue, 0.0, COIN_DBL_MAX, E);
-
-    ++numBox;
+    // TODO: for now, add one observation per iteration, but can be fixed that later
+    ++numBoxesSoFar;
     ++numCols;
 
-  }
+  } // end insertGreedyColumns function
 
+
+  // insert a colum in CLP model
+  void REPR::insertColumnClpModel(const unsigned int &k) {
+
+    // matIsCvdObsByBox[numBoxesSoFar+k].resize(numObs);
+
+    for (unsigned int i = 0; i < numObs; ++i) { // for each observation
+
+      if (matIsCvdObsByBox[numBoxesSoFar+k][i]) { // if this observatoin is covered
+
+        if (vecIsObjValPos[numBoxesSoFar+k]) { // if it's a positive box variable
+          columnInsert[i]        = 1;
+          columnInsert[numObs+i] = -1;
+        } else {  // if not a box variable
+          columnInsert[i]        = -1;
+          columnInsert[numObs+i] = 1;
+        } // end if positive or negative box variable
+
+      } else { // if this observation is not covered by k-th box
+        columnInsert[i]        = 0;
+        columnInsert[numObs+i] = 0;
+      } // end if covered observation or not
+
+    } // end for each observation
+
+    // insert column
+    //(numRows: # of rows, (2*numObs)
+    // colIndex: column index [0, 1, ... , 2*numObs-1],
+    // columnInsert: column values to insert,
+    // lower and upper bounds of this column variable = {0, COIN_DBL_MAX},
+    // objective coefficient = {E})
+    modelClp.addColumn(numRows, colIndex, columnInsert, 0.0, COIN_DBL_MAX, E);
+
+  } // end insertColumnClpModel function
+
+
+#ifdef HAVE_GUROBI
+
+  void REPR::insertColumnGurobiModel(const unsigned int &k) {
+
+    // add columns using GUROBI
+    col.clear();
+    constr = modelGrb.getConstrs();
+
+    for (unsigned int i = 0; i < numObs; ++i) { // for each observation
+
+      if (matIsCvdObsByBox[numBoxesSoFar+k][i]) { // if this observatoin is covered
+
+        if (vecIsObjValPos[numBoxesSoFar+k]) { // if it's positive box variable
+          col.addTerm( 1, constr[i]);
+          col.addTerm(-1, constr[i+numObs]);
+        } else {
+          col.addTerm(-1, constr[i]);
+          col.addTerm( 1, constr[i+numObs]);
+        } // end if covered observation or not
+
+      } // end if this observation is covered
+
+    } // end for each observation
+
+    // insert column
+    // lower and upper bounds of this column variable = {0.0, GRB_INFINITY}
+    // coefficient of the objective = {E}
+    // inserting the column in the constraint = {col}
+    modelGrb.addVar(0.0, GRB_INFINITY, E, GRB_CONTINUOUS, col);
+
+  } // end insertColumnGurobiModel function
+
+#endif // HAVE_GUROBI
 
   //////////////////////// Evaluating methods //////////////////////////////
 
   // evaluate error rate in each iteration
-  double REPR::evaluateEachIter(const int & isTest, vector<DataXy> origData) {
+  double REPR::evaluateEachIter(const bool &isTest, vector<DataXy> origData) {
 
     double err, err2, actY, expY, mse=0.0;
-    int obs, size;
+    unsigned int obs, numIdx;
 
-    if (isTest) size = data->vecTestData.size();
-    else        size = data->vecTrainData.size();
+    // set the size of training or testing observations
+    if (isTest) numIdx = data->vecTestObsIdx.size();
+    else        numIdx = data->vecTrainObsIdx.size();
 
-    for (int i=0; i<size; ++i) { // for each obsercation
+    for (unsigned int i=0; i<numIdx; ++i) { // for each obsercation
 
+      // f(X) = \beta_0
       expY = vecPrimalVars[0];    // for constant terms
       DEBUGPR(20, cout << "constant expY: " << expY << "\n");
 
-      if (isTest) obs = data->vecTestData[i];
-      else        obs = data->vecTrainData[i];
+      if (isTest) obs = data->vecTestObsIdx[i];
+      else        obs = data->vecTrainObsIdx[i];
 
-      for (int j=0; j<NumAttrib; ++j) {
-	expY +=  ( origData[obs].X[j]-data->avgX[j] ) / data->sdX[j]
-	  * ( vecPrimalVars[j+1] - vecPrimalVars[NumAttrib+j+1] );
-	DEBUGPR(20, cout << "linear expY: " << expY << "\n");
-      }
+      // f(X) += \sum_{j=1}^n ( \beta_j^+ - \beta_j^-)
+      for (unsigned int j=0; j<numAttrib; ++j) { // for each attribute
+        expY += ( origData[obs].X[j] - data->vecAvgX[j] ) / data->vecSdX[j]
+                * ( vecPrimalVars[j+1] - vecPrimalVars[numAttrib+j+1] );
+        DEBUGPR(20, cout << "linear expY: " << expY << "\n");
+      } // end for each attribute
 
-      DEBUGPR(20, cout << "obs: " << obs << " linearReg expY: " << expY
-	      <<  " features: " << origData[obs].X );
+      DEBUGPR(20, cout << "obs: " << obs
+                       << " linearReg expY: " << expY
+                       <<  " features: " << origData[obs].X );
 
+      // for each
       for (unsigned int k=0; k<matOrigLower.size(); ++k) { // for each box solution
-	if (!(vecPrimalVars[data->numTrainObs+2*NumAttrib+k+1] ==0) ) {	//if (vecPrimalVars[numVar+2*k]!=0) {
-	  if ( vecCoveredObsByBox[obs][k] ) { // if this observation is covered
-	    if (vecCoveredSign[k])
-	      expY +=  vecPrimalVars[data->numTrainObs+2*data->numAttrib+k+1] ;
-	    else
-	      expY += -vecPrimalVars[data->numTrainObs+2*data->numAttrib+k+1] ;
-	    DEBUGPR(20, cout << "kth box: " << k	<< " box exp: " << expY << "\n");
-	  }
-	} // end if for the coefficient of box not 0
+
+        // //if (vecPrimalVars[numVar+2*k]!=0) {
+        if (!(vecPrimalVars[data->numTrainObs+2*numAttrib+k+1] ==0) ) {
+          if ( matIsCvdObsByBox[k][obs] ) { // if this observation is covered
+            if (vecIsObjValPos[k]) // if positive box variable
+              expY +=  vecPrimalVars[data->numTrainObs + 2*data->numAttrib +k+1] ;
+            else
+              expY += -vecPrimalVars[data->numTrainObs +2*data->numAttrib +k+1] ;
+            DEBUGPR(20, cout << "kth box: " << k
+                             << " box exp: " << expY << "\n");
+          }
+        } // end if for the coefficient of box not 0
       } // end for each box
 
       DEBUGPR(20, cout << "before normalied expY: " << expY
-	      << ",  avgY: " <<  data->avgY << ", sdY: " <<  data->sdY << "\n") ;
+                       << ", avgY: "                <<  data->avgY
+                       << ", sdY: "                 <<  data->sdY << "\n") ;
 
       expY = data->avgY + expY * data->sdY;
       actY = origData[obs].y;	// actual y value
 
-      // if writePred is enabled and the last column generation iteration
-      if ( writePred() && (curIter==NumIter) ) {
-	//predictions.resize(data->numOrigObs);
-	//predictions[obs] = expY;
-	writePredictions(TEST, data->origTestData);
-	writePredictions(TRAIN, data->origTrainData);
+      // if isSavePred is enabled and the last column generation iteration
+      if ( isSavePred() && (curIter==getNumIterations()) ) {
+        //predictions.resize(data->numOrigObs);
+        //predictions[obs] = expY;
+        savePredictions(TEST,  data->dataOrigTest);
+        savePredictions(TRAIN, data->dataOrigTrain);
       }
 
       err = expY - actY;	// difference between expacted and actual y values
@@ -457,8 +651,8 @@ namespace boosting {
 #ifdef ACRO_HAVE_MPI
       if (uMPI::rank==0) {
 #endif //  ACRO_HAVE_MPI
-	DEBUGPR(10, cout << "actY-expY " << actY << " - " << expY
-		<< " = " << err << " err^2: " << err2 << "\n" ) ;
+        DEBUGPR(10, cout << "actY-expY " << actY << " - " << expY
+                         << " = " << err << " err^2: " << err2 << "\n" ) ;
 #ifdef ACRO_HAVE_MPI
       }
 #endif //  ACRO_HAVE_MPI
@@ -470,77 +664,77 @@ namespace boosting {
 #ifdef ACRO_HAVE_MPI
     if (uMPI::rank==0) {
 #endif //  ACRO_HAVE_MPI
-      DEBUGPR(20, cout << "mse: " <<  mse/(double)size << "\n");
+      DEBUGPR(20, cout << "MSE: " <<  mse / (double) numIdx << "\n");
 #ifdef ACRO_HAVE_MPI
-    }
+    } // end if (uMPI::rank==0)
 #endif //  ACRO_HAVE_MPI
 
-    return mse/(double)size;
+    return mse / (double) numIdx;
 
-  }	// evaluateEachIter function
+  }	// end evaluateEachIter function
 
 
   // evaluate error rate in the end of iterations
-  double REPR::evaluateAtFinal(const int & isTest, vector<DataXy> origData) {
+  double REPR::evaluateAtFinal(const bool &isTest, vector<DataXy> origData) {
 
     double err, err2, actY, expY, mse=0.0;
-    int obs, size;
+    unsigned int i, j, k, obs, numIdx;
 
-    if (isTest) size = data->vecTestData.size();
-    else        size = data->vecTrainData.size();
+    if (isTest) numIdx = data->vecTestObsIdx.size();
+    else        numIdx = data->vecTrainObsIdx.size();
 
-    for (int i=0; i<size; ++i) { // for each obsercation
+    for (i=0; i<numIdx; ++i) { // for each obsercation
 
       expY = vecPrimalVars[0];    // for constant terms
       DEBUGPR(20, cout << "constant expY: " << expY << "\n");
 
-      if (isTest) obs = data->vecTestData[i];
-      else        obs = data->vecTrainData[i];
+      if (isTest) obs = data->vecTestObsIdx[i];
+      else        obs = data->vecTrainObsIdx[i];
 
-      for (int j=0; j<NumAttrib; ++j) {
-	expY +=  ( origData[obs].X[j]-data->avgX[j] ) / data->sdX[j]
-	  * ( vecPrimalVars[j+1] - vecPrimalVars[NumAttrib+j+1] );
-	DEBUGPR(20, cout << "linear expY: " << expY << "\n");
+      for (j=0; j<numAttrib; ++j) {
+        expY +=  ( origData[obs].X[j]-data->vecAvgX[j] ) / data->vecSdX[j]
+          * ( vecPrimalVars[j+1] - vecPrimalVars[numAttrib+j+1] );
+        DEBUGPR(20, cout << "linear expY: " << expY << "\n");
       }
 
       DEBUGPR(20, cout << "obs: " << obs << " linearReg expY: " << expY
-	      <<  " features: " << origData[obs].X );
+              <<  " features: " << origData[obs].X );
 
-      for (unsigned int k=0; k<matOrigLower.size(); ++k) { // for each box solution
+      for (k=0; k<matOrigLower.size(); ++k) { // for each box solution
 
-	// if the coefficients (gamma^+-gamma^-)=0 for the box[k] is not 0
-	// if the coefficients for the box[k] is not 0
-	if (!(vecPrimalVars[data->numTrainObs+2*NumAttrib+k+1] ==0)) {//if (vecPrimalVars[numVar+2*k]!=0) {
+        // if the coefficients (gamma^+-gamma^-)=0 for the box[k] is not 0
+        // if the coefficients for the box[k] is not 0
+        if (!(vecPrimalVars[data->numTrainObs+2*numAttrib+k+1] ==0)) {//if (vecPrimalVars[numVar+2*k]!=0) {
 
-	  for (int j=0; j<NumAttrib; ++j) { // for each attribute
-	    if (matOrigLower[k][j] <= origData[obs].X[j] &&
-		origData[obs].X[j] <= matOrigUpper[k][j] ) {
-	      if ( j==NumAttrib-1) { // all features are covered by the box
-		if (vecCoveredSign[k])
-		  expY +=  vecPrimalVars[data->numTrainObs+2*NumAttrib+k+1] ;
-		else
-		  expY += -vecPrimalVars[data->numTrainObs+2*NumAttrib+k+1] ;
-		DEBUGPR(20, cout << "kth box: " << k	<< " box exp: " << expY << "\n");
-	      }
-	    } else break; // this observation is not covered
-	  } // end for each attribute, j
+          for (j=0; j<numAttrib; ++j) { // for each attribute
+            if (matOrigLower[k][j] <= origData[obs].X[j] &&
+                origData[obs].X[j] <= matOrigUpper[k][j] ) {
+              if ( j==numAttrib-1) { // all features are covered by the box
+                if (vecIsObjValPos[k])
+                  expY +=  vecPrimalVars[data->numTrainObs+2*numAttrib+k+1] ;
+                else
+                  expY += -vecPrimalVars[data->numTrainObs+2*numAttrib+k+1] ;
+                DEBUGPR(20, cout << "kth box: " << k	<< " box exp: " << expY << "\n");
+              }
+            } else break; // this observation is not covered
+          } // end for each attribute
 
-	}	// end if for the coefficient of box not 0
+        } // end if for the coefficient of box not 0
 
       } // end for each box
 
       DEBUGPR(20, cout << "before normalied expY: " << expY
-	      << ",  avgY: " <<  data->avgY << ", sdY: " <<  data->sdY << "\n") ;
+              << ",  avgY: " <<  data->avgY << ", sdY: " <<  data->sdY << "\n") ;
 
       expY = data->avgY + expY * data->sdY;
       actY = origData[obs].y;	// actual y value
 
-      // if writePred is enabled and the last column generation iteration
-      if ( writePred() && (curIter==NumIter) ) {
-	//predictions.resize(data->numOrigObs);
-	//predictions[obs] = expY;
-	writePredictions(TEST, data->origTestData);
-	writePredictions(TRAIN, data->origTrainData);
+      // if isSavePred is enabled and the last column generation iteration
+      if ( isSavePred() && (curIter==getNumIterations()) ) {
+        //predictions.resize(data->numOrigObs);
+        //predictions[obs] = expY;
+        savePredictions(TEST,  data->dataOrigTest);
+        savePredictions(TRAIN, data->dataOrigTrain);
       }
 
       err = expY - actY;	// difference between expacted and actual y values
@@ -549,8 +743,8 @@ namespace boosting {
 #ifdef ACRO_HAVE_MPI
       if (uMPI::rank==0) {
 #endif //  ACRO_HAVE_MPI
-	DEBUGPR(10, cout << "actY-expY " << actY << " - " << expY
-		<< " = " << err << " err^2: " << err2 << "\n" ) ;
+        DEBUGPR(10, cout << "actY-expY " << actY << " - " << expY
+        << " = " << err << " err^2: " << err2 << "\n" ) ;
 #ifdef ACRO_HAVE_MPI
       }
 #endif //  ACRO_HAVE_MPI
@@ -562,346 +756,247 @@ namespace boosting {
 #ifdef ACRO_HAVE_MPI
     if (uMPI::rank==0) {
 #endif //  ACRO_HAVE_MPI
-      DEBUGPR(20, cout << "mse: " <<  mse/(double)size << "\n");
+      DEBUGPR(20, cout << "mse: " <<  mse / (double) numIdx << "\n");
 #ifdef ACRO_HAVE_MPI
     }
 #endif //  ACRO_HAVE_MPI
 
-    return mse/(double)size;
+    return mse / (double) numIdx;
 
-  }	// evaluateAtFinal function
+  } // end evaluateAtFinal function
 
 
   //////////////////////// Printing methods //////////////////////////////
 
+  // print solution for the restricted master problem
+  void REPR::printRMPCheckInfo() {
+
+#ifdef ACRO_HAVE_MPI
+    if (uMPI::rank==0) {
+#endif //  ACRO_HAVE_MPI
+
+      unsigned int i, j;
+      double sumPrimal = 0;
+
+      // for linear variables
+      if (C != 0) { // if C is not 0
+        for (j = 1; j < 1+numAttrib; ++j)
+          sumPrimal += C * vecPrimalVars[j];  // + \beta^+ * X
+        for (j = 1+numAttrib; j < 1+2*numAttrib; ++j)
+          sumPrimal -= C * vecPrimalVars[j];  // - \beta^- * X
+      }
+
+      // for observation variable, episilon_i
+      for (j = 1+2*numAttrib; j < 1+2*numAttrib+numObs; ++j) {
+        if (P==1)      sumPrimal += vecPrimalVars[j];
+        else if (P==2) sumPrimal += vecPrimalVars[j]*vecPrimalVars[j];
+      }
+
+      // if (D != 0) {
+      //   for (j = 1; j < numAttrib+1; ++j)	// for linear square coefficients
+      //     sumPrimal += D*vecPrimalVars[j]*vecPrimalVars[j];
+      //   for (j = 1+numAttrib; j < 2*numAttrib+1; ++j)
+      //     sumPrimal -= D*vecPrimalVars[j]*vecPrimalVars[j];
+      // }
+
+      if(debug>=2) {
+        cout << "vecPrimalVars: ";
+        for (i=0; i<numCols; ++i) cout << vecPrimalVars[i] << " ";
+        cout << "\n";
+      }
+
+      ////////////////////////////////////////////////////////////////////
+
+      double sumDual=0, sumDualCheck=0;
+
+      for (i=0; i<numObs; i++)  { // for each observation
+
+        sumDual += data->dataStandTrain[i].y
+                   * ( vecDualVars[i] - vecDualVars[numObs+i] );
+        // if (P==2)
+        //   sumDual -= pow( ( vecDualVars[i] - vecDualVars[numObs+i] ), 2 ) / 4.0;
+
+      }
+
+      if(debug>=2) {
+        cout << "vecDualVars: ";
+        for (i=0; i<numRows; ++i) cout << vecDualVars[i] << " ";
+        cout << "\n";
+      }
+
+      cout << "Check PrimalObj: " << sumPrimal << " = DualObj:" << sumDual << "\n";
+
+      ////////////////////////////////////////////////////////////////////
+
+      // for (i=0; i<numObs; i++)  // for each observation
+      //   cout << "Check mu+nu=eps; mu: " << vecDualVars[i]
+      //      << ", nu:" << vecDualVars[numObs+i]
+      //      << ", eps: " << vecPrimalVars[2*numAttrib+1+i] << "\n" ;
+
+      ////////////////////////////////////////////////////////////////////
+
+      for (i=0; i<numObs; i++) // for each observation
+        sumDualCheck += ( vecDualVars[i] - vecDualVars[numObs+i] );
+
+      cout << "sumDualCheck: "  << sumDualCheck  << " (This should be 0.)\n";
+
+      ////////////////////////////////////////////////////////////////////
+
+      vector<double> vecSumConstCheck(numAttrib);
+      fill(vecSumConstCheck.begin(), vecSumConstCheck.end(), 0);
+
+      for (j=0; j<numAttrib; ++j)  // for each attribute
+        for (i=0; i<numObs; ++i)   // for each observation
+          vecSumConstCheck[j] += ( vecDualVars[i] - vecDualVars[numObs+i] )
+                                 * data->dataStandTrain[i].X[j] ;
+
+      cout << "vecSumConstCheck: "  << vecSumConstCheck
+           << " (Each element should be >= -C.)\n";
+
+#ifdef ACRO_HAVE_MPI
+    }
+#endif //  ACRO_HAVE_MPI
+
+} // end printRMPCheckInfo function
+
+
   // print RMA information
   void REPR::printRMAInfo() {
 
-#ifdef ACRO_HAVE_MPI
+  #ifdef ACRO_HAVE_MPI
     if (uMPI::rank==0) {
-#endif //  ACRO_HAVE_MPI
+  #endif //  ACRO_HAVE_MPI
       DEBUGPR(20, cout <<  "E: " << E <<
-	      ", incumb: " << rma->incumbentValue<< "\n");
-#ifdef ACRO_HAVE_MPI
+              ", incumb: " << rma->incumbentValue<< "\n");
+  #ifdef ACRO_HAVE_MPI
     }
-#endif //  ACRO_HAVE_MPI
+  #endif //  ACRO_HAVE_MPI
 
-  }
+  } // end printRMAInfo function
+
+  // print the LHS constrraint elements
+  void REPR::printClpElements() {
+
+    CoinBigIndex idxClp = 0;
+
+    cout << "element:\n";
+
+    for (unsigned int j = 0; j < numCols; j++) { // for each column
+      for (unsigned int  i = 0; i < numRows; ++i) { // for each row
+        cout << elements[idxClp] << " ";  // print out the element
+        idxClp++;
+      } // end for each row
+      cout << "\n";
+    } // end for each column
+    cout << "end element:\n";
+
+  } // end printClpElements function
 
 
-  void REPR::printRMPSolution() {
+// save trained REPR model
+void REPR::saveModel() {
 
 #ifdef ACRO_HAVE_MPI
-    if (uMPI::rank==0) {
+  if (uMPI::rank==0) {
 #endif //  ACRO_HAVE_MPI
 
-      double sumPrimal=0.0;
-      int i,j, obs;
+  unsigned int i;
 
-      if (C != 0) {
-      	for (j = 1; j < NumAttrib+1; ++j) sumPrimal += C*vecPrimalVars[j];
+  // set the output file name
+  stringstream s;
+  s << problemName << "_model_" << getDateTime() << ".out";
+  ofstream os(s.str().c_str());
+
+  // save # of attributes and boxes
+  os << "#_of_attributes: " << data->numAttrib << "\n";
+  os << "#_of_boxes:      " << numBoxesSoFar << "\n";
+
+  // output the constant term
+  os << "\nbias: " << vecPrimalVars[0];
+
+  os << "\n\ncoefficients_for_linear_variables:\n";
+  // output the coefficients for the linear variables
+  for (i=0; i<data->numAttrib; ++i)  // for each attribute
+    os << vecPrimalVars[1+i] - vecPrimalVars[1+data->numAttrib+i] << " ";
+
+  os << "\n\ncoefficients_for_box_variables:\n";
+  // output the cofficeitns for the box variables
+  for (i=0; i<numBoxesSoFar; ++i) // for each box
+    if (vecIsObjValPos[i])
+      os <<  vecPrimalVars[1+2*data->numAttrib+numObs+i] << " ";
+    else
+      os << -vecPrimalVars[1+2*data->numAttrib+numObs+i] << " ";
+
+  os << "\n\nthe_average_value_of_y_value: ";
+  os << data->avgY;
+
+  os << "\n\nthe_standard_deviation_of_y_value: ";
+  os << data->sdY;
+
+  os << "\n\nthe_average_value_of_each_attribute:\n";
+  for (unsigned int j=0; j<numAttrib; ++j)
+    os << data->vecAvgX[j] << " ";
+
+  os << "\n\nthe_standard_deviation_of_each_attribute:\n";
+  for (unsigned int j=0; j<numAttrib; ++j)
+    os << data->vecSdX[j] << " ";
+
+  os << "\n\n" ;  // go to the next line
+
+  // output each box's lower and upper bounds in original values
+  for (unsigned int k=0; k<curIter; ++k ) { // for each Boosting iteration
+
+    if (matOrigLower.size()!=0) { // if integerized
+      os << "Box " << k << "_a: " << matOrigLower[k] << "\n" ;
+      os << "Box " << k << "_b: " << matOrigUpper[k] << "\n" ;
+    } else {
+
+      os << "Box_" << k << "_a: " ;
+      for (unsigned int j=0; j<numAttrib; ++j) {
+        if (matIntLower[k][j]==0)
+          os << -getInf() << " ";
+        else
+          os << matIntLower[k][j] << " ";
       }
-      for (j = NumAttrib+1; j < numCols; ++j) {
-      	if (P==1)   	 sumPrimal += vecPrimalVars[j];
-      	else if (P==2) sumPrimal += vecPrimalVars[j]*vecPrimalVars[j];
+
+      os << "\nBox_" << k << "_b: " ;
+      for (unsigned int j=0; j<numAttrib; ++j) {
+        if (matIntUpper[k][j]==data->vecNumDistVals[j]-1)
+          os << getInf() << " ";
+        else
+          os << matIntUpper[k][j] << " ";
       }
 
-      if (D != 0) {
-      	for (j = 1; j < NumAttrib+1; ++j)	// for linear square coefficients
-      	  sumPrimal += D*vecPrimalVars[j]*vecPrimalVars[j];
-      }
+      os << "\n" ;
 
-      double sumDual=0, sumCheck=0;
-      vector<double> checkConst(NumAttrib);
-      for (i=0; i<NumObs; i++)  {
-      	obs = data->vecTrainData[i];
-      	sumDual += data->standTrainData[obs].y * ( vecDualVars[i] - vecDualVars[NumObs+i] );
-      	if (P==2)  sumDual -= pow( ( vecDualVars[i] - vecDualVars[NumObs+i] ), 2 ) / 4.0 ;
-      	sumCheck += ( vecDualVars[i] - vecDualVars[NumObs+i] );
+    } // end if
 
-      	DEBUGPR(1, cout << "mu: " << vecDualVars[i] << " nu:" << vecDualVars[NumObs+i]
-      		<< " eps: " << vecPrimalVars[2*NumAttrib+i+1] << "\n" );
-      }
+  } // end for each Boosting iteration
 
-      for (j=0; j<NumAttrib; ++j) {
-      	for (i=0; i<NumObs; ++i)  {
-      	  obs = data->vecTrainData[i];
-      	  checkConst[j] += ( vecDualVars[i] - vecDualVars[NumObs+i] )
-	    * data->standTrainData[obs].X[j] ;
-      	}
-      }
 
-      DEBUGPR(1, cout << "vecPrimalVars: " << vecPrimalVars
-	      << " PrimalObj:" << sumPrimal << "\n" );
-      DEBUGPR(1, for (i=0; i<numCols; ++i) cout << vecPrimalVars[i] << " "; );
-      DEBUGPR(1, cout << "\nvecDualVarss: " << vecDualVars
-	      << " DualObj:" << sumDual << "\n" );
-      DEBUGPR(1, for (i=0; i<numRows; ++i) cout << vecDualVars[i] << " "; );
-      DEBUGPR(1, cout << "\nsumCheck: " << sumCheck << "\n" );  // sum has to be 1
-      DEBUGPR(1, cout << "checkCons: " << checkConst << "\n" );
+  // TODO: we do not have to save this info
+  // output integerization info
+  // for (unsigned int j=0; j<data->numAttrib; ++j) { // for each attribute
+  //
+  //   os << "Attrib_" << j << "_a: " ; // output lower bounds of bins
+  //   for (unsigned int k=0; k<data->vecNumDistVals[j]; ++k)  // for each bin or value
+  //     os << vecAttribIntInfo[j].vecBins[k].lowerBound << " ";
+  //
+  //   os << "\nAttrib_" << j << "_b: " ; // output upper bounds of bins
+  //   for (unsigned int k=0; k<data->vecNumDistVals[j]; ++k)  // for each bin or value
+  //     os << vecAttribIntInfo[j].vecBins[k].upperBound << " ";
+  //
+  // os << "\n" ;   // go to the next line
+  //
+  // } // end for each attribute
+  //
+  // os.close();
+
 #ifdef ACRO_HAVE_MPI
-    }
-#endif //  ACRO_HAVE_MPI
   }
+#endif //  ACRO_HAVE_MPI
+
+  } // end saveModel function
 
 
 } // namespace boosting
-
-
-
-// Add variables to the model
-//vars = model.addVars(LB, UB, NULL, vtype, NULL, numCols);
-/*
-// set constraits
-for (i = 0; i < NumObs; ++i) {
-lhs = vars[0];										   // beta_0
-obs = data->vecTrainData[i];
-for (j = 0; j < NumAttrib; ++j)      // beta^+_j
-if (data->standData[obs].X[j] != 0)
-lhs += data->standData[obs].X[j]*vars[1+j];
-for (j = 0; j < NumAttrib; ++j)      // beta^-_j
-if (data->standData[obs].X[j] != 0)
-lhs -= data->standData[obs].X[j]*vars[1+NumAttrib+j];
-for (j = 0; j < NumObs; ++j) 				// episilon
-if (i==j)
-lhs -= vars[1+2*NumAttrib+j];
-// model.addConstr(lhs, GRB_LESS_EQUAL, data->standData[obs].y);
-}
-
-for (i = 0; i < NumObs; ++i) {
-lhs = -vars[0];										   // beta_0
-obs = data->vecTrainData[i];
-for (j = 0; j < NumAttrib; ++j)      // beta^+_j
-if (data->standData[obs].X[j] != 0)
-lhs -= data->standData[obs].X[j]*vars[1+j];
-for (j = 0; j < NumAttrib; ++j)      // beta^-_j
-if (data->standData[obs].X[j] != 0)
-lhs += data->standData[obs].X[j]*vars[1+NumAttrib+j];
-for (j = 0; j < NumObs; ++j) 				// episilon
-if (i==j)
-lhs -= vars[1+2*NumAttrib+j];
-// model.addConstr(lhs, GRB_LESS_EQUAL, -data->standData[obs].y);
-}
-
-// set cobjectives
-obj = 0;
-
-if (C != 0) {
-for (j = 1; j < 2*NumAttrib+1; ++j)
-obj += C*vars[j];
-}
-if (D != 0) {
-for (j = 1; j < 2*NumAttrib+1; ++j)	// for linear square coefficients
-obj += D*vars[j]*vars[j];
-}
-for (j = 2*NumAttrib+1; j < numCols; ++j) {
-if (P==1)  		 obj += vars[j];
-else if (P==2) obj += vars[j]*vars[j];
-}
-*/
-/*
-  model.setObjective(obj);
-  model.update();
-  //model.write("master.lp");
-  model.getEnv().set(GRB_IntParam_OutputFlag, 0);  // not to print out GUROBI
-*/
-
-/*
-// solve RMA
-void REPR::solveRMA() { //const int& GreedyLevel) {
-
-rma->reset();
-
-#ifdef ACRO_HAVE_MPI
-if (parallel) {
-prma->reset();
-//prma->printConfiguration();
-//CommonIO::begin_tagging();
-}
-#endif //  ACRO_HAVE_MPI
-
-rma->workingSol.value=-inf;
-rma->mmapCachedCutPts.clear();
-rma->numDistObs = NumObs;				// only use training data
-rma->setSortObsNum(data->vecTrainData);	// only use training data
-setDataWts();
-
-if (data->getInitialGuess()) {
-grma = new GreedyRMA(data);
-grma->runGreedyRangeSearch();
-}
-
-rma->resetTimers();
-InitializeTiming();
-rma->solve();
-
-} // end function REPR::solveRMA()
-*/
-
-
-/*
-// train data using REPRoost
-void REPR::train(const bool& isOuter, const int& NumIter, const int& greedyLevel) {
-
-int i, j;
-curIter=-1;
-
-setREPRdata();
-flagDuplicate=false;
-
-try {
-
-data->setStandData(data->origTrainData, data->standTrainData);					// standadize data for L1 regularization
-setInitialMaster();
-solveMaster();  //solveInitialMaster();
-
-data->integerizeData(data->origTrainData, data->intTrainData); 	// integerize features
-if (BaseRMA::exactRMA()) rma->setData(data);
-
-for (curIter=0; curIter<NumIter; ++curIter) {
-
-//ucout << "\nColGen Iter: " << curIter << "\n";
-setDataWts();
-
-solveRMA();
-
-
-if ( !BaseRMA::exactRMA() || greedyLevel==base::Greedy) {	// Greedy RMA
-
-grma = new greedyRMA::GreedyRMA(static_cast<BaseRMA *>(this), data);
-grma->runGreedyRangeSearch();
-
-if ( isOuter && grma->maxObjValue <= E + .00001 && BaseRMA::exactRMA()) {
-
-solveRMA();	// solve RMA for each iteration
-
-#ifdef ACRO_HAVE_MPI
-if (uMPI::rank==0) {
-#endif //  ACRO_HAVE_MPI
-ucout << " RMA Solution:  " << rma->incumbentValue
-<< "\tCPU time: " << rma->searchTime << "\n";
-#ifdef ACRO_HAVE_MPI
-}
-#endif //  ACRO_HAVE_MPI
-//
-if ( rma->incumbentValue <= E + .00001 ) {
-#ifdef ACRO_HAVE_MPI
-if (uMPI::rank==0) {
-#endif //  ACRO_HAVE_MPI
-ucout << "Stopping Condition! RMA <=  E!!" << "\n";
-#ifdef ACRO_HAVE_MPI
-}
-#endif //  ACRO_HAVE_MPI
-//
-rma->incumbentValue = inf;
-break;
-} else {
-insertColumns(); // add RMA solutions
-}
-
-if (flagDuplicate) {
-#ifdef ACRO_HAVE_MPI
-if (uMPI::rank==0) {
-#endif //  ACRO_HAVE_MPI
-ucout << "Stop due to duplicates!" << "\n";
-#ifdef ACRO_HAVE_MPI
-}
-#endif //  ACRO_HAVE_MPI
-rma->incumbentValue = inf;
-break;
-}
-
-// if the current rule is the same as the previous rule
-} else if ( curIter>0 &&
-grma->L == matIntLower[curIter-1] &&
-grma->U == matIntUpper[curIter-1] )  {
-#ifdef ACRO_HAVE_MPI
-if (uMPI::rank==0) {
-#endif //  ACRO_HAVE_MPI
-ucout << "Stopping Condition! Greedy RMA" << "\n";
-#ifdef ACRO_HAVE_MPI
-}
-#endif //  ACRO_HAVE_MPI
-break;
-} else {
-insertGreedyColumns(); // add Greedy RMA solutions
-}
-
-} else if (BaseRMA::exactRMA()) {	// Exact RMA
-
-#ifdef ACRO_HAVE_MPI
-if (uMPI::rank==0) {
-#endif //  ACRO_HAVE_MPI
-if (isOuter) ucout << "Outer Iter: " << curIter+1 << " ";
-else 				 ucout << "Inner Iter: " << curIter+1 << " ";
-#ifdef ACRO_HAVE_MPI
-}
-#endif //  ACRO_HAVE_MPI
-
-solveRMA();	// solve RMA for each iteration
-
-if ( rma->incumbentValue <= E + .00001 )  {
-#ifdef ACRO_HAVE_MPI
-if (uMPI::rank==0) {
-#endif //  ACRO_HAVE_MPI
-ucout << "Stopping Condition! RMA <=  E" << "\n";
-#ifdef ACRO_HAVE_MPI
-}
-#endif //  ACRO_HAVE_MPI
-rma->incumbentValue = inf;
-break;
-}
-
-insertColumns(); // add RMA solutions
-
-if (flagDuplicate) {
-#ifdef ACRO_HAVE_MPI
-if (uMPI::rank==0) {
-#endif //  ACRO_HAVE_MPI
-ucout << "EREPR: Stop due to duplicates!" << "\n";
-#ifdef ACRO_HAVE_MPI
-}
-#endif //  ACRO_HAVE_MPI
-rma->incumbentValue = inf;
-break;
-}
-} // end GreedyRMA or ExactRMA
-
-// map back from the discretized data into original
-setOriginalBounds();
-
-#ifdef ACRO_HAVE_MPI
-if (uMPI::rank==0) {
-#endif //  ACRO_HAVE_MPI
-if (isOuter) ucout << "Outer Iter: " << curIter+1;
-else 				 ucout << "Inner Iter: " << curIter+1;
-#ifdef ACRO_HAVE_MPI
-}
-#endif //  ACRO_HAVE_MPI
-
-solveMaster();
-
-} // end for each column generation iteration
-
-#ifdef ACRO_HAVE_MPI
-if (uMPI::rank==0) {
-#endif //  ACRO_HAVE_MPI
-if (isOuter) ucout << "OutREPR ";
-else         ucout << "InnREPR ";
-ucout << curIter << ":\tTest/Train Errors: " << errTest << " " << errTrain << "\n";
-#ifdef ACRO_HAVE_MPI
-}
-#endif //  ACRO_HAVE_MPI
-
-if ( evalFinalIter() && !(evalEachIter()) ) evaluateFinal();
-
-// clean up GUROBI for the next crossvalidation set
-//resetGurobi();
-
-} catch(...) {
-ucout << "Exception during optimization" << "\n";
-return; // EXIT_FAILURE;
-} // end try ... catch
-
-} // trainData function
-*/

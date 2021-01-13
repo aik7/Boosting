@@ -1,3 +1,6 @@
 [submodule "external/RMA"]
 	path = external/RMA
 	url = https://github.com/aik7/RMA.git
+[submodule "external/pybind11"]
+	path = external/pybind11
+	url = ../../pybind/pybind11

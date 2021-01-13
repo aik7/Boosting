@@ -1,5 +1,4 @@
 /*
- *  File name:   main.cpp
  *  Author:      Ai Kagawa
  *  Description: a dirver to run LPBoost or REPR with cross-validation
  */
@@ -9,11 +8,8 @@
 
 int main(int argc, char** argv) {
 
-  boosting::REPR* repr = new boosting::REPR(argc, argv);
-  repr->train(true, repr->getIterations(), repr->greedyLevel);
-
-  // boosting::REPR repr(argc, argv);
-  // repr.train(true, repr.getIterations(), repr.greedyLevel); //isOuter=false, NumIter=10, greedyLevel=EXACT
+  boosting::REPR repr(argc, argv);
+  repr.train(repr.getNumIterations(), repr.greedyLevel);
 
   return 0;
 

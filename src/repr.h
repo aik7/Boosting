@@ -1,5 +1,4 @@
 /*
- *  File name:   repr.h
  *  Author:      Ai Kagawa
  *  Description: a header file for REPR class
  */
@@ -14,24 +13,13 @@
 #include <deque>
 #include <map>
 
-#include <pebbl_config.h>
-#include <pebbl/utilib/ParameterList.h>
-#include <pebbl/utilib/memdebug.h>
-
-#ifdef ACRO_HAVE_MPI
-#include <pebbl/pbb/parBranching.h>
-#include "parRMA.h"
-#define outstream ucout
-//#define IO(action) if (uMPI::iDoIO) { CommonIO::end_tagging(); action; }
-#else // ACRO_HAVE_MPI
-typedef void parRMA;
-#define outstream cout
-#define IO(action) action;
-#endif // ACRO_HAVE_MPI
-
 #include "Time.h"
 #include "boosting.h"
-#include "driverRMA.h"
+#include "utility.h"
+
+
+using namespace std;
+using namespace rma;
 
 
 namespace boosting {
@@ -42,40 +30,63 @@ namespace boosting {
 
     REPR() {}
     REPR(int argc, char** argv) : Boosting(argc, argv) {};
-    // REPR() : rma::DriverRMA(), Boosting() {};
-    ~REPR() {}
+    virtual ~REPR() {}
 
-    //////////////////////// Training methods //////////////////////////////
-
+    // set REPR parameters
     void setBoostingParameters();
 
-    void setInitRMP();
-    void setDataWts();
+    /*************** set initial RMP ***************/
+    void setInitRMP();             // set initial RMP
+    void setInitRMPVariables();    // set variables for initial RMP
+    void setClpParameters();       // set the CLP parameters
+    void setInitRMPObjective();    // set objective for initial RMP
+    void setInitRMPColumnBound();  // set column bounds for initial RMP
+    void setInitRMPRowBound();     // set row bounds for initial RMP
+    void setConstraintsLHS();      // set LHS constraints, elements
+    void setInitRMPClpModel();     // set initial RMP CLP model
 
-    bool isStoppingCondition();
-    void insertExactColumns();
-    void insertGreedyColumns();
+    void setWeights();            // set data weights in DataRMA class
 
-    //////////////////////// Evaluating methods //////////////////////////////
+    bool isStoppingCondition();    // whether or not stopping condition
 
-    double evaluateEachIter(const int& isTest, vector<DataXy> origData);
-    double evaluateAtFinal (const int& isTest, vector<DataXy> origData);
+    /************************* insert columns **************************/
+    void insertPebblColumns();     // insert columns using PEBBL RMA solution
+    void insertGreedyColumns();    // insert columns using Greedy RMA solution
 
-    //////////////////////// Printing methods //////////////////////////////
+    // insert a column in the CLP model using k-th RMA solution
+    void insertColumnClpModel(const unsigned int &k);
 
-    void printRMPSolution();	// restricted mater problem solution
-    void printRMAInfo();			// print RMA problem info
+#ifdef HAVE_GUROBI
+    void setGurobiRMP();
+    void insertColumnGurobiModel(const unsigned int &k);
+#endif
+    /************************* Evaluating methods **************************/
+
+    // evaluate the current model each observation
+    double evaluateEachIter(const bool& isTest, vector<DataXy> origData);
+
+    // evaluate the current model in the end of Boosting iteration
+    double evaluateAtFinal (const bool& isTest, vector<DataXy> origData);
+
+    /************************* Printing methods **************************/
+
+    void printRMPCheckInfo();  // restricted mater problem solution
+    void printRMAInfo();      // print RMA problem info
     //void printEachIterAllErrs() {}
+    void printClpElements();  // print CLP elements
+
+    /************* save a model ****************/
+    void saveModel();
 
   private:
 
     // parameters for REPR
-    int P;
-    double C, E, D, F;
+    unsigned int P;              // the exponent P for the REPR model
+    double C, E, D, F;  // coefficients C, E, D, F for the REPR model
 
-  };
+  };  // end REPR class
 
 
 } // namespace boosting
 
-#endif
+#endif  // REPR_h

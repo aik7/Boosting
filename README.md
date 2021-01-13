@@ -28,7 +28,6 @@ REPR is a prediction algorithm using linear regression with both linear and boxe
 
 ### Optional packages
 * (Optional): [Gurobi](http://www.gurobi.com/)
-* (Optional): R with RuleFit, randomForest, gbm, and fastAdaboost packages
 
 ### Note
 * The build was tested on Ubuntu 18.04 (Bionic) as shown in [our TravisCI file](https://github.com/aik7/Boosting/blob/devel/.travis.yml)
@@ -36,7 +35,7 @@ REPR is a prediction algorithm using linear regression with both linear and boxe
 ## The description and user guide of Boosting algorithms
 * [Presentation](https://github.com/aik7/Boosting/blob/master/Boosting.pdf)
 * User Guide
-* Please find information about the subprocedure of [RMA](https://github.com/aik7/RMA)
+* Information about the [RMA](https://github.com/aik7/RMA) sub-package
 
 ## How to download and build Boosting algorithm
 
@@ -50,25 +49,39 @@ cd Boosting
 sh scripts/build.sh
 ```
 
-## Example commands to run RMA:
+* If you want to use Gurobi to solve the restricted master problem,
+set the Gurobi directory in the cmake file
+and use `-DENABLE_GUROBI=true` when you cmake.
+
+## Example run commands:
 
 ### Serial implementation
 ```
 ./build/boosting <data_filename>
 ```
 
+* You can use a sample data, `./data/servo.data` for `<data_filename>`.
+
 ### Parallel implementation
 ```
 mpirun -np 4 ./build/boosting <data_filename>
 ```
 
-Please read the user guide about how to use parameters for the Boosting solver.
+### Using parameters
+```
+./build/boosting --numIterations=10 <data_filename>
+```
+
+* You can set the number of boosting iterations using `numIterations`.
 
 ## Class Diagram
 
 <p align="center">
 
 <img src="https://github.com/aik7/Boosting/blob/devel/figures/Boosting_class_org.png" width="400">
+
+* A solid arrow indicates an inheritance relationship
+* A dashed arrow indicates a composition relationship
 
 ## Source files at src directory
 
@@ -78,8 +91,6 @@ Please read the user guide about how to use parameters for the Boosting solver.
 ├── argBoost.o
 ├── boosting.cpp     : a file contains Boosting driver class
 ├── boosting.h
-├── dataBoost.cpp    : a file contains Boosting data class
-├── dataBoost.h
 ├── driver.cpp       : a driver file
 ├── lpbr.cpp         : a file contains LPBR class
 ├── lpbr.h
