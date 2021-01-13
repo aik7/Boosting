@@ -89,8 +89,8 @@ include_directories(
 
 file(GLOB SOURCES "src/*.cpp")
 add_executable(boosting ${SOURCES})
-target_link_libraries(boosting ${PEBBL_LIBRARIES})
 target_link_libraries(boosting ${RMA_LIBRARIES})
+target_link_libraries(boosting ${PEBBL_LIBRARIES})
 target_link_libraries(boosting ${Coin_LIBRARIES})
 
 if(ENABLE_GUROBI)

@@ -1,9 +1,11 @@
+#include <limits>
 #include <vector>
 #include <deque>
 #include <string>
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include <cmath>
 
 using namespace std;
 
@@ -28,6 +30,7 @@ public:
   TrainedREPR(int argc, char **argv){
     readSavedModel(argc, argv);  // read the saved model
     readX(argc, argv);           // read X-values
+    readY(argc, argv);           // read Y-values
   }
 
   ~TrainedREPR(){}
@@ -38,6 +41,9 @@ public:
   // read X-values
   void readX(int argc, char **argv);
 
+  // read Y-values
+  void readY(int argc, char **argv);
+
   // set matIsObsCovered (info of each observation is covered by each box)
   void setMatIsObsCovered();
 
@@ -47,14 +53,22 @@ public:
   // set predicted y-value of each observation
   void setVecPredY();
 
+  void standerdizeX();
+
+  void mapToOriginalY();
+
   // return vecPredY (retun size: # of observations)
   vector<double> predict();
 
+  void computeMSE();
+
   /******************* print functions ******************/
 
-  void printVecPredY ()     { cout << "vecPredY: " << vecPredY; }
+  void printVecPredY ()       { cout << "vecPredY: " << vecPredY; }
 
-  void printVecCoeff ()     { cout << "vecCoeff: " << vecCoeff; }
+  void printVecCoeffLinear () { cout << "vecCoeffLinear: " << vecCoeffLinear; }
+
+  void printVecCoeffBox    () { cout << "vecCoeffBox: "    << vecCoeffBox; }
 
   void printMatTestDataX () { cout << "matTestDataX: " << matTestDataX; }
 
@@ -64,6 +78,8 @@ public:
 
   void printMatUpper ()     { cout << "matUpper: " << matUpper; }
 
+  void printMSE ()          { cout << "MSE: " << mse << "\n"; }
+
 private:
 
   // # of attributes, # of boxes, # of variables, # of observations
@@ -72,11 +88,22 @@ private:
   // a vector of predicted y-values (size: # of observations)
   vector<double>          vecPredY;
 
-  // a vector of cofficients of the REPR model (size: # of REPR varaiebls)
-  vector<double>          vecCoeff;
+  // bias term for the REPR model
+  double                  bias;
+
+  // a vector which contains the cofficients of the linear variables
+  // in the REPR model (size: # of linear varaiebls)
+  vector<double>          vecCoeffLinear;
+
+  // a vector which contains the cofficients of the box variables
+  // in the REPR model (size: # of box varaiebls)
+  vector<double>          vecCoeffBox;
 
   // X matrix for testing (size: [# of observations] * [# of attributes])
   vector<vector<double> > matTestDataX;
+
+  // Y values for testing (size: [# of observations])
+  vector<double >        vecTestDataY;
 
   // a matrix includes info of whether or not
   // each observation is covered by each box
@@ -87,6 +114,12 @@ private:
   // (size: [# of boxes] * [# of attributes])
   vector<vector<double> > matLower;
   vector<vector<double> > matUpper;
+
+  vector<double>          vecAvgX;  // avg of X
+  vector<double>          vecSdX;   // sd of X
+  double avgY, sdY;                 // avg and sd of Y
+
+  double mse;
 
 }; // end TrainedREPR class
 

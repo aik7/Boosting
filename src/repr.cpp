@@ -538,7 +538,8 @@ namespace boosting {
     } // end for each observation
 
     // insert column
-    //(numRows: # of rows, colIndex: column index,
+    //(numRows: # of rows, (2*numObs)
+    // colIndex: column index [0, 1, ... , 2*numObs-1],
     // columnInsert: column values to insert,
     // lower and upper bounds of this column variable = {0, COIN_DBL_MAX},
     // objective coefficient = {E})
@@ -798,9 +799,11 @@ namespace boosting {
       //     sumPrimal -= D*vecPrimalVars[j]*vecPrimalVars[j];
       // }
 
-      cout << "vecPrimalVars: ";
-      for (i=0; i<numCols; ++i) cout << vecPrimalVars[i] << " ";
-      cout << "\n";
+      if(debug>=2) {
+        cout << "vecPrimalVars: ";
+        for (i=0; i<numCols; ++i) cout << vecPrimalVars[i] << " ";
+        cout << "\n";
+      }
 
       ////////////////////////////////////////////////////////////////////
 
@@ -815,9 +818,11 @@ namespace boosting {
 
       }
 
-      cout << "vecDualVars: ";
-      for (i=0; i<numRows; ++i) cout << vecDualVars[i] << " ";
-      cout << "\n";
+      if(debug>=2) {
+        cout << "vecDualVars: ";
+        for (i=0; i<numRows; ++i) cout << vecDualVars[i] << " ";
+        cout << "\n";
+      }
 
       cout << "Check PrimalObj: " << sumPrimal << " = DualObj:" << sumDual << "\n";
 
@@ -907,30 +912,67 @@ void REPR::saveModel() {
   os << "#_of_boxes:      " << numBoxesSoFar << "\n";
 
   // output the constant term
-  os << vecPrimalVars[0] << " ";
+  os << "\nbias: " << vecPrimalVars[0];
 
+  os << "\n\ncoefficients_for_linear_variables:\n";
   // output the coefficients for the linear variables
   for (i=0; i<data->numAttrib; ++i)  // for each attribute
     os << vecPrimalVars[1+i] - vecPrimalVars[1+data->numAttrib+i] << " ";
 
+  os << "\n\ncoefficients_for_box_variables:\n";
   // output the cofficeitns for the box variables
   for (i=0; i<numBoxesSoFar; ++i) // for each box
-    os << vecPrimalVars[1+2*data->numAttrib+numObs+i] << " ";
+    if (vecIsObjValPos[i])
+      os <<  vecPrimalVars[1+2*data->numAttrib+numObs+i] << " ";
+    else
+      os << -vecPrimalVars[1+2*data->numAttrib+numObs+i] << " ";
 
-  os << "\n" ;  // go to the next line
+  os << "\n\nthe_average_value_of_y_value: ";
+  os << data->avgY;
+
+  os << "\n\nthe_standard_deviation_of_y_value: ";
+  os << data->sdY;
+
+  os << "\n\nthe_average_value_of_each_attribute:\n";
+  for (unsigned int j=0; j<numAttrib; ++j)
+    os << data->vecAvgX[j] << " ";
+
+  os << "\n\nthe_standard_deviation_of_each_attribute:\n";
+  for (unsigned int j=0; j<numAttrib; ++j)
+    os << data->vecSdX[j] << " ";
+
+  os << "\n\n" ;  // go to the next line
 
   // output each box's lower and upper bounds in original values
   for (unsigned int k=0; k<curIter; ++k ) { // for each Boosting iteration
 
     if (matOrigLower.size()!=0) { // if integerized
-      os << "Box " << k << "_a: "<< matOrigLower[k] << "\n" ;
-      os << "Box " << k << "_b: "<< matOrigUpper[k] << "\n" ;
+      os << "Box " << k << "_a: " << matOrigLower[k] << "\n" ;
+      os << "Box " << k << "_b: " << matOrigUpper[k] << "\n" ;
     } else {
-      os << "Box_" << k << "_a: "<< matIntLower[k] << "\n" ;
-      os << "Box_" << k << "_b: "<< matIntUpper[k] << "\n" ;
+
+      os << "Box_" << k << "_a: " ;
+      for (unsigned int j=0; j<numAttrib; ++j) {
+        if (matIntLower[k][j]==0)
+          os << -getInf() << " ";
+        else
+          os << matIntLower[k][j] << " ";
+      }
+
+      os << "\nBox_" << k << "_b: " ;
+      for (unsigned int j=0; j<numAttrib; ++j) {
+        if (matIntUpper[k][j]==data->vecNumDistVals[j]-1)
+          os << getInf() << " ";
+        else
+          os << matIntUpper[k][j] << " ";
+      }
+
+      os << "\n" ;
+
     } // end if
 
   } // end for each Boosting iteration
+
 
   // TODO: we do not have to save this info
   // output integerization info

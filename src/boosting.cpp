@@ -24,11 +24,9 @@ namespace boosting {
 
     if (isPebblRMA()) setupPebblRMA(argc, argv);  // setup PEBBL RMA
 
-    resetBoosting(); // reset Boosting
+    resetBoosting();                              // reset Boosting
 
     cout << (isUseGurobi() ? "Gurobi" : "CLP") << " solver\n";
-
-    if (prma!=NULL) prma->printConfiguration(); // TODO: do not know why...
 
   } // end Boosting constructor
 
@@ -53,7 +51,7 @@ namespace boosting {
     matOrigLower.clear();   // matrix containes lower bound of box in original value
     matOrigUpper.clear();   // matrix containes upper bound of box in original value
 
-    matIsCvdObsByBox.clear();
+    matIsCvdObsByBox.clear();  // matrix containes whether or not each observation is covered by each box
 
     // if the isSaveAllRMASols is enabled,
     // allocate vecERMAObjVal and vecGRMAObjVal
@@ -115,6 +113,7 @@ namespace boosting {
         // save the weights for the current iteration
         if (isSaveWts())           saveWeights(curIter);
 
+        // save Greedy and/or Exact RMA solutions in a file
         if (isSaveAllRMASols())    setVecRMAObjVals();
 
         if (isStoppingCondition()) isStopCond = 1;
@@ -133,9 +132,9 @@ namespace boosting {
 
       insertColumns();  // insert columns using RMA solutions
 
-      // map back from the discretized data into original
-      solveRMP();
+      solveRMP();       // solve the updated RMP
 
+      // map back from the discretized data into original
       if (delta()!=-1) setOriginalBounds();
 
       if (isEvalEachIter()) evaluateModel();
@@ -168,6 +167,7 @@ namespace boosting {
 #endif //  ACRO_HAVE_MPI
 
   } // end trainData function
+
 
   // set dataStandTrain
   void Boosting::setDataStand() {
@@ -621,7 +621,7 @@ namespace boosting {
 
     for (unsigned int i=0; i < numIdx; ++i) { // for each observation
 
-      if (isTest) os << origData[i].y  << " " << predTest[i] << "\n";
+      if (isTest) os << origData[i].y << " " << predTest[i] << "\n";
       else        os << origData[i].y << " " << predTrain[i] << "\n";
 
     } // end for each observation

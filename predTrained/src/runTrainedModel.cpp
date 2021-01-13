@@ -18,51 +18,90 @@ void TrainedREPR::readSavedModel(int argc, char **argv) {
   s >> tmp >> numAttrib;        // read # of attributes
   s >> tmp >> numBox;           // read # of boxes
 
-  numVars = 1 + numAttrib + numBox; // set # of variables
+  // numVars = 1 + numAttrib + numBox; // set # of variables
 
   // print out # of attributes, # of boxes, # of variables
   cout << "numAttrib: " << numAttrib << "\n";
   cout << "numBox: "    << numBox    << "\n";
-  cout << "numVars: "   << numVars    << "\n";
+  // cout << "numVars: "   << numVars    << "\n";
 
-  vecCoeff.resize(numVars);  // resize vecCoeff
+  /******************** read coefficient info *******************/
 
-  // read coefficients of a constant term, linear variables, and box variables
-  for (unsigned int i = 0; i < numVars; ++i)  // for each coefficient
-    s >> vecCoeff[i];
+  s >> tmp >> bias;           // read # of boxes
 
+  vecCoeffLinear.resize(numAttrib);  // resize vecCoeffLinear
+  vecCoeffBox   .resize(numBox);     // resize vecCoeffBox
+
+  // skip first few strings of each line
+  s >> tmp;
+
+  for (unsigned int j = 0; j < numAttrib; ++j)  // for each coefficient
+    s >> vecCoeffLinear[j];
+
+  // skip first few strings of each line
+  s >> tmp;
+
+  for (unsigned int k = 0; k < numBox; ++k)     // for each box
+    s >> vecCoeffBox[k];
+
+  /******************** read standerdization info *******************/
+  s >> tmp >> avgY;
+  s >> tmp >> sdY;
+
+  // skip first few strings of each line
+  s >> tmp;
+  vecAvgX.resize(numAttrib);
+  for (unsigned int j = 0; j < numAttrib; ++j)  // for each coefficient
+    s >> vecAvgX[j];
+
+  // skip first few strings of each line
+  s >> tmp;
+  vecSdX.resize(numAttrib);
+  for (unsigned int j = 0; j < numAttrib; ++j)  // for each coefficient
+    s >> vecSdX[j];
+
+  /************************** read box info *******************/
   // resize the lower and upper bounds matrices
   matLower.resize(numBox);
+  matUpper.resize(numBox);
 
   // set matLower by reading from the file
   for (unsigned int k=0; k<numBox; ++k) { // for each box
 
     // skip first few strings of each line
-    s >> tmp >> tmp >> tmp;
+    s >> tmp;
 
     // set the dimension of lower bounds for each observations
     matLower[k].resize(numAttrib);
 
-    for (unsigned int j=0; j<numAttrib; ++j)  // for each attribute
-      s >> matLower[k][j];
+    for (unsigned int j=0; j<numAttrib; ++j) { // for each attribute
+
       // set the lower bound of observation i and its attribute j
+      s >> tmp;
 
-  } // end for each box
+      if (tmp=="-inf")
+        matLower[k][j] = -numeric_limits<double>::infinity();
+      else
+        matLower[k][j] = stod(tmp);
 
-  matUpper.resize(numBox);
-
-  // set matUpper by reading from the file
-  for (unsigned int k=0; k<numBox; ++k) { // for each box
+    } // end for each attribute
 
     // skip first few strings of each line
-    s >> tmp >> tmp >> tmp;
+    s >> tmp;
 
     // set the dimension of lower bounds for each observations
     matUpper[k].resize(numAttrib);
 
-    for (unsigned int j=0; j<numAttrib; ++j) // for each attribute
-      s >> matUpper[k][j];
+    for (unsigned int j=0; j<numAttrib; ++j) { // for each attribute
+
       // set the upper bound of observation i and its attribute j
+      s >> tmp;
+
+      if (tmp=="inf")
+        matUpper[k][j] = numeric_limits<double>::infinity();
+      else
+        matUpper[k][j] = stod(tmp);
+    } // end for each attribute
 
   } // end for each box
 
@@ -70,7 +109,10 @@ void TrainedREPR::readSavedModel(int argc, char **argv) {
 
   s.close(); // close the data file
 
-  // printVecCoeff();
+  // cout << "bias: "    << bias << "\n";
+  // printVecCoeffLinear();
+  // printVecCoeffBox();
+  //
   // printMatLower();
   // printMatUpper();
 
@@ -139,6 +181,43 @@ void TrainedREPR::readX(int argc, char **argv) {
 } // end readX function
 
 
+// read Y-values from a file
+void TrainedREPR::readY(int argc, char **argv) {
+
+  string line;
+  double tmp;
+
+  cout << "reading the test data...\n";
+  ifstream s(argv[2]);              // open the data file
+
+  // check whether or not the file is opened correctly
+  if (!s) {
+    cerr << "Could not open file \"" << argv[2] << "\n";
+    return;
+  }
+
+  // read data from the data file
+  if (argc <= 2) {
+    cerr << "No filename specified\n";
+    return;
+  }
+
+  vecTestDataY.resize(numObs);  // resize the row of matTestDataX
+
+  for (int i = 0; i < numObs; ++i) { // for each observation
+
+    for (int j = 0; j < numAttrib+1; j++)  // for each attribute
+      s >> vecTestDataY[i]; // read y_{i}
+
+  } // end for each observation
+
+  s.close(); // close the data file
+
+  // printMatTestDataX();
+
+} // end readX function
+
+
 // wether or not observation "i" is covered by box "k"
 bool TrainedREPR::isObsCovered(int k, int i) {
 
@@ -172,6 +251,19 @@ void TrainedREPR::setMatIsObsCovered() {
 }  // end setMatIsObsCovered function
 
 
+void TrainedREPR::standerdizeX() {
+  for (unsigned int j=0; j<numAttrib; ++j)
+    for (unsigned int i=0; i<numObs; ++i)
+      matTestDataX[i][j] = ( matTestDataX[i][j] - vecAvgX[j] ) / vecSdX[j];
+}
+
+
+void TrainedREPR::mapToOriginalY() {
+  for (unsigned int i=0; i<numObs; ++i)
+    vecPredY[i] = vecPredY[i] * sdY + avgY;
+}
+
+
 // set predicted y-values
 void TrainedREPR::setVecPredY() {
 
@@ -180,22 +272,37 @@ void TrainedREPR::setVecPredY() {
   // predict y-value for each observation
   for (unsigned int i=0; i<numObs; ++i) { // for each observation
 
-    vecPredY[i] = vecCoeff[0];        // constant term (\beta_0)
+    vecPredY[i] = bias;        // constant term (\beta_0)
 
     // add the sum of the product of linear cofficients and variables
     // ( \sum_i=1^n \beta_j * X_ij )
     for (unsigned int j=0; j<numAttrib; ++j)  // for each attribute
-      vecPredY[i] += vecCoeff[1+j] * matTestDataX[i][j];
+      vecPredY[i] += vecCoeffLinear[j] * matTestDataX[i][j];
 
     // box regression term
     for (unsigned int k=0; k<numBox; ++k)  // for each box
-      vecPredY[i] += vecCoeff[1+numAttrib+k] * matIsObsCovered[k][i];
+      vecPredY[i] += vecCoeffBox[k] * matIsObsCovered[k][i];
 
   }  // end for each observation
 
-  printVecPredY();
+  // printVecPredY();
 
 }  // end setVecPredY function
+
+
+// compute MSE
+void TrainedREPR::computeMSE() {
+
+  // for (unsigned int i=0; i<numObs; ++i)
+  //   cout << vecPredY[i] << " " << vecTestDataY[i] << "\n";
+
+  mse = 0;
+  for (unsigned int i=0; i<numObs; ++i)
+    mse += pow(vecPredY[i] - vecTestDataY[i], 2);
+
+  mse /= numObs;
+
+}
 
 
 // predict y value using X (return the vector of predicted y-values)
@@ -203,7 +310,13 @@ vector<double> TrainedREPR::predict() {
 
   setMatIsObsCovered();  // set vecObsCovered (each observation is covered by each box)
 
+  standerdizeX();        // standerdize X values befoe feed them into the model
+
   setVecPredY();         // set predicted y-values
+
+  mapToOriginalY();      // mpp the y-value to the original values
+
+  printVecPredY();
 
   return vecPredY;
 
