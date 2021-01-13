@@ -113,6 +113,7 @@ namespace boosting {
         // save the weights for the current iteration
         if (isSaveWts())           saveWeights(curIter);
 
+        // save Greedy and/or Exact RMA solutions in a file
         if (isSaveAllRMASols())    setVecRMAObjVals();
 
         if (isStoppingCondition()) isStopCond = 1;
@@ -131,9 +132,9 @@ namespace boosting {
 
       insertColumns();  // insert columns using RMA solutions
 
-      // map back from the discretized data into original
-      solveRMP();
+      solveRMP();       // solve the updated RMP
 
+      // map back from the discretized data into original
       if (delta()!=-1) setOriginalBounds();
 
       if (isEvalEachIter()) evaluateModel();
@@ -166,6 +167,7 @@ namespace boosting {
 #endif //  ACRO_HAVE_MPI
 
   } // end trainData function
+
 
   // set dataStandTrain
   void Boosting::setDataStand() {

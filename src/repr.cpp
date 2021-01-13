@@ -538,7 +538,8 @@ namespace boosting {
     } // end for each observation
 
     // insert column
-    //(numRows: # of rows, colIndex: column index,
+    //(numRows: # of rows, (2*numObs)
+    // colIndex: column index [0, 1, ... , 2*numObs-1],
     // columnInsert: column values to insert,
     // lower and upper bounds of this column variable = {0, COIN_DBL_MAX},
     // objective coefficient = {E})
@@ -798,9 +799,11 @@ namespace boosting {
       //     sumPrimal -= D*vecPrimalVars[j]*vecPrimalVars[j];
       // }
 
-      cout << "vecPrimalVars: ";
-      for (i=0; i<numCols; ++i) cout << vecPrimalVars[i] << " ";
-      cout << "\n";
+      if(debug>=2) {
+        cout << "vecPrimalVars: ";
+        for (i=0; i<numCols; ++i) cout << vecPrimalVars[i] << " ";
+        cout << "\n";
+      }
 
       ////////////////////////////////////////////////////////////////////
 
@@ -815,9 +818,11 @@ namespace boosting {
 
       }
 
-      cout << "vecDualVars: ";
-      for (i=0; i<numRows; ++i) cout << vecDualVars[i] << " ";
-      cout << "\n";
+      if(debug>=2) {
+        cout << "vecDualVars: ";
+        for (i=0; i<numRows; ++i) cout << vecDualVars[i] << " ";
+        cout << "\n";
+      }
 
       cout << "Check PrimalObj: " << sumPrimal << " = DualObj:" << sumDual << "\n";
 
