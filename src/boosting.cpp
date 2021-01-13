@@ -24,11 +24,9 @@ namespace boosting {
 
     if (isPebblRMA()) setupPebblRMA(argc, argv);  // setup PEBBL RMA
 
-    resetBoosting(); // reset Boosting
+    resetBoosting();                              // reset Boosting
 
     cout << (isUseGurobi() ? "Gurobi" : "CLP") << " solver\n";
-
-    if (prma!=NULL) prma->printConfiguration(); // TODO: do not know why...
 
   } // end Boosting constructor
 
@@ -53,7 +51,7 @@ namespace boosting {
     matOrigLower.clear();   // matrix containes lower bound of box in original value
     matOrigUpper.clear();   // matrix containes upper bound of box in original value
 
-    matIsCvdObsByBox.clear();
+    matIsCvdObsByBox.clear();  // matrix containes whether or not each observation is covered by each box
 
     // if the isSaveAllRMASols is enabled,
     // allocate vecERMAObjVal and vecGRMAObjVal
