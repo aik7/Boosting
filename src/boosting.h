@@ -44,7 +44,7 @@ using namespace std;
 
 namespace boosting {
 
-  enum GreedyLevel   {EXACT, Greedy}; // NotOptimal,
+  enum GreedyLevel   {EXACT, GREEDY}; // NotOptimal,
   enum TestTrainData {TRAIN, TEST, VALID};
 
   class Boosting : public arg::ArgBoost, virtual public rma::SolveRMA {
@@ -94,15 +94,7 @@ namespace boosting {
     void         setStoppingCondition();
 
     // insert column
-    void         insertColumns() {
-      (greedyLevel==EXACT) ? insertPebblColumns() : insertGreedyColumns();
-    }
-
-    // insert columns using PEBBL RMA solutions
-    virtual void insertPebblColumns()  = 0;
-
-    // insert columns using Greedy RMA solutions
-    virtual void insertGreedyColumns() = 0;
+    virtual void insertColumns() = 0;
 
     // set vecIsObjValPos,
     // a vector of whether or not each solution, k, is positive
@@ -135,12 +127,8 @@ namespace boosting {
     void evaluateModel();
 
     // evaluate the error in each Boosting iteration
-    virtual double evaluateEachIter(const bool &isTest,
-                                    vector<DataXy> origData) = 0;
-
-    // evaluate the error in the end of Boosting iterations
-    virtual double evaluateAtFinal(const bool &isTest,
-                                   vector<DataXy> origData)  = 0;
+    virtual double evaluate(const bool &isTest,
+                           vector<DataXy> origData) = 0;
 
     /************************ Checking methods ************************/
     bool checkDuplicateBoxes(vector<unsigned int> vecIntLower,
@@ -211,8 +199,8 @@ namespace boosting {
 
     ///////////////////// CLP variables /////////////////////
     ClpSimplex       modelClp;   // CLP model
-    CoinPackedMatrix *matrix;   // CLP matrix
-    ClpPackedMatrix *clpMatrix; // CLP matrix
+    CoinPackedMatrix *matrix;    // CLP matrix
+    ClpPackedMatrix  *clpMatrix; // CLP matrix
     // CoinPackedVector row;
 
     // indices for columns

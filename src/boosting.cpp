@@ -20,7 +20,7 @@ namespace boosting {
 
     setData(argc, argv);   // set Data RMA class object from SolveRMA class
 
-    (isPebblRMA()) ? greedyLevel=EXACT : greedyLevel=Greedy;
+    (isPebblRMA()) ? greedyLevel=EXACT : greedyLevel=GREEDY;
 
     if (isPebblRMA()) setupPebblRMA(argc, argv);  // setup PEBBL RMA
 
@@ -559,8 +559,8 @@ namespace boosting {
 
     // evalute the model each iteration
     void Boosting::evaluateModel() {
-      errTrain = evaluateEachIter(TRAIN, data->dataOrigTrain);
-      errTest  = evaluateEachIter(TEST,  data->dataOrigTest);
+      errTrain = evaluate(TRAIN, data->dataOrigTrain);
+      errTest  = evaluate(TEST,  data->dataOrigTest);
       printBoostingErr();
     } // end evaluateModel function
 

@@ -403,7 +403,7 @@ namespace boosting {
       } // end if the stopping condition
     } // end if PEBBL RMA
 
-    if (greedyLevel==Greedy) { // if greedy RMA
+    if (greedyLevel==GREEDY) { // if greedy RMA
       // if the current iteration is greater than 0,
       // and the current lower and upper bounads are the same
       // as the previous iteration's
@@ -420,17 +420,11 @@ namespace boosting {
   } // end isStoppingCondition function
 
 
-
   // insert columns in each column iteration
-  void REPR::insertPebblColumns() { //const int& GreedyLevel) {
+  void REPR::insertColumns() {
 
-    if ( curIter!=0 ) { // if not the first iteration
-      // check whether or not the current iterations has any duplicate boxes
-      if (debug>=1) {
-        for (unsigned int k=0; k<numBoxesIter; ++k)
-          checkDuplicateBoxes(sl[k]->a, sl[k]->b);
-      } // end debug
-    } // end if not the first iteration
+    if (greedyLevel==GREEDY) numBoxesIter = 1;
+    // numBoxesIter using PEBBL is already set
 
     vecIsObjValPos.  resize(numBoxesSoFar+numBoxesIter);
     matIntUpper.     resize(numBoxesSoFar+numBoxesIter);
@@ -439,78 +433,50 @@ namespace boosting {
 
     for (unsigned int k=0; k<numBoxesIter; ++k) { // for each solution
 
-      //if (!checkDuplicateBoxes(k)) { // if this rule is not duplicates
-
-      setVecIsObjValPos(k, sl[k]->isPosIncumb);
-
-      setMatIntBounds(k, sl[k]->a, sl[k]->b);
-
-      setMatIsCvdObsByBox(k);
-
-      // set vecIsCovered, wether or not each observation is covered
-      // by lower and upper bound (a, b)
-      // setVecIsCovered(sl[k]->a, sl[k]->b);
-
-#ifdef HAVE_GUROBI
-      if (isUseGurobi())
-        insertColumnGurobiModel(k);
-      else
-#endif // HAVE_GUROBI
-        insertColumnClpModel(k);
+      // 1st argument: k-th solutin in this iteration
+      // 2nd argument: whether or not it is positive box variable
+      // 3rd and 4th arguments: lower and upper bounds in integer value
+      if (greedyLevel==EXACT) // for PEEBL solution
+        insertEachColumn(k, sl[k]->isPosIncumb, sl[k]->a, sl[k]->b);
+      else                    // for Greedy solution
+        insertEachColumn(k, grma->isPostObjVal(),
+                         grma->getLowerBounds(), grma->getUpperBounds());
 
     } // end for each solution, k
 
     numBoxesSoFar  += numBoxesIter;
     numCols        += numBoxesIter;
 
-    // if (s.size()!=numBoxesIter) { // remove extra space due to duplicates
-    //   matIntUpper.resize(matIntUpper.size()-(s.size()-numBoxesIter));
-    //   matIntLower.resize(matIntLower.size()-(s.size()-numBoxesIter));
-    //   vecIsObjValPos.resize(vecIsObjValPos.size()-(s.size()-numBoxesIter));
-    // }
-
-    for (unsigned int k=0; k<s.size(); ++k)
-      sl[k]->dispose();
+    if (greedyLevel=EXACT) // if PEEBL, dispose the solutions
+      for (unsigned int k=0; k<s.size(); ++k)
+        sl[k]->dispose();
 
   } // end insertPebblColumns function
 
 
-  // insert columns in each column iteration
-  void REPR::insertGreedyColumns() { //const int& GreedyLevel) {
+  // insert each column for current iteration k
+  void REPR::insertEachColumn(const int & k, const bool &isPosObjVal,
+                              const vector<unsigned int> &vecLower,
+                              const vector<unsigned int> &vecUpper) {
 
-    numBoxesIter = 1;
+    if (curIter!=0 && debug>=1) // if is not the first iteration and the debug mode
+      checkDuplicateBoxes(vecLower, vecUpper);
+      // check this box is duplicate of not compare to the already inserted boxes
 
-    if ( curIter!=0 ) { // if not the first iteration
-      // check whether or not the current iterations has any duplicate boxes
-      if (debug>=1) {
-        for (unsigned int k=0; k<numBoxesIter; ++k)
-          checkDuplicateBoxes(grma->getLowerBounds(), grma->getUpperBounds());
-      } // end debug
-    } // end if not the first iteration
+    setVecIsObjValPos(k, isPosObjVal);      // set this box is positivie or not
 
-    vecIsObjValPos.  resize(numBoxesSoFar+numBoxesIter);
-    matIntUpper.     resize(numBoxesSoFar+numBoxesIter);
-    matIntLower.     resize(numBoxesSoFar+numBoxesIter);
-    matIsCvdObsByBox.resize(numBoxesSoFar+numBoxesIter);
+    setMatIntBounds(k, vecLower, vecUpper); // set this box's bounds in the list
 
-    setVecIsObjValPos(0, grma->isPostObjVal());
-
-    setMatIntBounds(0, grma->getLowerBounds(), grma->getUpperBounds());
-
-    setMatIsCvdObsByBox(0);
+    setMatIsCvdObsByBox(k); // set wheather or not this box covered each observation
 
 #ifdef HAVE_GUROBI
     if (isUseGurobi())
-      insertColumnGurobiModel(0);
+      insertColumnGurobiModel(k);  // insert k-th column of this iterations using Gurobi
     else
 #endif // HAVE_GUROBI
-      insertColumnClpModel(0);
+      insertColumnClpModel(k);     // insert k-th column of this iterations using CLP
 
-    // TODO: for now, add one observation per iteration, but can be fixed that later
-    ++numBoxesSoFar;
-    ++numCols;
-
-  } // end insertGreedyColumns function
+  } // end insertEachColumn function
 
 
   // insert a colum in CLP model
@@ -584,15 +550,14 @@ namespace boosting {
 
   //////////////////////// Evaluating methods //////////////////////////////
 
-  // evaluate error rate in each iteration
-  double REPR::evaluateEachIter(const bool &isTest, vector<DataXy> origData) {
+//   // evaluate error rate in each iteration
+  double REPR::evaluate(const bool &isTest, vector<DataXy> origData) {
 
     double err, err2, actY, expY, mse=0.0;
-    unsigned int obs, numIdx;
+    unsigned int numIdx;
 
     // set the size of training or testing observations
-    if (isTest) numIdx = data->vecTestObsIdx.size();
-    else        numIdx = data->vecTrainObsIdx.size();
+    numIdx = ( isTest ? data->numTestObs : numObs );
 
     for (unsigned int i=0; i<numIdx; ++i) { // for each obsercation
 
@@ -600,42 +565,46 @@ namespace boosting {
       expY = vecPrimalVars[0];    // for constant terms
       DEBUGPR(20, cout << "constant expY: " << expY << "\n");
 
-      if (isTest) obs = data->vecTestObsIdx[i];
-      else        obs = data->vecTrainObsIdx[i];
-
       // f(X) += \sum_{j=1}^n ( \beta_j^+ - \beta_j^-)
       for (unsigned int j=0; j<numAttrib; ++j) { // for each attribute
-        expY += ( origData[obs].X[j] - data->vecAvgX[j] ) / data->vecSdX[j]
+        expY += ( origData[i].X[j] - data->vecAvgX[j] ) / data->vecSdX[j]
                 * ( vecPrimalVars[j+1] - vecPrimalVars[numAttrib+j+1] );
         DEBUGPR(20, cout << "linear expY: " << expY << "\n");
       } // end for each attribute
 
-      DEBUGPR(20, cout << "obs: " << obs
-                       << " linearReg expY: " << expY
-                       <<  " features: " << origData[obs].X );
+      DEBUGPR(20, cout << "obs: "              << i
+                       << ", linearReg expY: " << expY
+                       << ", features: "       << origData[i].X );
 
       // for each
       for (unsigned int k=0; k<matOrigLower.size(); ++k) { // for each box solution
 
         // //if (vecPrimalVars[numVar+2*k]!=0) {
+        // if the primal variable for this box variable is not 0
         if (!(vecPrimalVars[data->numTrainObs+2*numAttrib+k+1] ==0) ) {
-          if ( matIsCvdObsByBox[k][obs] ) { // if this observation is covered
-            if (vecIsObjValPos[k]) // if positive box variable
+
+          if ( matIsCvdObsByBox[k][i] ) { // if this observation is covered
+
+            if (vecIsObjValPos[k])          // if positive box variable
               expY +=  vecPrimalVars[data->numTrainObs + 2*data->numAttrib +k+1] ;
             else
               expY += -vecPrimalVars[data->numTrainObs +2*data->numAttrib +k+1] ;
-            DEBUGPR(20, cout << "kth box: " << k
+
+            DEBUGPR(20, cout << "kth box: "  << k
                              << " box exp: " << expY << "\n");
-          }
+
+          } // end if this observation is covered
+
         } // end if for the coefficient of box not 0
+
       } // end for each box
 
       DEBUGPR(20, cout << "before normalied expY: " << expY
                        << ", avgY: "                <<  data->avgY
                        << ", sdY: "                 <<  data->sdY << "\n") ;
 
-      expY = data->avgY + expY * data->sdY;
-      actY = origData[obs].y;	// actual y value
+      expY = data->avgY + expY * data->sdY;  // expected y value map back to the original
+      actY = origData[i].y;                  // actual y value
 
       // if isSavePred is enabled and the last column generation iteration
       if ( isSavePred() && (curIter==getNumIterations()) ) {
@@ -645,7 +614,7 @@ namespace boosting {
         savePredictions(TRAIN, data->dataOrigTrain);
       }
 
-      err = expY - actY;	// difference between expacted and actual y values
+      err  = expY - actY;  // difference between expacted and actual y values
       err2 = pow(err, 2);
 
 #ifdef ACRO_HAVE_MPI
@@ -661,109 +630,19 @@ namespace boosting {
 
     } // end for each observation
 
+    mse /= (double) numIdx;
+
 #ifdef ACRO_HAVE_MPI
     if (uMPI::rank==0) {
 #endif //  ACRO_HAVE_MPI
-      DEBUGPR(20, cout << "MSE: " <<  mse / (double) numIdx << "\n");
+      DEBUGPR(20, cout << "MSE: " <<  mse << "\n");
 #ifdef ACRO_HAVE_MPI
     } // end if (uMPI::rank==0)
 #endif //  ACRO_HAVE_MPI
 
-    return mse / (double) numIdx;
+    return mse;
 
   }	// end evaluateEachIter function
-
-
-  // evaluate error rate in the end of iterations
-  double REPR::evaluateAtFinal(const bool &isTest, vector<DataXy> origData) {
-
-    double err, err2, actY, expY, mse=0.0;
-    unsigned int i, j, k, obs, numIdx;
-
-    if (isTest) numIdx = data->vecTestObsIdx.size();
-    else        numIdx = data->vecTrainObsIdx.size();
-
-    for (i=0; i<numIdx; ++i) { // for each obsercation
-
-      expY = vecPrimalVars[0];    // for constant terms
-      DEBUGPR(20, cout << "constant expY: " << expY << "\n");
-
-      if (isTest) obs = data->vecTestObsIdx[i];
-      else        obs = data->vecTrainObsIdx[i];
-
-      for (j=0; j<numAttrib; ++j) {
-        expY +=  ( origData[obs].X[j]-data->vecAvgX[j] ) / data->vecSdX[j]
-          * ( vecPrimalVars[j+1] - vecPrimalVars[numAttrib+j+1] );
-        DEBUGPR(20, cout << "linear expY: " << expY << "\n");
-      }
-
-      DEBUGPR(20, cout << "obs: " << obs << " linearReg expY: " << expY
-              <<  " features: " << origData[obs].X );
-
-      for (k=0; k<matOrigLower.size(); ++k) { // for each box solution
-
-        // if the coefficients (gamma^+-gamma^-)=0 for the box[k] is not 0
-        // if the coefficients for the box[k] is not 0
-        if (!(vecPrimalVars[data->numTrainObs+2*numAttrib+k+1] ==0)) {//if (vecPrimalVars[numVar+2*k]!=0) {
-
-          for (j=0; j<numAttrib; ++j) { // for each attribute
-            if (matOrigLower[k][j] <= origData[obs].X[j] &&
-                origData[obs].X[j] <= matOrigUpper[k][j] ) {
-              if ( j==numAttrib-1) { // all features are covered by the box
-                if (vecIsObjValPos[k])
-                  expY +=  vecPrimalVars[data->numTrainObs+2*numAttrib+k+1] ;
-                else
-                  expY += -vecPrimalVars[data->numTrainObs+2*numAttrib+k+1] ;
-                DEBUGPR(20, cout << "kth box: " << k	<< " box exp: " << expY << "\n");
-              }
-            } else break; // this observation is not covered
-          } // end for each attribute
-
-        } // end if for the coefficient of box not 0
-
-      } // end for each box
-
-      DEBUGPR(20, cout << "before normalied expY: " << expY
-              << ",  avgY: " <<  data->avgY << ", sdY: " <<  data->sdY << "\n") ;
-
-      expY = data->avgY + expY * data->sdY;
-      actY = origData[obs].y;	// actual y value
-
-      // if isSavePred is enabled and the last column generation iteration
-      if ( isSavePred() && (curIter==getNumIterations()) ) {
-        //predictions.resize(data->numOrigObs);
-        //predictions[obs] = expY;
-        savePredictions(TEST,  data->dataOrigTest);
-        savePredictions(TRAIN, data->dataOrigTrain);
-      }
-
-      err = expY - actY;	// difference between expacted and actual y values
-      err2 = pow(err, 2);
-
-#ifdef ACRO_HAVE_MPI
-      if (uMPI::rank==0) {
-#endif //  ACRO_HAVE_MPI
-        DEBUGPR(10, cout << "actY-expY " << actY << " - " << expY
-        << " = " << err << " err^2: " << err2 << "\n" ) ;
-#ifdef ACRO_HAVE_MPI
-      }
-#endif //  ACRO_HAVE_MPI
-
-      mse += err2;
-
-    } // end for each observation
-
-#ifdef ACRO_HAVE_MPI
-    if (uMPI::rank==0) {
-#endif //  ACRO_HAVE_MPI
-      DEBUGPR(20, cout << "mse: " <<  mse / (double) numIdx << "\n");
-#ifdef ACRO_HAVE_MPI
-    }
-#endif //  ACRO_HAVE_MPI
-
-    return mse / (double) numIdx;
-
-  } // end evaluateAtFinal function
 
 
   //////////////////////// Printing methods //////////////////////////////
@@ -893,110 +772,92 @@ namespace boosting {
   } // end printClpElements function
 
 
-// save trained REPR model
-void REPR::saveModel() {
+  // save trained REPR model
+  void REPR::saveModel() {
 
-#ifdef ACRO_HAVE_MPI
-  if (uMPI::rank==0) {
-#endif //  ACRO_HAVE_MPI
+  #ifdef ACRO_HAVE_MPI
+    if (uMPI::rank==0) {
+  #endif //  ACRO_HAVE_MPI
 
-  unsigned int i;
+    unsigned int i;
 
-  // set the output file name
-  stringstream s;
-  s << problemName << "_model_" << getDateTime() << ".out";
-  ofstream os(s.str().c_str());
+    // set the output file name
+    stringstream s;
+    s << problemName << "_model_" << getDateTime() << ".out";
+    ofstream os(s.str().c_str());
 
-  // save # of attributes and boxes
-  os << "#_of_attributes: " << data->numAttrib << "\n";
-  os << "#_of_boxes:      " << numBoxesSoFar << "\n";
+    // save # of attributes and boxes
+    os << "#_of_attributes: " << data->numAttrib << "\n";
+    os << "#_of_boxes:      " << numBoxesSoFar << "\n";
 
-  // output the constant term
-  os << "\nbias: " << vecPrimalVars[0];
+    // output the constant term
+    os << "\nbias: " << vecPrimalVars[0];
 
-  os << "\n\ncoefficients_for_linear_variables:\n";
-  // output the coefficients for the linear variables
-  for (i=0; i<data->numAttrib; ++i)  // for each attribute
-    os << vecPrimalVars[1+i] - vecPrimalVars[1+data->numAttrib+i] << " ";
+    os << "\n\ncoefficients_for_linear_variables:\n";
+    // output the coefficients for the linear variables
+    for (i=0; i<data->numAttrib; ++i)  // for each attribute
+      os << vecPrimalVars[1+i] - vecPrimalVars[1+data->numAttrib+i] << " ";
 
-  os << "\n\ncoefficients_for_box_variables:\n";
-  // output the cofficeitns for the box variables
-  for (i=0; i<numBoxesSoFar; ++i) // for each box
-    if (vecIsObjValPos[i])
-      os <<  vecPrimalVars[1+2*data->numAttrib+numObs+i] << " ";
-    else
-      os << -vecPrimalVars[1+2*data->numAttrib+numObs+i] << " ";
+    os << "\n\ncoefficients_for_box_variables:\n";
+    // output the cofficeitns for the box variables
+    for (i=0; i<numBoxesSoFar; ++i) // for each box
+      if (vecIsObjValPos[i])
+        os <<  vecPrimalVars[1+2*data->numAttrib+numObs+i] << " ";
+      else
+        os << -vecPrimalVars[1+2*data->numAttrib+numObs+i] << " ";
 
-  os << "\n\nthe_average_value_of_y_value: ";
-  os << data->avgY;
+    os << "\n\nthe_average_value_of_y_value: ";
+    os << data->avgY;
 
-  os << "\n\nthe_standard_deviation_of_y_value: ";
-  os << data->sdY;
+    os << "\n\nthe_standard_deviation_of_y_value: ";
+    os << data->sdY;
 
-  os << "\n\nthe_average_value_of_each_attribute:\n";
-  for (unsigned int j=0; j<numAttrib; ++j)
-    os << data->vecAvgX[j] << " ";
+    os << "\n\nthe_average_value_of_each_attribute:\n";
+    for (unsigned int j=0; j<numAttrib; ++j)
+      os << data->vecAvgX[j] << " ";
 
-  os << "\n\nthe_standard_deviation_of_each_attribute:\n";
-  for (unsigned int j=0; j<numAttrib; ++j)
-    os << data->vecSdX[j] << " ";
+    os << "\n\nthe_standard_deviation_of_each_attribute:\n";
+    for (unsigned int j=0; j<numAttrib; ++j)
+      os << data->vecSdX[j] << " ";
 
-  os << "\n\n" ;  // go to the next line
+    os << "\n\n" ;  // go to the next line
 
-  // output each box's lower and upper bounds in original values
-  for (unsigned int k=0; k<curIter; ++k ) { // for each Boosting iteration
+    // output each box's lower and upper bounds in original values
+    for (unsigned int k=0; k<curIter; ++k ) { // for each Boosting iteration
 
-    if (matOrigLower.size()!=0) { // if integerized
-      os << "Box " << k << "_a: " << matOrigLower[k] << "\n" ;
-      os << "Box " << k << "_b: " << matOrigUpper[k] << "\n" ;
-    } else {
+      if (matOrigLower.size()!=0) { // if integerized
+        os << "Box " << k << "_a: " << matOrigLower[k] << "\n" ;
+        os << "Box " << k << "_b: " << matOrigUpper[k] << "\n" ;
+      } else {
 
-      os << "Box_" << k << "_a: " ;
-      for (unsigned int j=0; j<numAttrib; ++j) {
-        if (matIntLower[k][j]==0)
-          os << -getInf() << " ";
-        else
-          os << matIntLower[k][j] << " ";
-      }
+        os << "Box_" << k << "_a: " ;
+        for (unsigned int j=0; j<numAttrib; ++j) {
+          if (matIntLower[k][j]==0)
+            os << -getInf() << " ";
+          else
+            os << matIntLower[k][j] << " ";
+        }
 
-      os << "\nBox_" << k << "_b: " ;
-      for (unsigned int j=0; j<numAttrib; ++j) {
-        if (matIntUpper[k][j]==data->vecNumDistVals[j]-1)
-          os << getInf() << " ";
-        else
-          os << matIntUpper[k][j] << " ";
-      }
+        os << "\nBox_" << k << "_b: " ;
+        for (unsigned int j=0; j<numAttrib; ++j) {
+          if (matIntUpper[k][j]==data->vecNumDistVals[j]-1)
+            os << getInf() << " ";
+          else
+            os << matIntUpper[k][j] << " ";
+        }
 
-      os << "\n" ;
+        os << "\n" ;
 
-    } // end if
+      } // end if
 
-  } // end for each Boosting iteration
+    } // end for each Boosting iteration
 
-
-  // TODO: we do not have to save this info
-  // output integerization info
-  // for (unsigned int j=0; j<data->numAttrib; ++j) { // for each attribute
-  //
-  //   os << "Attrib_" << j << "_a: " ; // output lower bounds of bins
-  //   for (unsigned int k=0; k<data->vecNumDistVals[j]; ++k)  // for each bin or value
-  //     os << vecAttribIntInfo[j].vecBins[k].lowerBound << " ";
-  //
-  //   os << "\nAttrib_" << j << "_b: " ; // output upper bounds of bins
-  //   for (unsigned int k=0; k<data->vecNumDistVals[j]; ++k)  // for each bin or value
-  //     os << vecAttribIntInfo[j].vecBins[k].upperBound << " ";
-  //
-  // os << "\n" ;   // go to the next line
-  //
-  // } // end for each attribute
-  //
-  // os.close();
+    os.close();
 
 #ifdef ACRO_HAVE_MPI
   }
 #endif //  ACRO_HAVE_MPI
 
   } // end saveModel function
-
 
 } // namespace boosting
