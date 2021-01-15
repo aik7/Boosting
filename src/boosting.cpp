@@ -26,7 +26,7 @@ namespace boosting {
 
     resetBoosting();                              // reset Boosting
 
-    cout << (isUseGurobi() ? "Gurobi" : "CLP") << " solver\n";
+    if (ROOTPROC) cout << (isUseGurobi() ? "Gurobi" : "CLP") << " solver\n";
 
   } // end Boosting constructor
 
@@ -41,25 +41,21 @@ namespace boosting {
 
     if (isPebblRMA()) rma->incumbentValue = -getInf();  // set the pebbl RMA incumbent value to be negative infinity
 
-#ifdef ACRO_HAVE_MPI
-    if (uMPI::rank==0) {
-#endif //  ACRO_HAVE_MPI
+    if (ROOTPROC) { // if root process
 
-    matIntLower.clear();    // matrix containes lower bound of box in integerized value
-    matIntUpper.clear();    // matrix containes upper bound of box in integerized value
+      matIntLower.clear();    // matrix containes lower bound of box in integerized value
+      matIntUpper.clear();    // matrix containes upper bound of box in integerized value
 
-    matOrigLower.clear();   // matrix containes lower bound of box in original value
-    matOrigUpper.clear();   // matrix containes upper bound of box in original value
+      matOrigLower.clear();   // matrix containes lower bound of box in original value
+      matOrigUpper.clear();   // matrix containes upper bound of box in original value
 
-    matIsCvdObsByBox.clear();  // matrix containes whether or not each observation is covered by each box
+      matIsCvdObsByBox.clear();  // matrix containes whether or not each observation is covered by each box
 
-    // if the isSaveAllRMASols is enabled,
-    // allocate vecERMAObjVal and vecGRMAObjVal
-    if (isSaveAllRMASols())  resetVecRMAObjVals();
+      // if the isSaveAllRMASols is enabled,
+      // allocate vecERMAObjVal and vecGRMAObjVal
+      if (isSaveAllRMASols())  resetVecRMAObjVals();
 
-#ifdef ACRO_HAVE_MPI
-    }
-#endif //  ACRO_HAVE_MPI
+    } // end root process
 
   } // end reset function
 
@@ -77,24 +73,20 @@ namespace boosting {
 
     try {
 
-      // use rank 1 to solve RMP
-#ifdef ACRO_HAVE_MPI
-  if (uMPI::rank==0) {
-#endif //  ACRO_HAVE_MPI
+      // use only one process to solve RMP
+      if (ROOTPROC) { // if root process
 
-      setDataStand();  // set data->dataStandTrain, standardize data
+        setDataStand();  // set data->dataStandTrain, standardize data
 
-      setInitRMP();    // set the initial RMP
+        setInitRMP();    // set the initial RMP
 
-      solveRMP();      // solve RMP using CLP or Gurobi
+        solveRMP();      // solve RMP using CLP or Gurobi
 
-      // if the option for evaluating each iteration is enabled
-      // evaluate the model
-      if (isEvalEachIter()) evaluateModel();
+        // if the option for evaluating each iteration is enabled
+        // evaluate the model
+        if (isEvalEachIter()) evaluateModel();
 
-#ifdef ACRO_HAVE_MPI
-  } // end if (uMPI::rank==0)
-#endif //  ACRO_HAVE_MPI
+      } // end if root process
 
       for (curIter=0; curIter<numIter; ++curIter) { // for each column generation iteration
 
@@ -106,42 +98,34 @@ namespace boosting {
 
         if (greedyLevel==EXACT) setPebblRMASolutions();
 
-#ifdef ACRO_HAVE_MPI
-  if (uMPI::rank==0) {
-#endif //  ACRO_HAVE_MPI
+        if (ROOTPROC) { // if root process
 
-        // save the weights for the current iteration
-        if (isSaveWts())           saveWeights(curIter);
+          // save the weights for the current iteration
+          if (isSaveWts())           saveWeights(curIter);
 
-        // save Greedy and/or Exact RMA solutions in a file
-        if (isSaveAllRMASols())    setVecRMAObjVals();
+          // save Greedy and/or Exact RMA solutions in a file
+          if (isSaveAllRMASols())    setVecRMAObjVals();
 
-        if (isStoppingCondition()) isStopCond = 1;
+          if (isStoppingCondition()) isStopCond = 1;
 
-#ifdef ACRO_HAVE_MPI
-  } // end if (uMPI::rank==0)
-#endif //  ACRO_HAVE_MPI
+        } // end if root process
 
         setStoppingCondition();
 
         if (isStopCond==1) break;
 
-#ifdef ACRO_HAVE_MPI
-  if (uMPI::rank==0) {
-#endif //  ACRO_HAVE_MPI
+        if (ROOTPROC) { // if root process
 
-      insertColumns();  // insert columns using RMA solutions
+          insertColumns();  // insert columns using RMA solutions
 
-      solveRMP();       // solve the updated RMP
+          solveRMP();       // solve the updated RMP
 
-      // map back from the discretized data into original
-      if (delta()!=-1) setOriginalBounds();
+          // map back from the discretized data into original
+          if (delta()!=-1) setOriginalBounds();
 
-      if (isEvalEachIter()) evaluateModel();
+          if (isEvalEachIter()) evaluateModel();
 
-#ifdef ACRO_HAVE_MPI
-  } // end if (uMPI::rank==0)
-#endif //  ACRO_HAVE_MPI
+        } // end if root process
 
       } // end for each column generation iteration
 
@@ -150,23 +134,19 @@ namespace boosting {
       return; // EXIT_FAILURE;
     } // end try ... catch
 
-#ifdef ACRO_HAVE_MPI
-	if (uMPI::rank==0) {
-#endif //  ACRO_HAVE_MPI
+    if (ROOTPROC) { // if root process
 
-    // if eavluating the final iteration option is enabled
-    // and  eavluating the final iteration option is disabled
-    if ( isEvalFinalIter() && !isEvalEachIter() ) evaluateModel();
+      // if eavluating the final iteration option is enabled
+      // and eavluating the final iteration option is disabled
+      if ( isEvalFinalIter() && !isEvalEachIter() ) evaluateModel();
 
-    saveGERMAObjVals();   // save Greedy and PEBBL RMA solutions for each iteration
+      saveGERMAObjVals();   // save Greedy and PEBBL RMA solutions for each iteration
 
-    saveModel();          // save Boosting model
+      saveModel();          // save Boosting model
 
-#ifdef ACRO_HAVE_MPI
-        }
-#endif //  ACRO_HAVE_MPI
+    } // end if root process
 
-  } // end trainData function
+  } // end train function
 
 
   // set dataStandTrain
@@ -305,20 +285,9 @@ namespace boosting {
 
   void Boosting::setStoppingCondition() {
 
-    if (uMPI::rank==0) {
-
-      // If we are the root process, send our data to everyone
-      for (int k = 0; k < uMPI::size; ++k)
-        if (k != 0)
-          MPI_Send(&isStopCond, 1, MPI_INT, k, 0, MPI_COMM_WORLD);
-
-    } else { // if MPI rank is not 0, receive the info about the stopping condition
-
-      // If we are a receiver process, receive the data from the root
-      MPI_Recv(&isStopCond, 1, MPI_INT, 0, 0, MPI_COMM_WORLD,
-                MPI_STATUS_IGNORE);
-
-    } // save if MPI rank is not 0
+#ifdef ACRO_HAVE_MPI
+    MPI_Bcast(&isStopCond, 1, MPI_INT, 0, MPI_COMM_WORLD);
+#endif
 
   } // end setIsStopCond function
 
@@ -500,9 +469,7 @@ namespace boosting {
   bool Boosting::checkDuplicateBoxes(vector<unsigned int> vecIntLower,
                                      vector<unsigned int> vecIntUpper) {
 
-#ifdef ACRO_HAVE_MPI
-    if (uMPI::rank==0) {
-#endif //  ACRO_HAVE_MPI
+    if (ROOTPROC) { // if root process
 
       // if the cuurent box is only one, no duplicates
       if ( matIntUpper.size()==1 )
@@ -518,9 +485,7 @@ namespace boosting {
 
       ucout << "Duplicate Solution Found!! \n" ;
 
-#ifdef ACRO_HAVE_MPI
-    }
-#endif //  ACRO_HAVE_MPI
+    } // end if root process
 
     return true;
 

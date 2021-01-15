@@ -39,6 +39,12 @@
 #include "greedyRMA.h"
 #include "solveRMA.h"
 
+#ifdef ACRO_HAVE_MPI
+#define ROOTPROC uMPI::rank==0
+#else
+#define ROOTPROC true
+#endif
+
 using namespace std;
 
 

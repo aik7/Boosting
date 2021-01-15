@@ -338,56 +338,32 @@ namespace boosting {
   // if not rank 0, receive the weights from the rank 0
   void REPR::setWeights() {
 
-#ifdef ACRO_HAVE_MPI
-    if (uMPI::rank==0) {
-#endif //  ACRO_HAVE_MPI
+    if (ROOTPROC) { // if root process
 
       // assign a weight for each observation ($/mu-/nu$, dual variables)
       for (unsigned int i=0; i < numObs ; ++i) // for each observation
         data->dataIntTrain[i].w = vecDualVars[i] - vecDualVars[numObs+i];
 
-#ifdef ACRO_HAVE_MPI
-    }
-#endif //  ACRO_HAVE_MPI
+    } // end if root process
 
 #ifdef ACRO_HAVE_MPI
 
-    for (unsigned int i = 0; i < numObs; ++i) { // for each observation
-
-      if ((uMPI::rank==0)) { // if rank 0
-
-        // If we are the root process, send the observation weights to everyone
-        for (int k = 0; k < uMPI::size; ++k)
-          if (k != 0)
-            MPI_Send(&data->dataIntTrain[i].w,
-                     1, MPI_DOUBLE, k, 0, MPI_COMM_WORLD);
-
-      } else { // else (if not rank 0)
-
-        // If we are a receiver process, receive the data from the root
-        MPI_Recv(&data->dataIntTrain[i].w,
-                 1, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-
-      } // end if rank 0 else ...
-
-    } // end for each observation
+    // broadcast weights
+    for (unsigned int i = 0; i < numObs; ++i) // for each observation
+      MPI_Bcast(&data->dataIntTrain[i].w, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
 #endif //  ACRO_HAVE_MPI
 
-#ifdef ACRO_HAVE_MPI
-    if (uMPI::rank==0) {
-#endif //  ACRO_HAVE_MPI
+    if (ROOTPROC) { // if root process
 
-    if(debug>=1) {
-      ucout << "Weight: ";
-      for (unsigned int i=0; i < numObs ; ++i)
-            ucout << data->dataIntTrain[i].w << ", ";
-      ucout << "\n";
-    } // end debug
+      if(debug>=1) {
+        ucout << "Weight: "; // print out weights
+        for (unsigned int i=0; i < numObs ; ++i)
+          ucout << data->dataIntTrain[i].w << ", ";
+        ucout << "\n";
+      } // end debug
 
-#ifdef ACRO_HAVE_MPI
-    }
-#endif //  ACRO_HAVE_MPI
+    } // if root process
 
   } // end setWeights function
 
@@ -617,14 +593,10 @@ namespace boosting {
       err  = expY - actY;  // difference between expacted and actual y values
       err2 = pow(err, 2);
 
-#ifdef ACRO_HAVE_MPI
-      if (uMPI::rank==0) {
-#endif //  ACRO_HAVE_MPI
+      if (ROOTPROC) { // if root process
         DEBUGPR(10, cout << "actY-expY " << actY << " - " << expY
                          << " = " << err << " err^2: " << err2 << "\n" ) ;
-#ifdef ACRO_HAVE_MPI
-      }
-#endif //  ACRO_HAVE_MPI
+      } // end if root process
 
       mse += err2;
 
@@ -632,13 +604,9 @@ namespace boosting {
 
     mse /= (double) numIdx;
 
-#ifdef ACRO_HAVE_MPI
-    if (uMPI::rank==0) {
-#endif //  ACRO_HAVE_MPI
+    if (ROOTPROC) { // if root process
       DEBUGPR(20, cout << "MSE: " <<  mse << "\n");
-#ifdef ACRO_HAVE_MPI
-    } // end if (uMPI::rank==0)
-#endif //  ACRO_HAVE_MPI
+    } // end if root process
 
     return mse;
 
@@ -650,106 +618,92 @@ namespace boosting {
   // print solution for the restricted master problem
   void REPR::printRMPCheckInfo() {
 
-#ifdef ACRO_HAVE_MPI
-    if (uMPI::rank==0) {
-#endif //  ACRO_HAVE_MPI
+    unsigned int i, j;
+    double sumPrimal = 0;
 
-      unsigned int i, j;
-      double sumPrimal = 0;
-
-      // for linear variables
-      if (C != 0) { // if C is not 0
-        for (j = 1; j < 1+numAttrib; ++j)
-          sumPrimal += C * vecPrimalVars[j];  // + \beta^+ * X
-        for (j = 1+numAttrib; j < 1+2*numAttrib; ++j)
-          sumPrimal -= C * vecPrimalVars[j];  // - \beta^- * X
-      }
-
-      // for observation variable, episilon_i
-      for (j = 1+2*numAttrib; j < 1+2*numAttrib+numObs; ++j) {
-        if (P==1)      sumPrimal += vecPrimalVars[j];
-        else if (P==2) sumPrimal += vecPrimalVars[j]*vecPrimalVars[j];
-      }
-
-      // if (D != 0) {
-      //   for (j = 1; j < numAttrib+1; ++j)	// for linear square coefficients
-      //     sumPrimal += D*vecPrimalVars[j]*vecPrimalVars[j];
-      //   for (j = 1+numAttrib; j < 2*numAttrib+1; ++j)
-      //     sumPrimal -= D*vecPrimalVars[j]*vecPrimalVars[j];
-      // }
-
-      if(debug>=2) {
-        cout << "vecPrimalVars: ";
-        for (i=0; i<numCols; ++i) cout << vecPrimalVars[i] << " ";
-        cout << "\n";
-      }
-
-      ////////////////////////////////////////////////////////////////////
-
-      double sumDual=0, sumDualCheck=0;
-
-      for (i=0; i<numObs; i++)  { // for each observation
-
-        sumDual += data->dataStandTrain[i].y
-                   * ( vecDualVars[i] - vecDualVars[numObs+i] );
-        // if (P==2)
-        //   sumDual -= pow( ( vecDualVars[i] - vecDualVars[numObs+i] ), 2 ) / 4.0;
-
-      }
-
-      if(debug>=2) {
-        cout << "vecDualVars: ";
-        for (i=0; i<numRows; ++i) cout << vecDualVars[i] << " ";
-        cout << "\n";
-      }
-
-      cout << "Check PrimalObj: " << sumPrimal << " = DualObj:" << sumDual << "\n";
-
-      ////////////////////////////////////////////////////////////////////
-
-      // for (i=0; i<numObs; i++)  // for each observation
-      //   cout << "Check mu+nu=eps; mu: " << vecDualVars[i]
-      //      << ", nu:" << vecDualVars[numObs+i]
-      //      << ", eps: " << vecPrimalVars[2*numAttrib+1+i] << "\n" ;
-
-      ////////////////////////////////////////////////////////////////////
-
-      for (i=0; i<numObs; i++) // for each observation
-        sumDualCheck += ( vecDualVars[i] - vecDualVars[numObs+i] );
-
-      cout << "sumDualCheck: "  << sumDualCheck  << " (This should be 0.)\n";
-
-      ////////////////////////////////////////////////////////////////////
-
-      vector<double> vecSumConstCheck(numAttrib);
-      fill(vecSumConstCheck.begin(), vecSumConstCheck.end(), 0);
-
-      for (j=0; j<numAttrib; ++j)  // for each attribute
-        for (i=0; i<numObs; ++i)   // for each observation
-          vecSumConstCheck[j] += ( vecDualVars[i] - vecDualVars[numObs+i] )
-                                 * data->dataStandTrain[i].X[j] ;
-
-      cout << "vecSumConstCheck: "  << vecSumConstCheck
-           << " (Each element should be >= -C.)\n";
-
-#ifdef ACRO_HAVE_MPI
+    // for linear variables
+    if (C != 0) { // if C is not 0
+      for (j = 1; j < 1+numAttrib; ++j)
+        sumPrimal += C * vecPrimalVars[j];  // + \beta^+ * X
+      for (j = 1+numAttrib; j < 1+2*numAttrib; ++j)
+        sumPrimal -= C * vecPrimalVars[j];  // - \beta^- * X
     }
-#endif //  ACRO_HAVE_MPI
 
-} // end printRMPCheckInfo function
+    // for observation variable, episilon_i
+    for (j = 1+2*numAttrib; j < 1+2*numAttrib+numObs; ++j) {
+      if (P==1)      sumPrimal += vecPrimalVars[j];
+      else if (P==2) sumPrimal += vecPrimalVars[j]*vecPrimalVars[j];
+    }
+
+    // if (D != 0) {
+    //   for (j = 1; j < numAttrib+1; ++j)	// for linear square coefficients
+    //     sumPrimal += D*vecPrimalVars[j]*vecPrimalVars[j];
+    //   for (j = 1+numAttrib; j < 2*numAttrib+1; ++j)
+    //     sumPrimal -= D*vecPrimalVars[j]*vecPrimalVars[j];
+    // }
+
+    if(debug>=2) {
+      cout << "vecPrimalVars: ";
+      for (i=0; i<numCols; ++i) cout << vecPrimalVars[i] << " ";
+      cout << "\n";
+    }
+
+    ////////////////////////////////////////////////////////////////////
+
+    double sumDual=0, sumDualCheck=0;
+
+    for (i=0; i<numObs; i++)  { // for each observation
+
+      sumDual += data->dataStandTrain[i].y
+                 * ( vecDualVars[i] - vecDualVars[numObs+i] );
+      // if (P==2)
+      //   sumDual -= pow( ( vecDualVars[i] - vecDualVars[numObs+i] ), 2 ) / 4.0;
+
+    }
+
+    if(debug>=2) {
+      cout << "vecDualVars: ";
+      for (i=0; i<numRows; ++i) cout << vecDualVars[i] << " ";
+      cout << "\n";
+    }
+
+    cout << "Check PrimalObj: " << sumPrimal << " = DualObj:" << sumDual << "\n";
+
+    ////////////////////////////////////////////////////////////////////
+
+    // for (i=0; i<numObs; i++)  // for each observation
+    //   cout << "Check mu+nu=eps; mu: " << vecDualVars[i]
+    //      << ", nu:" << vecDualVars[numObs+i]
+    //      << ", eps: " << vecPrimalVars[2*numAttrib+1+i] << "\n" ;
+
+    ////////////////////////////////////////////////////////////////////
+
+    for (i=0; i<numObs; i++) // for each observation
+      sumDualCheck += ( vecDualVars[i] - vecDualVars[numObs+i] );
+
+    cout << "sumDualCheck: "  << sumDualCheck  << " (This should be 0.)\n";
+
+    ////////////////////////////////////////////////////////////////////
+
+    vector<double> vecSumConstCheck(numAttrib);
+    fill(vecSumConstCheck.begin(), vecSumConstCheck.end(), 0);
+
+    for (j=0; j<numAttrib; ++j)  // for each attribute
+      for (i=0; i<numObs; ++i)   // for each observation
+        vecSumConstCheck[j] += ( vecDualVars[i] - vecDualVars[numObs+i] )
+                               * data->dataStandTrain[i].X[j] ;
+
+    cout << "vecSumConstCheck: "  << vecSumConstCheck
+         << " (Each element should be >= -C.)\n";
+
+  } // end printRMPCheckInfo function
 
 
   // print RMA information
   void REPR::printRMAInfo() {
 
-  #ifdef ACRO_HAVE_MPI
-    if (uMPI::rank==0) {
-  #endif //  ACRO_HAVE_MPI
       DEBUGPR(20, cout <<  "E: " << E <<
               ", incumb: " << rma->incumbentValue<< "\n");
-  #ifdef ACRO_HAVE_MPI
-    }
-  #endif //  ACRO_HAVE_MPI
 
   } // end printRMAInfo function
 
@@ -774,10 +728,6 @@ namespace boosting {
 
   // save trained REPR model
   void REPR::saveModel() {
-
-  #ifdef ACRO_HAVE_MPI
-    if (uMPI::rank==0) {
-  #endif //  ACRO_HAVE_MPI
 
     unsigned int i;
 
@@ -853,10 +803,6 @@ namespace boosting {
     } // end for each Boosting iteration
 
     os.close();
-
-#ifdef ACRO_HAVE_MPI
-  }
-#endif //  ACRO_HAVE_MPI
 
   } // end saveModel function
 
