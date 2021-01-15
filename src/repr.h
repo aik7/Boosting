@@ -50,8 +50,13 @@ namespace boosting {
     bool isStoppingCondition();    // whether or not stopping condition
 
     /************************* insert columns **************************/
-    void insertPebblColumns();     // insert columns using PEBBL RMA solution
-    void insertGreedyColumns();    // insert columns using Greedy RMA solution
+    // insert columns using PEBBL or Greedy RMA solutions
+    void insertColumns();
+
+    // insert columns using Greedy RMA solution
+    void insertEachColumn(const int & k, const bool &isPosObjVal,
+                          const vector<unsigned int> &vecLower,
+                          const vector<unsigned int> &vecUpper);
 
     // insert a column in the CLP model using k-th RMA solution
     void insertColumnClpModel(const unsigned int &k);
@@ -63,15 +68,12 @@ namespace boosting {
     /************************* Evaluating methods **************************/
 
     // evaluate the current model each observation
-    double evaluateEachIter(const bool& isTest, vector<DataXy> origData);
-
-    // evaluate the current model in the end of Boosting iteration
-    double evaluateAtFinal (const bool& isTest, vector<DataXy> origData);
+    double evaluate(const bool& isTest, vector<DataXy> origData);
 
     /************************* Printing methods **************************/
 
     void printRMPCheckInfo();  // restricted mater problem solution
-    void printRMAInfo();      // print RMA problem info
+    void printRMAInfo();       // print RMA problem info
     //void printEachIterAllErrs() {}
     void printClpElements();  // print CLP elements
 
