@@ -49,9 +49,27 @@ cd Boosting
 sh scripts/build.sh
 ```
 
+### Compile with Gurobi
+
 * If you want to use Gurobi to solve the restricted master problem,
-set the Gurobi directory in the cmake file
-and use `-DENABLE_GUROBI=true` when you cmake.
+set your Gurobi root directory and libraries in the CMAKELiests.txt file
+and use `-DENABLE_GUROBI=true` when you run cmake.
+
+In CMAKELiests.txt, change the following Gurobi root directory and its libraries
+
+```
+set(GUROBI_ROOT  ${CMAKE_SOURCE_DIR}/../gurobi911)
+set(GUROBI_LIBRARIES ${GUROBI_ROOT}/linux64/lib/libgurobi_c++.a
+                     ${GUROBI_ROOT}/linux64/lib/libgurobi91.so
+                     ${GUROBI_ROOT}/linux64/lib/libGurobiJni91.so
+                     ${GUROBI_ROOT}/linux64/lib/libgurobi91_light.so)
+```
+
+Then, at the main directory, run the following command
+```
+mkdir build ; cd build
+cmake -DENABLE_GUROBI=true ..
+```
 
 ## Example run commands:
 
@@ -69,7 +87,7 @@ mpirun -np 4 ./build/boosting <data_filename>
 
 ### Using parameters
 ```
-./build/boosting --numIterations=10 <data_filename>
+./build/boosting --numIterations=10 --isUseGurobi=true --c=0.5 --e=0.5 --p=2 <data_filename>
 ```
 
 * You can set the number of boosting iterations using `numIterations`.
