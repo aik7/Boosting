@@ -815,8 +815,13 @@ namespace boosting {
 
       if (matOrigLower.size()!=0) { // if integerized
 
-        os << "Box " << k << "_a: " << matOrigLower[k] << "\n" ;
-        os << "Box " << k << "_b: " << matOrigUpper[k] << "\n" ;
+        os << "Box_" << k << "_a: " ;
+        for (unsigned int j=0; j<numAttrib; ++j)
+          os << matOrigLower[k][j] << "\n" ;
+
+        os << "Box_" << k << "_b: " ;
+        for (unsigned int j=0; j<numAttrib; ++j)
+          os << matOrigUpper[k][j] << "\n" ;
 
       } else { // if data is not integerized for RMA
 
