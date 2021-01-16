@@ -68,7 +68,6 @@ if(ENABLE_GUROBI)
                        ${GUROBI_ROOT}/linux64/lib/libgurobi91_light.so)
   MESSAGE( STATUS "GUROBI include dir: ${PEBBL_INCLUDES}" )
   MESSAGE( STATUS "GUROBI libraries:   ${PEBBL_LIBRARIES}")
-
 endif()
 
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/src/boosting_config.h.in

@@ -39,17 +39,21 @@ namespace boosting {
     numObs        = data->numOrigObs;   // # of original observations
     numAttrib     = data->numAttrib;    // # of attributes or features
 
-    if (isPebblRMA()) rma->incumbentValue = -getInf();  // set the pebbl RMA incumbent value to be negative infinity
+    // reset the pebbl RMA incumbent value to be negative infinity
+    if (isPebblRMA()) rma->incumbentValue = -getInf();
 
     if (ROOTPROC) { // if root process
 
-      matIntLower.clear();    // matrix containes lower bound of box in integerized value
-      matIntUpper.clear();    // matrix containes upper bound of box in integerized value
+      // matrix containes lower and upper bounds of boxes in integerized value
+      matIntLower.clear();
+      matIntUpper.clear();
 
-      matOrigLower.clear();   // matrix containes lower bound of box in original value
-      matOrigUpper.clear();   // matrix containes upper bound of box in original value
+      // matrix containes lower and upper bounds of boxes in original value
+      matOrigLower.clear();
+      matOrigUpper.clear();
 
-      matIsCvdObsByBox.clear();  // matrix containes whether or not each observation is covered by each box
+      // matrix containes whether or not each observation is covered by each box
+      matIsCvdObsByBox.clear();
 
       // if the isSaveAllRMASols is enabled,
       // allocate vecERMAObjVal and vecGRMAObjVal
@@ -88,7 +92,8 @@ namespace boosting {
 
       } // end if root process
 
-      for (curIter=0; curIter<numIter; ++curIter) { // for each column generation iteration
+      // for each column generation iteration
+      for (curIter=0; curIter<numIter; ++curIter) {
 
         //ucout << "\nColGen Iter: " << curIter << "\n";
 
@@ -140,7 +145,8 @@ namespace boosting {
       // and eavluating the final iteration option is disabled
       if ( isEvalFinalIter() && !isEvalEachIter() ) evaluateModel();
 
-      saveGERMAObjVals();   // save Greedy and PEBBL RMA solutions for each iteration
+      // save Greedy and PEBBL RMA solutions for each iteration
+      saveGERMAObjVals();
 
       saveModel();          // save Boosting model
 
@@ -321,7 +327,7 @@ namespace boosting {
 
       for (unsigned int j=0; j< numAttrib; ++j) { // for each attribute
 
-        // if the curinsertPebbrent observation is covered by the current k'th box
+        // if the current observation is covered by the current k'th box
         // for attribute k
         if ( matIntLower[numBoxesSoFar+k][j]
                <= data->dataIntTrain[i].X[j]
@@ -329,11 +335,11 @@ namespace boosting {
                <= matIntUpper[numBoxesSoFar+k][j] ) {
 
           // if this observation is covered in all attributes
-          if ( j==numAttrib-1)
-            matIsCvdObsByBox[numBoxesSoFar+k][i] = true;  // set this observation is covered
+          if ( j==numAttrib-1) // set this observation is covered
+            matIsCvdObsByBox[numBoxesSoFar+k][i] = true;
 
-        } else { // if it is not covered
-          matIsCvdObsByBox[numBoxesSoFar+k][i] = false;  // set this observation is not covered
+        } else { // if it is not covered, set this observation is not covered
+          matIsCvdObsByBox[numBoxesSoFar+k][i] = false;
           break;
         } // end if this observation is covered in attribute j
 
@@ -364,7 +370,7 @@ namespace boosting {
 
       for (unsigned int j=0; j<numAttrib; ++j) { // for each attribute
 
-        ///////////////////////////// mid point rule //////////////////////////////
+        //////////////////////////// mid point rule ///////////////////////////
         // if the lower integer bound is greater than 0
         if ( matIntLower[k][j] > 0 ) {
 
@@ -524,9 +530,14 @@ namespace boosting {
 
     // evalute the model each iteration
     void Boosting::evaluateModel() {
+
       errTrain = evaluate(TRAIN, data->dataOrigTrain);
-      errTest  = evaluate(TEST,  data->dataOrigTest);
+
+      if (data->dataOrigTrain.size()!=0)
+        errTest  = evaluate(TEST,  data->dataOrigTest);
+
       printBoostingErr();
+      
     } // end evaluateModel function
 
   /************************ Printing functions ************************/

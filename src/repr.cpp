@@ -10,7 +10,7 @@ namespace boosting {
 
   // set REPR parameters
   void REPR::setBoostingParameters() {
-    P = 1;
+    P = isUseGurobi() ? getExponentP() : 1;
     C = getCoefficientC();
     D = 0; //getCoefficientD();
     E = getCoefficientE();
@@ -77,14 +77,14 @@ namespace boosting {
 
     // set constraits
     for (i = 0; i < numObs; ++i) {
-      lhs = vars[0];   // beta_0
-      for (j = 0; j < numAttrib; ++j)      // beta^+_j
+      lhs = vars[0];                       // beta_0
+      for (j = 0; j < numAttrib; ++j)      // for positive linear variable, beta^+_j
         if (data->dataStandTrain[i].X[j] != 0)
           lhs += data->dataStandTrain[i].X[j]*vars[1+j];
-      for (j = 0; j < numAttrib; ++j)      // beta^-_j
+      for (j = 0; j < numAttrib; ++j)      // for negative linear variable, beta^-_j
         if (data->dataStandTrain[i].X[j] != 0)
           lhs -= data->dataStandTrain[i].X[j]*vars[1+numAttrib+j];
-      for (j = 0; j < numObs; ++j)        // episilon
+      for (j = 0; j < numObs; ++j)        // error for each observation, episilon
         if (i==j)
           lhs -= vars[1+2*numAttrib+j];
 
@@ -92,14 +92,14 @@ namespace boosting {
     }
 
     for (i = 0; i < numObs; ++i) {
-      lhs = -vars[0];                      // beta_0
-      for (j = 0; j < numAttrib; ++j)      // beta^+_j
+      lhs = -vars[0];                      // bias, beta_0
+      for (j = 0; j < numAttrib; ++j)      // for positive linear variable, beta^+_j
         if (data->dataStandTrain[i].X[j] != 0)
           lhs -= data->dataStandTrain[i].X[j]*vars[1+j];
-      for (j = 0; j < numAttrib; ++j)      // beta^-_j
+      for (j = 0; j < numAttrib; ++j)      // for negative linear variable, beta^-_j
         if (data->dataStandTrain[i].X[j] != 0)
           lhs += data->dataStandTrain[i].X[j]*vars[1+numAttrib+j];
-      for (j = 0; j < numObs; ++j)         // episilon
+      for (j = 0; j < numObs; ++j)         // error for each observation, episilon
         if (i==j)
           lhs -= vars[1+2*numAttrib+j];
 
@@ -423,7 +423,7 @@ namespace boosting {
     numBoxesSoFar  += numBoxesIter;
     numCols        += numBoxesIter;
 
-    if (greedyLevel=EXACT) // if PEEBL, dispose the solutions
+    if (greedyLevel==EXACT) // if PEEBL, dispose the solutions
       for (unsigned int k=0; k<s.size(); ++k)
         sl[k]->dispose();
 
@@ -619,14 +619,63 @@ namespace boosting {
   void REPR::printRMPCheckInfo() {
 
     unsigned int i, j;
+
+    ////////////// print primal variables ////////////////////
+    if(debug>=2) {
+
+      cout << "/************** vecPrimalVars *************/";
+
+      // output the constant term
+      cout << "\nbias: " << vecPrimalVars[0];
+
+      cout << "\n\npositive coefficients_for_linear_variables:\n";
+      // output the coefficients for the linear variables
+      for (i=0; i<data->numAttrib; ++i)  // for each attribute
+        cout << vecPrimalVars[1+i] << " ";
+
+      cout << "\n\nnegative coefficients_for_linear_variables:\n";
+      // output the coefficients for the linear variables
+      for (i=0; i<data->numAttrib; ++i)  // for each attribute
+        cout << vecPrimalVars[1+data->numAttrib+i] << " ";
+
+      cout << "\n\nerror terms:\n";
+      // output the coefficients for the linear variables
+      for (i=0; i<numObs; ++i)  // for each attribute
+        cout << vecPrimalVars[1+2*data->numAttrib+i] << " ";
+
+      cout << "\n\ncoefficients_for_box_variables:\n";
+      // output the cofficeitns for the box variables
+      for (i=0; i<numBoxesSoFar; ++i) // for each box
+        if (vecIsObjValPos[i])
+          cout <<  vecPrimalVars[1+2*data->numAttrib+numObs+i] << " ";
+        else
+          cout << -vecPrimalVars[1+2*data->numAttrib+numObs+i] << " ";
+
+      cout << "\n\n";
+
+    }  // end if debug
+
+    ////////////// print dual variables ////////////////////
+
+    if(debug>=2) {
+
+      cout << "/************** vecDualVars *************/";
+
+      cout << "\nvecDualVars: \n";
+      for (i=0; i<numObs; ++i) cout << vecDualVars[i] << " ";
+      cout << "\n";
+      for (i=numObs; i<2*numObs; ++i) cout << vecDualVars[i] << " ";
+      cout << "\n\n";
+
+    } // end if debug
+
+    ////////////// check primal solution = dual solution //////////////
     double sumPrimal = 0;
 
     // for linear variables
     if (C != 0) { // if C is not 0
-      for (j = 1; j < 1+numAttrib; ++j)
+      for (j = 1; j < 1+2*numAttrib; ++j)
         sumPrimal += C * vecPrimalVars[j];  // + \beta^+ * X
-      for (j = 1+numAttrib; j < 1+2*numAttrib; ++j)
-        sumPrimal -= C * vecPrimalVars[j];  // - \beta^- * X
     }
 
     // for observation variable, episilon_i
@@ -635,6 +684,9 @@ namespace boosting {
       else if (P==2) sumPrimal += vecPrimalVars[j]*vecPrimalVars[j];
     }
 
+    for (i=0; i<numBoxesSoFar; ++i) // for each observation
+        sumPrimal += E * vecPrimalVars[1+2*data->numAttrib+numObs+i];
+
     // if (D != 0) {
     //   for (j = 1; j < numAttrib+1; ++j)	// for linear square coefficients
     //     sumPrimal += D*vecPrimalVars[j]*vecPrimalVars[j];
@@ -642,32 +694,19 @@ namespace boosting {
     //     sumPrimal -= D*vecPrimalVars[j]*vecPrimalVars[j];
     // }
 
-    if(debug>=2) {
-      cout << "vecPrimalVars: ";
-      for (i=0; i<numCols; ++i) cout << vecPrimalVars[i] << " ";
-      cout << "\n";
-    }
-
-    ////////////////////////////////////////////////////////////////////
-
-    double sumDual=0, sumDualCheck=0;
+    double sumDual = 0;
 
     for (i=0; i<numObs; i++)  { // for each observation
 
       sumDual += data->dataStandTrain[i].y
                  * ( vecDualVars[i] - vecDualVars[numObs+i] );
-      // if (P==2)
-      //   sumDual -= pow( ( vecDualVars[i] - vecDualVars[numObs+i] ), 2 ) / 4.0;
+      if (P==2)
+        sumDual -= pow( ( vecDualVars[i] - vecDualVars[numObs+i] ), 2 ) / 4.0;
 
-    }
+    } // end for each observation
 
-    if(debug>=2) {
-      cout << "vecDualVars: ";
-      for (i=0; i<numRows; ++i) cout << vecDualVars[i] << " ";
-      cout << "\n";
-    }
-
-    cout << "Check PrimalObj: " << sumPrimal << " = DualObj:" << sumDual << "\n";
+    cout << "\nCheck PrimalObj: " << sumPrimal
+         << " = DualObj:" << sumDual << "\n";
 
     ////////////////////////////////////////////////////////////////////
 
@@ -677,6 +716,8 @@ namespace boosting {
     //      << ", eps: " << vecPrimalVars[2*numAttrib+1+i] << "\n" ;
 
     ////////////////////////////////////////////////////////////////////
+
+    double sumDualCheck=0;
 
     for (i=0; i<numObs; i++) // for each observation
       sumDualCheck += ( vecDualVars[i] - vecDualVars[numObs+i] );
@@ -751,10 +792,7 @@ namespace boosting {
     os << "\n\ncoefficients_for_box_variables:\n";
     // output the cofficeitns for the box variables
     for (i=0; i<numBoxesSoFar; ++i) // for each box
-      if (vecIsObjValPos[i])
-        os <<  vecPrimalVars[1+2*data->numAttrib+numObs+i] << " ";
-      else
-        os << -vecPrimalVars[1+2*data->numAttrib+numObs+i] << " ";
+      os <<  vecPrimalVars[1+2*data->numAttrib+numObs+i] << " ";
 
     os << "\n\nthe_average_value_of_y_value: ";
     os << data->avgY;
@@ -776,25 +814,29 @@ namespace boosting {
     for (unsigned int k=0; k<curIter; ++k ) { // for each Boosting iteration
 
       if (matOrigLower.size()!=0) { // if integerized
+
         os << "Box " << k << "_a: " << matOrigLower[k] << "\n" ;
         os << "Box " << k << "_b: " << matOrigUpper[k] << "\n" ;
-      } else {
+
+      } else { // if data is not integerized for RMA
 
         os << "Box_" << k << "_a: " ;
-        for (unsigned int j=0; j<numAttrib; ++j) {
+        for (unsigned int j=0; j<numAttrib; ++j) { // for each attribute
+          // if lower bound is 0, set -inf
           if (matIntLower[k][j]==0)
             os << -getInf() << " ";
           else
             os << matIntLower[k][j] << " ";
-        }
+        } // end for each attribute
 
         os << "\nBox_" << k << "_b: " ;
-        for (unsigned int j=0; j<numAttrib; ++j) {
+        for (unsigned int j=0; j<numAttrib; ++j) {  // for each attribute
+          // if lower bound is the maximum value, set inf
           if (matIntUpper[k][j]==data->vecNumDistVals[j]-1)
             os << getInf() << " ";
           else
             os << matIntUpper[k][j] << " ";
-        }
+        } // end for each attribute
 
         os << "\n" ;
 
