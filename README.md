@@ -51,25 +51,15 @@ sh scripts/build.sh
 
 ### Compile with Gurobi
 
-* If you want to use Gurobi to solve the restricted master problem,
-set your Gurobi root directory and libraries in the CMAKELiests.txt file
-and use `-DENABLE_GUROBI=true` when you run cmake.
-
-In CMAKELiests.txt, change the following Gurobi root directory and its libraries
-
+* Build Boosting along with PEBBL, RMA, Coin-OR CLP and Gurobi
 ```
-set(GUROBI_ROOT  ${CMAKE_SOURCE_DIR}/../gurobi911)
-set(GUROBI_LIBRARIES ${GUROBI_ROOT}/linux64/lib/libgurobi_g++5.2.a
-                     ${GUROBI_ROOT}/linux64/lib/libgurobi91.so
-                     ${GUROBI_ROOT}/linux64/lib/libGurobiJni91.so
-                     ${GUROBI_ROOT}/linux64/lib/libgurobi91_light.so)
+cd Boosting
+sh scripts/build_gurobi.sh
 ```
 
-Then, at the main directory, run the following command
-```
-mkdir build ; cd build
-cmake -DENABLE_GUROBI=true ..
-```
+* Please set your Gurobi license
+
+* If you already have Gurobi, read [How to compile with Gurobi](https://github.com/aik7/Boosting/wiki/How-to-compile-with-Gurobi)
 
 ## Example run commands:
 

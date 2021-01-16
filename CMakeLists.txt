@@ -59,7 +59,7 @@ option(ENABLE_GUROBI "Enable Gurobi build. Will require Gurobi wrappers
 if(ENABLE_GUROBI)
   MESSAGE("GUROBI enabled.")
   set(HAVE_GUROBI 1)
-  set(GUROBI_ROOT  ${CMAKE_SOURCE_DIR}/../gurobi911)
+  set(GUROBI_ROOT  ${CMAKE_SOURCE_DIR}/external/gurobi/gurobi911)
   set(GUROBI_INCLUDES ${GUROBI_ROOT}/linux64/src/cpp
                       ${GUROBI_ROOT}/linux64/include )
   set(GUROBI_LIBRARIES ${GUROBI_ROOT}/linux64/lib/libgurobi_g++5.2.a
