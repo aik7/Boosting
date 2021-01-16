@@ -33,12 +33,6 @@
 #include "argBoost.h"
 #include "solveRMA.h"
 
-#ifdef ACRO_HAVE_MPI
-#define ROOTPROC uMPI::rank==0
-#else
-#define ROOTPROC true
-#endif
-
 using namespace std;
 
 
@@ -282,10 +276,10 @@ namespace boosting {
     vector<double>          vecGRMAObjVal;
 
     // predictions of training data by the current model
-    vector<double>          predTrain;
+    vector<double>          vecPredTrain;
 
     // predictions of testing data by model
-    vector<double>          predTest;
+    vector<double>          vecPredTest;
 
     // TODO:: put this function somewhere else
     string getDateTime() {

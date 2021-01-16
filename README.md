@@ -59,7 +59,7 @@ In CMAKELiests.txt, change the following Gurobi root directory and its libraries
 
 ```
 set(GUROBI_ROOT  ${CMAKE_SOURCE_DIR}/../gurobi911)
-set(GUROBI_LIBRARIES ${GUROBI_ROOT}/linux64/lib/libgurobi_c++.a
+set(GUROBI_LIBRARIES ${GUROBI_ROOT}/linux64/lib/libgurobi_g++5.2.a
                      ${GUROBI_ROOT}/linux64/lib/libgurobi91.so
                      ${GUROBI_ROOT}/linux64/lib/libGurobiJni91.so
                      ${GUROBI_ROOT}/linux64/lib/libgurobi91_light.so)

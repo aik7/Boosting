@@ -535,6 +535,11 @@ namespace boosting {
     // set the size of training or testing observations
     numIdx = ( isTest ? data->numTestObs : numObs );
 
+    if ( isSavePred() && (curIter==getNumIterations()-1) ) {
+      vecPredTrain.resize(numObs);
+      vecPredTest. resize(data->numTestObs);
+    }
+
     for (unsigned int i=0; i<numIdx; ++i) { // for each obsercation
 
       // f(X) = \beta_0
@@ -583,11 +588,9 @@ namespace boosting {
       actY = origData[i].y;                  // actual y value
 
       // if isSavePred is enabled and the last column generation iteration
-      if ( isSavePred() && (curIter==getNumIterations()) ) {
-        //predictions.resize(data->numOrigObs);
-        //predictions[obs] = expY;
-        savePredictions(TEST,  data->dataOrigTest);
-        savePredictions(TRAIN, data->dataOrigTrain);
+      if ( isSavePred() && (curIter==getNumIterations()-1) ) {
+        if (isTest) vecPredTest[i]  = expY;
+        else        vecPredTrain[i] = expY;
       }
 
       err  = expY - actY;  // difference between expacted and actual y values

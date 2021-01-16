@@ -62,10 +62,8 @@ if(ENABLE_GUROBI)
   set(GUROBI_ROOT  ${CMAKE_SOURCE_DIR}/../gurobi911)
   set(GUROBI_INCLUDES ${GUROBI_ROOT}/linux64/src/cpp
                       ${GUROBI_ROOT}/linux64/include )
-  set(GUROBI_LIBRARIES ${GUROBI_ROOT}/linux64/lib/libgurobi_c++.a
-                       ${GUROBI_ROOT}/linux64/lib/libgurobi91.so
-                       ${GUROBI_ROOT}/linux64/lib/libGurobiJni91.so
-                       ${GUROBI_ROOT}/linux64/lib/libgurobi91_light.so)
+  set(GUROBI_LIBRARIES ${GUROBI_ROOT}/linux64/lib/libgurobi_g++5.2.a
+                       ${GUROBI_ROOT}/linux64/lib/libgurobi91.so)
   MESSAGE( STATUS "GUROBI include dir: ${PEBBL_INCLUDES}" )
   MESSAGE( STATUS "GUROBI libraries:   ${PEBBL_LIBRARIES}")
 endif()

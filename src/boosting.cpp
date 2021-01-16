@@ -16,6 +16,8 @@ namespace boosting {
 #endif // HAVE_GUROBI
   {
 
+    isRMAonly = false;     // is not RMA only
+
     setup(argc, argv);     // setup all paramaters from PEBBL
 
     setData(argc, argv);   // set Data RMA class object from SolveRMA class
@@ -36,7 +38,7 @@ namespace boosting {
 
     numBoxesSoFar = 0;                  // # of boxes
     numBoxesIter  = 0;                  // # of RMA solutions
-    numObs        = data->numOrigObs;   // # of original observations
+    numObs        = data->numTrainObs;   // # of original observations
     numAttrib     = data->numAttrib;    // # of attributes or features
 
     // reset the pebbl RMA incumbent value to be negative infinity
@@ -144,6 +146,9 @@ namespace boosting {
       // if eavluating the final iteration option is enabled
       // and eavluating the final iteration option is disabled
       if ( isEvalFinalIter() && !isEvalEachIter() ) evaluateModel();
+
+      // save predictions
+      if ( isSavePred() ) savePredictions(false, data->dataOrigTrain);
 
       // save Greedy and PEBBL RMA solutions for each iteration
       saveGERMAObjVals();
@@ -537,7 +542,7 @@ namespace boosting {
         errTest  = evaluate(TEST,  data->dataOrigTest);
 
       printBoostingErr();
-      
+
     } // end evaluateModel function
 
   /************************ Printing functions ************************/
@@ -591,14 +596,14 @@ namespace boosting {
     // appending to its existing contents
     //ofstream os(s.str().c_str(), ofstream::app);
 
-    os << "ActY \t Boosting  \n";
+    os << "ActY\tBoosting\n";
 
-    numIdx = (isTest) ? data->numTrainObs : data->numTestObs;
+    numIdx = (isTest) ? data->numTestObs : data->numTrainObs;
 
     for (unsigned int i=0; i < numIdx; ++i) { // for each observation
 
-      if (isTest) os << origData[i].y << " " << predTest[i] << "\n";
-      else        os << origData[i].y << " " << predTrain[i] << "\n";
+      if (isTest) os << origData[i].y << "\t" << vecPredTest[i] << "\n";
+      else        os << origData[i].y << "\t" << vecPredTrain[i] << "\n";
 
     } // end for each observation
 
