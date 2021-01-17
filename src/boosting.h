@@ -39,7 +39,7 @@ using namespace std;
 namespace boosting {
 
   enum GreedyLevel   {EXACT, GREEDY}; // NotOptimal,
-  enum TestTrainData {TRAIN, TEST, VALID};
+  enum TestTrainData {TEST, TRAIN, VALID};
 
   class Boosting : public arg::ArgBoost, virtual public rma::SolveRMA {
 
@@ -102,6 +102,12 @@ namespace boosting {
     // set matIsCvdObsByBox, a matrix of each observation is covered by k-th box
     void setMatIsCvdObsByBox(const unsigned int &k);
 
+    void setMatIsCvdObsByBox(const int &k, const bool &isTrain,
+                             const vector<DataXy> &origData,
+                             deque<deque<bool> > &matIsCvdObsByBox);
+
+    void setMatIsCvdObsByBoxTestPerIter();
+
     // set original lower and upper bounds
     // using integerized lower and upper bounds
     void   setOriginalBounds();
@@ -121,8 +127,8 @@ namespace boosting {
     void evaluateModel();
 
     // evaluate the error in each Boosting iteration
-    virtual double evaluate(const bool &isTest,
-                           vector<DataXy> origData) = 0;
+    virtual double evaluate(const bool& isTrain, const vector<DataXy> &origData,
+                            const deque<deque<bool> > &matIsCvdObsByBox)= 0;
 
     /************************ Checking methods ************************/
     bool checkDuplicateBoxes(vector<unsigned int> vecIntLower,
@@ -155,7 +161,7 @@ namespace boosting {
     void    saveWeights(const unsigned int &curIter);
 
     // save actual and predicted y-values
-    void    savePredictions(const bool &isTest, vector<DataXy> origData);
+    void    savePredictions(const bool &isTrain, vector<DataXy> origData);
 
     void    saveGERMAObjVals();
 
@@ -176,9 +182,6 @@ namespace boosting {
     // }
 
     ///////////////////// Boosting variables /////////////////////
-
-    unsigned int  numObs;     // # of observation
-    unsigned int  numAttrib;  // # of attribute
 
     // unsigned int  numIter;  // # of iterations
     unsigned int  curIter;    // the current iteration number
@@ -260,9 +263,9 @@ namespace boosting {
     // (size: # of boxes inserted)
     deque<bool>             vecIsObjValPos;
 
-    // whether or not each observation is covered by each box
-    // ( size: [# of observations] * [# of boxes found so far] )
-    vector<vector<bool> >   matIsCvdObsByBox;
+    // whether or not each training observation is covered by each box
+    // ( size: [# of train obs] * [# of boxes found so far] )
+    deque<deque<bool> >     matIsCvdObsByBoxTrain;
 
     // errors for the train and test data
     double                  errTrain, errTest;
@@ -280,6 +283,10 @@ namespace boosting {
 
     // predictions of testing data by model
     vector<double>          vecPredTest;
+
+    // whether or not each training observation is covered by each box
+    // ( size: [# of test obs] * [# of boxes found so far] )
+    deque<deque<bool> >     matIsCvdObsByBoxTest;
 
     // TODO:: put this function somewhere else
     string getDateTime() {

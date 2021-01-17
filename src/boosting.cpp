@@ -38,8 +38,6 @@ namespace boosting {
 
     numBoxesSoFar = 0;                  // # of boxes
     numBoxesIter  = 0;                  // # of RMA solutions
-    numObs        = data->numTrainObs;   // # of original observations
-    numAttrib     = data->numAttrib;    // # of attributes or features
 
     // reset the pebbl RMA incumbent value to be negative infinity
     if (isPebblRMA()) rma->incumbentValue = -getInf();
@@ -55,11 +53,12 @@ namespace boosting {
       matOrigUpper.clear();
 
       // matrix containes whether or not each observation is covered by each box
-      matIsCvdObsByBox.clear();
+      matIsCvdObsByBoxTrain.clear();
+      matIsCvdObsByBoxTest .clear();
 
       // if the isSaveAllRMASols is enabled,
       // allocate vecERMAObjVal and vecGRMAObjVal
-      if (isSaveAllRMASols())  resetVecRMAObjVals();
+      if (isSaveAllRMASols()) resetVecRMAObjVals();
 
     } // end root process
 
@@ -127,7 +126,8 @@ namespace boosting {
 
           solveRMP();       // solve the updated RMP
 
-          // map back from the discretized data into original
+          // set matOrigLower and matOrigUpper using matIntLower and matIntUpper
+          // map the integer bounds to the original bounds
           if (delta()!=-1) setOriginalBounds();
 
           if (isEvalEachIter()) evaluateModel();
@@ -148,7 +148,10 @@ namespace boosting {
       if ( isEvalFinalIter() && !isEvalEachIter() ) evaluateModel();
 
       // save predictions
-      if ( isSavePred() ) savePredictions(false, data->dataOrigTrain);
+      if ( isSavePred() ) {
+        savePredictions(TRAIN, data->dataOrigTrain);
+        savePredictions(TEST,  data->dataOrigTrain);
+      }
 
       // save Greedy and PEBBL RMA solutions for each iteration
       saveGERMAObjVals();
@@ -196,7 +199,7 @@ namespace boosting {
   // and get objective value, primal and dual variables
   void Boosting::solveClpRMP() {
 
-    DEBUGPR(10, cout <<  "Solve Restricted Master Problem!\n");
+    DEBUGPR(10, cout << "Solve Restricted Master Problem!\n");
 
     tc.startTime();
 
@@ -322,15 +325,16 @@ namespace boosting {
   } // end setMatIntBounds function
 
 
+  // TODO: merge setMatIsCvdObsByBox functions
   // set matIsCvdObsByBox, whether or not each observation is vecCovered
   // by the lower and upper bounds, a and b of the current box k
   void Boosting::setMatIsCvdObsByBox(const unsigned int &k) {
 
-    matIsCvdObsByBox[numBoxesSoFar+k].resize(numObs);
+    matIsCvdObsByBoxTrain[numBoxesSoFar+k].resize(data->numTrainObs);
 
-    for (unsigned int i=0; i< numObs; ++i) { // for each observation
+    for (unsigned int i=0; i< data->numTrainObs; ++i) { // for each observation
 
-      for (unsigned int j=0; j< numAttrib; ++j) { // for each attribute
+      for (unsigned int j=0; j< data->numAttrib; ++j) { // for each attribute
 
         // if the current observation is covered by the current k'th box
         // for attribute k
@@ -340,11 +344,49 @@ namespace boosting {
                <= matIntUpper[numBoxesSoFar+k][j] ) {
 
           // if this observation is covered in all attributes
-          if ( j==numAttrib-1) // set this observation is covered
-            matIsCvdObsByBox[numBoxesSoFar+k][i] = true;
+          if ( j==data->numAttrib-1) // set this observation is covered
+            matIsCvdObsByBoxTrain[numBoxesSoFar+k][i] = true;
 
         } else { // if it is not covered, set this observation is not covered
-          matIsCvdObsByBox[numBoxesSoFar+k][i] = false;
+          matIsCvdObsByBoxTrain[numBoxesSoFar+k][i] = false;
+          break;
+        } // end if this observation is covered in attribute j
+
+      } // end for each attribute
+
+    } // end for each observation
+
+    DEBUGPR(1, cout << "matIsCvdObsByBoxTrain: " << matIsCvdObsByBoxTrain << "\n" );
+
+  } // end setMatIsCvdObsByBox function
+
+
+  // set matIsCvdObsByBox, whether or not each observation is vecCovered
+  // by the lower and upper bounds, a and b of the current box k
+  void Boosting::setMatIsCvdObsByBox(const int &k, const bool &isTrain,
+                                     const vector<DataXy> &origData,
+                                     deque<deque<bool> > &matIsCvdObsByBox) {
+
+    unsigned int numObs = isTrain ? data->numTrainObs : data->numTestObs;
+
+    matIsCvdObsByBox[numBoxesSoFar-numBoxesIter+k].resize(numObs);
+
+    for (unsigned int i=0; i< numObs; ++i) { // for each observation
+
+      for (unsigned int j=0; j< data->numAttrib; ++j) { // for each attribute
+
+        // if the current observation is covered by the current k'th box
+        // for attribute k
+        if ( matOrigLower[numBoxesSoFar-numBoxesIter+k][j] <= origData[i].X[j]
+             && origData[i].X[j]
+             <= matOrigUpper[numBoxesSoFar-numBoxesIter+k][j] ) {
+
+          // if this observation is covered in all attributes
+          if ( j==data->numAttrib-1) // set this observation is covered
+            matIsCvdObsByBox[numBoxesSoFar-numBoxesIter+k][i] = true;
+
+        } else { // if it is not covered, set this observation is not covered
+          matIsCvdObsByBox[numBoxesSoFar-numBoxesIter+k][i] = false;
           break;
         } // end if this observation is covered in attribute j
 
@@ -355,6 +397,14 @@ namespace boosting {
     DEBUGPR(1, cout << "matIsCvdObsByBox: " << matIsCvdObsByBox << "\n" );
 
   } // end setMatIsCvdObsByBox function
+
+
+  // TODO: I am sure that there is better way to to this...
+  void Boosting::setMatIsCvdObsByBoxTestPerIter() {
+    matIsCvdObsByBoxTest.resize(numBoxesSoFar);
+    for (unsigned int k=0; k<numBoxesIter; ++k)
+      setMatIsCvdObsByBox(k, TEST, data->dataOrigTest, matIsCvdObsByBoxTest);
+  }
 
 
   // set original lower and upper bounds matrices
@@ -370,10 +420,10 @@ namespace boosting {
     // for each box inserted in the current boosting iteration
     for (unsigned int k = numBoxesSoFar-numBoxesIter; k<numBoxesSoFar; ++k) {
 
-      matOrigLower[k].resize(numAttrib);
-      matOrigUpper[k].resize(numAttrib);
+      matOrigLower[k].resize(data->numAttrib);
+      matOrigUpper[k].resize(data->numAttrib);
 
-      for (unsigned int j=0; j<numAttrib; ++j) { // for each attribute
+      for (unsigned int j=0; j<data->numAttrib; ++j) { // for each attribute
 
         //////////////////////////// mid point rule ///////////////////////////
         // if the lower integer bound is greater than 0
@@ -488,7 +538,7 @@ namespace boosting {
 
       // for each boxes already in model
       for (unsigned int l=0; l < numBoxesSoFar; ++l)
-        for (unsigned int j=0; j<numAttrib; ++j) // for each attribute
+        for (unsigned int j=0; j<data->numAttrib; ++j) // for each attribute
           // if no duplicates boxes
           if ( matIntLower[l][j] != vecIntLower[j]       // sl[k]->a[j]
                || matIntUpper[l][j] != vecIntUpper[j] )  // sl[k]->b[j] )
@@ -510,14 +560,14 @@ namespace boosting {
 
     double totalWeights=0.0;
 
-    for (unsigned int i=0; i<numObs; i++) { // for each training data
+    for (unsigned int i=0; i<data->numTrainObs; i++) { // for each training data
 
-      for (unsigned int j=0; j<numAttrib; ++j) { // for each feature
+      for (unsigned int j=0; j<data->numAttrib; ++j) { // for each feature
 
         if ( (lower[j] <= intData[i].X[j])
              && (intData[i].X[j] <= upper[j]) ) {
 
-          if (j==numAttrib-1)  // if this observation is covered by this solution
+          if (j==data->numAttrib-1)  // if this observation is covered by this solution
             totalWeights += intData[i].w;   //dataWts[i];
 
         } else break; // else go to the next observation
@@ -533,24 +583,26 @@ namespace boosting {
   } // end checkObjValue function
 
 
-    // evalute the model each iteration
-    void Boosting::evaluateModel() {
+  // evalute the model each iteration
+  void Boosting::evaluateModel() {
 
-      errTrain = evaluate(TRAIN, data->dataOrigTrain);
+    errTrain = evaluate(TRAIN, data->dataOrigTrain, matIsCvdObsByBoxTrain);
 
-      if (data->dataOrigTrain.size()!=0)
-        errTest  = evaluate(TEST,  data->dataOrigTest);
+    if (data->numTestObs!=0) {
+      setMatIsCvdObsByBoxTestPerIter();
+      errTest  = evaluate(TEST,  data->dataOrigTest, matIsCvdObsByBoxTest);
+    }
 
-      printBoostingErr();
+    printBoostingErr();
 
-    } // end evaluateModel function
+  } // end evaluateModel function
 
   /************************ Printing functions ************************/
 
   // print RMP objectiva value and CPU run time
   void Boosting::printRMPSolution() {
     cout << fixed << setprecision(4)
-        << "Master Solution: " <<primalObjVal << "\t";
+        << "Master Solution: " << primalObjVal << "\t";
     cout << fixed << setprecision(2)
         << " CPU Time: " << tc.getCPUTime() << "\n";
   } // end printRMPSolution function
@@ -559,22 +611,19 @@ namespace boosting {
   // print curret iteration, testing and testing errors
   void Boosting::printBoostingErr() {
       ucout << "Iter: " << curIter
-            << ":\tTest/Train Errors: " << errTest << " " << errTrain << "\n";
+            << ":\tTest/Train MSE: " << errTest << " " << errTrain << "\n";
   } // end printBoostingErr function
 
 
   // save weights for current iteration (curIter)
   void Boosting::saveWeights(const unsigned int& curIter) {
 
-    // TODO if this directory exists, create the directory
-    //mkdir("./wts")
-
     // create a file name to save
     stringstream s;
     s << "wt_" << problemName << "_" << curIter << ".out";
     ofstream os(s.str().c_str());
 
-    for (unsigned int i=0; i < numObs ; ++i) // for each observation
+    for (unsigned int i=0; i < data->numTrainObs ; ++i) // for each observation
       os << data->dataIntTrain[i].w << ", "; // output each weight
 
   } // end saveWeights function
@@ -583,27 +632,26 @@ namespace boosting {
   /************************ Saving functions ************************/
 
   // save actual y values and predicted y values
-  void Boosting::savePredictions(const bool &isTest, vector<DataXy> origData) {
+  void Boosting::savePredictions(const bool &isTrain, vector<DataXy> origData) {
 
-    unsigned int numIdx;
     stringstream s;
 
     // create a file name to save
-    if (isTest) s << "predictionTest" << '.' << problemName;
-    else        s << "predictionTrain" << '.' << problemName;
+    if (isTrain) s << "predictionTrain" << '.' << problemName;
+    else         s << "predictionTest"  << '.' << problemName;
 
     ofstream os(s.str().c_str());
     // appending to its existing contents
     //ofstream os(s.str().c_str(), ofstream::app);
 
+    unsigned int numObs = (isTrain ? data->numTrainObs : data->numTestObs );
+
     os << "ActY\tBoosting\n";
 
-    numIdx = (isTest) ? data->numTestObs : data->numTrainObs;
+    for (unsigned int i=0; i < numObs; ++i) { // for each observation
 
-    for (unsigned int i=0; i < numIdx; ++i) { // for each observation
-
-      if (isTest) os << origData[i].y << "\t" << vecPredTest[i] << "\n";
-      else        os << origData[i].y << "\t" << vecPredTrain[i] << "\n";
+      if (isTrain) os << origData[i].y << "\t" << vecPredTrain[i] << "\n";
+      else         os << origData[i].y << "\t" << vecPredTest[i]  << "\n";
 
     } // end for each observation
 

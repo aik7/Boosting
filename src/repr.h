@@ -66,7 +66,8 @@ namespace boosting {
     /************************* Evaluating methods **************************/
 
     // evaluate the current model each observation
-    double evaluate(const bool& isTest, vector<DataXy> origData);
+    double evaluate(const bool& isTrain, const vector<DataXy> &origData,
+                    const deque<deque<bool> > &matIsCvdObsByBox);
 
     /************************* Printing methods **************************/
 
