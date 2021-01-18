@@ -109,12 +109,11 @@ mpirun -np 4 ./build/boosting <train_data_filename>
 | isSaveAllRMASols  | whether or not to save the Greedy and PEBBL RMA solutions of each boosting iteration in a file   | bool      | true or false | false          |
 | isSaveWts      | whether or not to save the weights of each boosting iteration in a file      | bool      | true or false | false          |
 
+
+* The following is an example command to run REPR using the parameters.
 ```
 ./build/boosting --numIterations=10 --isUseGurobi=true --c=0.5 --e=0.5 --p=2 <data_filename>
 ```
-
-* You can set the number of boosting iterations using `numIterations`.
-* If ``--isUseGurobi=true`, the restricted master problem will be solved by Gurobi instead of CLP.  If you want to enable this option, you have to compile with Gurobi.
 
 ## Class Diagram
 
@@ -130,8 +129,7 @@ mpirun -np 4 ./build/boosting <train_data_filename>
 ```
 ├── argBoost.cpp     : a file contains Boosting argument class
 ├── argBoost.h
-├── argBoost.o
-├── boosting.cpp     : a file contains Boosting driver class
+├── boosting.cpp     : a file contains Boosting class
 ├── boosting.h
 ├── driver.cpp       : a driver file
 ├── lpbr.cpp         : a file contains LPBR class
