@@ -63,7 +63,7 @@ namespace boosting {
     void train(const unsigned int& iter, // const bool& isOuter,
                const unsigned int & greedyLevel);
 
-    void setDataStand();
+    void setStandardizedData();
 
     ////void discretizeData();
     //// virtual void   resetMaster() = 0;

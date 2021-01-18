@@ -38,10 +38,10 @@ namespace arg {
     _numLimitedObs(getIntInf()),
     _maxBoundedSP(10000000),
 
-    _isEvalEachIter(false),
+    _isEvalEachIter(true),
     _isEvalFinalIter(false),
     _isSaveWts(false),
-    _isSavePredictions(false),
+    _isSavePredictions(true),
     _isSaveAllRMASols(true),
     _isSaveClpMps(false),
 

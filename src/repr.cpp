@@ -412,9 +412,11 @@ namespace boosting {
       // 1st argument: k-th solutin in this iteration
       // 2nd argument: whether or not it is positive box variable
       // 3rd and 4th arguments: lower and upper bounds in integer value
-      if (greedyLevel==EXACT) // for PEEBL solution
-        insertEachColumn(k, sl[k]->isPosIncumb, sl[k]->a, sl[k]->b);
-      else                    // for Greedy solution
+      if (greedyLevel==EXACT) { // for PEEBL solution
+        // insertEachColumn(k, sl[k]->isPosIncumb, sl[k]->a, sl[k]->b);
+        insertEachColumn(k, rma->globalSol.isPosSol,
+                         rma->globalSol.a, rma->globalSol.b);
+      } else                    // for Greedy solution
         insertEachColumn(k, grma->isPostObjVal(),
                          grma->getLowerBounds(), grma->getUpperBounds());
 
@@ -598,9 +600,10 @@ namespace boosting {
       err  = expY - actY;  // difference between expacted and actual y values
       err2 = pow(err, 2);
 
-      if (ROOTPROC) // if root process
+      if (ROOTPROC) {// if root process
         DEBUGPR(10, cout << "actY-expY " << actY << " - " << expY
                          << " = " << err << " err^2: " << err2 << "\n" ) ;
+      } // end if root process
 
       mse += err2;
 
@@ -608,7 +611,7 @@ namespace boosting {
 
     mse /= (double) numObs;
 
-    if (ROOTPROC) DEBUGPR(20, cout << "MSE: " <<  mse << "\n");
+    if (ROOTPROC) { DEBUGPR(20, cout << "MSE: " <<  mse << "\n"); }
 
     return mse;
 

@@ -20,13 +20,13 @@ namespace boosting {
 
     setup(argc, argv);     // setup all paramaters from PEBBL
 
-    setData(argc, argv);   // set Data RMA class object from SolveRMA class
-
-    (isPebblRMA()) ? greedyLevel=EXACT : greedyLevel=GREEDY;
+    setDataRMA(argc, argv);   // set Data RMA class object from SolveRMA class
 
     if (isPebblRMA()) setupPebblRMA(argc, argv);  // setup PEBBL RMA
 
     resetBoosting();                              // reset Boosting
+
+    (isPebblRMA()) ? greedyLevel=EXACT : greedyLevel=GREEDY;
 
     if (ROOTPROC) cout << (isUseGurobi() ? "Gurobi" : "CLP") << " solver\n";
 
@@ -81,7 +81,7 @@ namespace boosting {
       // use only one process to solve RMP
       if (ROOTPROC) { // if root process
 
-        setDataStand();  // set data->dataStandTrain, standardize data
+        setStandardizedData();  // set data->dataStandTrain, standardize data
 
         setInitRMP();    // set the initial RMP
 
@@ -164,12 +164,12 @@ namespace boosting {
 
 
   // set dataStandTrain
-  void Boosting::setDataStand() {
+  void Boosting::setStandardizedData() {
 
     // standadize data for L1 regularization
     if (isStandData()) {
-      data->setDataStandY();  // set data->dataStandTrain
-      data->setDataStandX();
+      data->setStandardizedY();  // set data->dataStandTrain
+      data->setStandardizedX();
     } else { // not to standerdise for debugging purpose
       data->dataStandTrain = data->dataOrigTrain;
     }
@@ -576,9 +576,9 @@ namespace boosting {
 
     }  // end for each training observation
 
-    cout << "Lower Bound: " << lower ;
-    cout << "Upper Bound: " << upper ;
-    cout << "Objective Value: " << totalWeights << "\n";
+    ucout << "Check Objective Value: " << totalWeights << "\n";
+    ucout << "Check Lower Bound: " << lower ;
+    ucout << "Check Upper Bound: " << upper ;
 
   } // end checkObjValue function
 
