@@ -42,30 +42,41 @@ endif()
 set(CMAKE_CXX_FLAGS_DEBUG   "-O0 -g -Wall -Werror=reorder")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
 
-MESSAGE( STATUS "C++ compiler: ${CMAKE_CXX_COMPILER}" )
-MESSAGE( STATUS "C++ compiler ID: ${CMAKE_CXX_COMPILER_ID}" )
-MESSAGE( STATUS "C++ compiler version: ${CMAKE_CXX_COMPILER_VERSION}" )
-MESSAGE( STATUS "C++ compiler string: ${CXX_COMPILER_STRING}" )
-MESSAGE( STATUS "MPI C++ compiler: ${MPI_CXX_COMPILER}" )
+MESSAGE( STATUS "C++ compiler            : ${CMAKE_CXX_COMPILER}" )
+MESSAGE( STATUS "C++ compiler ID         : ${CMAKE_CXX_COMPILER_ID}" )
+MESSAGE( STATUS "C++ compiler version    : ${CMAKE_CXX_COMPILER_VERSION}" )
+MESSAGE( STATUS "C++ compiler string     : ${CXX_COMPILER_STRING}" )
+MESSAGE( STATUS "MPI C++ compiler        : ${MPI_CXX_COMPILER}" )
 MESSAGE( STATUS "MPI C++ compiler options: ${MPI_CXX_COMPILE_OPTIONS}" )
-MESSAGE( STATUS "MPI libraries: ${MPI_LIBRARIES}")
-MESSAGE( STATUS "PEBBL include dir: ${PEBBL_INCLUDES}" )
-MESSAGE( STATUS "PEBBL libraries: ${PEBBL_LIBRARIES}")
-
+MESSAGE( STATUS "MPI libraries           : ${MPI_LIBRARIES}")
+MESSAGE( STATUS "PEBBL include dir       : ${PEBBL_INCLUDES}" )
+MESSAGE( STATUS "PEBBL libraries         : ${PEBBL_LIBRARIES}")
+MESSAGE( STATUS "CLP include dir         : ${Coin_INCLUDES}" )
+MESSAGE( STATUS "CLP libraries           : ${Coin_LIBRARIES}")
 
 option(ENABLE_GUROBI "Enable Gurobi build. Will require Gurobi wrappers
                       for compilers." OFF)
 
 if(ENABLE_GUROBI)
-  MESSAGE("GUROBI enabled.")
+
+  MESSAGE(  STATUS "GUROBI enabled.")
   set(HAVE_GUROBI 1)
-  set(GUROBI_ROOT  ${CMAKE_SOURCE_DIR}/external/gurobi/gurobi911)
+
+  set(GUROBI_HOME "${GUROBI_HOME}")
+
+  if(GUROBI_HOME STREQUAL "")
+    set(GUROBI_ROOT ${CMAKE_SOURCE_DIR}/external/gurobi/gurobi911)
+  else()
+    set(GUROBI_ROOT ${GUROBI_HOME})
+  endif()
+
   set(GUROBI_INCLUDES ${GUROBI_ROOT}/linux64/src/cpp
                       ${GUROBI_ROOT}/linux64/include )
   set(GUROBI_LIBRARIES ${GUROBI_ROOT}/linux64/lib/libgurobi_g++5.2.a
                        ${GUROBI_ROOT}/linux64/lib/libgurobi91.so)
-  MESSAGE( STATUS "GUROBI include dir: ${PEBBL_INCLUDES}" )
-  MESSAGE( STATUS "GUROBI libraries:   ${PEBBL_LIBRARIES}")
+  MESSAGE( STATUS "GUROBI include dir      : ${GUROBI_INCLUDES}" )
+  MESSAGE( STATUS "GUROBI libraries        : ${GUROBI_LIBRARIES}")
+
 endif()
 
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/src/boosting_config.h.in
@@ -100,4 +111,4 @@ endif()
 # include_directories(${PYTHON_INCLUDE_DIRS})
 
 # add_subdirectory(pybind11)
-# pybind11_add_module(example ./src/example.cpp)
+# pybind11_add_module(example ./src/python.cpp)

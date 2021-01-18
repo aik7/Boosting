@@ -43,23 +43,34 @@ REPR is a prediction algorithm using linear regression with both linear and boxe
 ```
 git clone --recursive https://github.com/aik7/Boosting.git
 ```
-* Build Boosting along with PEBBL, RMA, and Coin-OR CLP
+* Run the following command in the Boosting main directory
+  to build Boosting along with PEBBL, RMA, and Coin-OR CLP
 ```
-cd Boosting
 sh scripts/build.sh
 ```
 
 ### Compile with Gurobi
 
-* Build Boosting along with PEBBL, RMA, Coin-OR CLP and Gurobi
+#### Option 1:
+* If you want to download Gurobi and compile with Boosting,
+  you can run the following command in the Boosting main directory
+  to build Boosting along with PEBBL, RMA, Coin-OR CLP and Gurobi.
 ```
-cd Boosting
 sh scripts/build_gurobi.sh
 ```
 
-* Please set your Gurobi license
+#### Option 2:
 
-* If you already have Gurobi, read [How to compile with Gurobi](https://github.com/aik7/Boosting/wiki/How-to-compile-with-Gurobi)
+* If you already have Gurobi Linux 9.1 version, run the following commands in the Boosting main directory by setting your GUROBI home directory `<gurobi_home_dir>`:
+  ```
+  mkdir build ; cd build; cmake -DENABLE_GUROBI=true -DGUROBI_HOME=<gurobi_home_dir> .. ; make
+  ```
+
+* If your Gurobi version is different, read [How to compile with Gurobi](https://github.com/aik7/Boosting/wiki/How-to-compile-with-Gurobi)
+
+
+#### Please set your Gurobi license
+
 
 ## Example run commands:
 
