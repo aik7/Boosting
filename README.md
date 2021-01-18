@@ -75,23 +75,46 @@ sh scripts/build_gurobi.sh
 ## Example run commands:
 
 ### Serial implementation
+
+* Run the following command in the Boosting main directory to run REPR using a training dataset
 ```
-./build/boosting <data_filename>
+./build/boosting <train_data_filename>
 ```
 
-* You can use a sample data, `./data/servo.data` for `<data_filename>`.
+* You can use a sample data, `./data/servo.data` for `<train_data_filename>`.
+
+* If you want to test REPR for both the train and test datasets
+```
+./build/boosting <train_data_filename> <test_data_filename>
+```
+
+* The test dataset is an optional, but you have to have the train dataset.
 
 ### Parallel implementation
 ```
-mpirun -np 4 ./build/boosting <data_filename>
+mpirun -np 4 ./build/boosting <train_data_filename>
 ```
 
-### Using parameters
+### Parameters
+
+| parameters      |      description                               | data type | range         | default value  |
+|-----------------|:-----------------------------------------------|:---------:|--------------:|---------------:|
+| numIterations   | the number of boosting iterations              | integer   | [0, infinity) | 1              |
+| isUseGurobi     | Use Gurobi instead of CLP to solve the restricted master Problem (RMP). If you want to enable this option, you have to compile with Gurobi. | bool      | true or false | false          |
+| p               | the exponent of each observation's error variable in RMP | integer    | 1 or 2       | 1 for CLP; 2 for Gurobi |
+| c               | a penalty term for linear coefficients in RMP | double     | [0, infinity) | 1.0           |
+| e               | a penalty term for rule coefficients in RMP | double     | [0, infinity) | 1.0           |
+| isEvalEachIter  | whether or not to evaluate the current REPR model using MSE in each boosting iteration | bool      | true or false | true           |
+| isSavePredictions  | whether or not to save the actual and REPR predicted response values in a file after the training  | bool      | true or false | true           |
+| isSaveAllRMASols  | whether or not to save the Greedy and PEBBL RMA solutions of each boosting iteration in a file   | bool      | true or false | false          |
+| isSaveWts      | whether or not to save the weights of each boosting iteration in a file      | bool      | true or false | false          |
+
 ```
 ./build/boosting --numIterations=10 --isUseGurobi=true --c=0.5 --e=0.5 --p=2 <data_filename>
 ```
 
 * You can set the number of boosting iterations using `numIterations`.
+* If ``--isUseGurobi=true`, the restricted master problem will be solved by Gurobi instead of CLP.  If you want to enable this option, you have to compile with Gurobi.
 
 ## Class Diagram
 
