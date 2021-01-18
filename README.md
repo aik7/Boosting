@@ -43,12 +43,17 @@ REPR is a prediction algorithm using linear regression with both linear and boxe
 ```
 git clone --recursive https://github.com/aik7/Boosting.git
 ```
+
 * Run the following command in the Boosting main directory
   to build Boosting along with PEBBL, RMA, and Coin-OR CLP
 ```
 sh scripts/build.sh
 ```
 
+* You may need to set `LD_LIBRARY_PATH` which can be in your `.bashrc` file
+```
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:<path_to_dir>/Boosting/external/coin/dist/lib
+```
 ### Compile with Gurobi
 
 #### Option 1:
@@ -95,7 +100,7 @@ sh scripts/build_gurobi.sh
 mpirun -np 4 ./build/boosting <train_data_filename>
 ```
 
-### Parameters
+## Parameters
 
 | parameters      |      description                               | data type | range         | default value  |
 |-----------------|:-----------------------------------------------|:---------:|--------------:|---------------:|
@@ -105,15 +110,27 @@ mpirun -np 4 ./build/boosting <train_data_filename>
 | c               | a penalty term for linear coefficients in RMP | double     | [0, infinity) | 1.0           |
 | e               | a penalty term for rule coefficients in RMP | double     | [0, infinity) | 1.0           |
 | isEvalEachIter  | whether or not to evaluate the current REPR model using MSE in each boosting iteration | bool      | true or false | true           |
-| isSavePredictions  | whether or not to save the actual and REPR predicted response values in a file after the training  | bool      | true or false | true           |
+| outputDir     | Specify the output directory name where all output files will be saved | string      |  NA   | "results"          |
+| isSaveModel     | whether or not to save the trained boosting model using MSE in each boosting iteration | bool      | true or false | true           |
+| isSaveErrors  | whether or not to save the train and test MSEs for each boosting iteration  | bool      | true or false | true           |
+| isSavePredictions  | whether or not to save the actual and boosting predicted response values in a file after the training  | bool      | true or false | true           |
 | isSaveAllRMASols  | whether or not to save the Greedy and PEBBL RMA solutions of each boosting iteration in a file   | bool      | true or false | false          |
 | isSaveWts      | whether or not to save the weights of each boosting iteration in a file      | bool      | true or false | false          |
 
 
 * The following is an example command to run REPR using the parameters.
 ```
-./build/boosting --numIterations=10 --isUseGurobi=true --c=0.5 --e=0.5 --p=2 <data_filename>
+./build/boosting --numIterations=10 --isUseGurobi=true --c=0.5 --e=0.5 <train_data_filename>
 ```
+
+## Output files
+
+* The following outputs files are saved at the output directory specified by `--outputDir`.  The default output file direcotry is `results`.
+
+* `model_[train_data_name].out` file contains the trained model information (if `--isSaveModel=true`)
+* `error_[train_data_name].out` file contains the train and/or test MSEs for each boosting iteration (if `--isSaveErrors=true`)
+* `predictionTrain_[train_data_name].out` file contains the actual and boosting predicted response values for the train data (if `--isSavePredictions=true`)
+* `predictionTrain_[train_data_name].out` file contains the actual and boosting predicted response values for the test data (if `--isSavePredictions=true` and the test data is given)
 
 ## Class Diagram
 

@@ -30,17 +30,29 @@ namespace boosting {
 
     if (ROOTPROC) cout << (isUseGurobi() ? "Gurobi" : "CLP") << " solver\n";
 
+    int n = outputDir().length();  // # of characters in the string
+    char charOutDir[n + 1];        // declaring character array
+
+    // copying the contents of the string to char array
+    strcpy(charOutDir, outputDir().c_str());
+
+    // creating a directory
+    if (mkdir(charOutDir, 0777) != 0)
+        cerr << "Error :  " << strerror(errno) << endl;
+    else
+        cout << "\"" << outputDir() << "\" directory created\n";
+
   } // end Boosting constructor
 
 
   // reset Boosting variables
   void Boosting::resetBoosting() {
 
-    numBoxesSoFar = 0;                  // # of boxes
-    numBoxesIter  = 0;                  // # of RMA solutions
+    isStopCond = 0;   // whether or not to the model hits the stopping condition
+    curIter    = 0;   // current boosting iteration
 
-    // reset the pebbl RMA incumbent value to be negative infinity
-    if (isPebblRMA()) rma->incumbentValue = -getInf();
+    numBoxesSoFar = 0;  // # of boxes inserted by the previous boosing iteration
+    numBoxesIter  = 0;  // # of boxes to insert in the current iteration
 
     if (ROOTPROC) { // if root process
 
@@ -56,6 +68,21 @@ namespace boosting {
       matIsCvdObsByBoxTrain.clear();
       matIsCvdObsByBoxTest .clear();
 
+      // if isSaveErrors is enabled,
+      // allocate to store error for the train and test datasets
+      if (isSaveErrors()) {
+        vecErrTrain.resize(getNumIterations()+1);
+        if (data->numTestObs!=0)
+          vecErrTest .resize(getNumIterations()+1);
+      }
+
+      // if isSavePred is enabled and the last column generation iteration
+      if ( isSavePred() ) {
+        vecPredTrain.resize(data->numTrainObs);
+        if (data->numTestObs!=0)
+          vecPredTest. resize(data->numTestObs);
+      }
+
       // if the isSaveAllRMASols is enabled,
       // allocate vecERMAObjVal and vecGRMAObjVal
       if (isSaveAllRMASols()) resetVecRMAObjVals();
@@ -70,9 +97,6 @@ namespace boosting {
   // training process of boosting
   void Boosting::train(const unsigned int& numIter,
                        const unsigned int& greedyLevel) {
-
-    isStopCond = 0;
-    curIter    = -1;
 
     setBoostingParameters();  // set Boosting parameters
 
@@ -94,7 +118,7 @@ namespace boosting {
       } // end if root process
 
       // for each column generation iteration
-      for (curIter=0; curIter<numIter; ++curIter) {
+      for (curIter=1; curIter<numIter+1; ++curIter) {
 
         //ucout << "\nColGen Iter: " << curIter << "\n";
 
@@ -147,16 +171,19 @@ namespace boosting {
       // and eavluating the final iteration option is disabled
       if ( isEvalFinalIter() && !isEvalEachIter() ) evaluateModel();
 
+      if ( isSaveErrors() ) saveErrors();
+
       // save predictions
       if ( isSavePred() ) {
         savePredictions(TRAIN, data->dataOrigTrain);
-        savePredictions(TEST,  data->dataOrigTrain);
+        if (data->numTestObs!=0)
+          savePredictions(TEST,  data->dataOrigTrain);
       }
 
       // save Greedy and PEBBL RMA solutions for each iteration
-      saveGERMAObjVals();
+      if ( isSaveAllRMASols() ) saveGERMAObjVals();
 
-      saveModel();          // save Boosting model
+      if ( isSaveModel() )      saveModel();    // save Boosting model
 
     } // end if root process
 
@@ -610,26 +637,42 @@ namespace boosting {
 
   // print curret iteration, testing and testing errors
   void Boosting::printBoostingErr() {
-      ucout << "Iter: " << curIter
-            << ":\tTest/Train MSE: " << errTest << " " << errTrain << "\n";
+    ucout << "Iter: " << curIter;
+    ucout << "\tTrainMSE: " << errTrain;
+    if(data->numTestObs!=0) ucout << "\tTestMSE: "  << errTest;
+    ucout << "\n";
   } // end printBoostingErr function
 
+  /************************ Saving functions ************************/
 
-  // save weights for current iteration (curIter)
-  void Boosting::saveWeights(const unsigned int& curIter) {
+  // save actual y values and predicted y values
+  void Boosting::saveErrors() {
+
+    stringstream s;
 
     // create a file name to save
-    stringstream s;
-    s << "wt_" << problemName << "_" << curIter << ".out";
+    s << outputDir() << "/" << "error_" << problemName << ".out";
+
     ofstream os(s.str().c_str());
+    // appending to its existing contents
+    //ofstream os(s.str().c_str(), ofstream::app);
 
-    for (unsigned int i=0; i < data->numTrainObs ; ++i) // for each observation
-      os << data->dataIntTrain[i].w << ", "; // output each weight
+    // header
+    os << "Iteration\tTrain_MSE";
+    if (data->numTestObs!=0) os << "\tTest_MSE";
+    os << "\n";
 
-  } // end saveWeights function
+    // for each boosting iteration
+    for (unsigned int i=0; i < getNumIterations()+1; ++i) {
+      os << i << "\t" << vecErrTrain[i];
+      if (data->numTestObs!=0) os << "\t" << vecErrTest[i];
+      os << "\n";
+    }
 
+    os.close();  // close the file
 
-  /************************ Saving functions ************************/
+  } // end saveErrors function
+
 
   // save actual y values and predicted y values
   void Boosting::savePredictions(const bool &isTrain, vector<DataXy> origData) {
@@ -637,8 +680,10 @@ namespace boosting {
     stringstream s;
 
     // create a file name to save
-    if (isTrain) s << "predictionTrain" << '.' << problemName;
-    else         s << "predictionTest"  << '.' << problemName;
+    if (isTrain)
+      s << outputDir() << "/" << "predictionTrain_" << problemName << ".out";
+    else
+      s << outputDir() << "/" << "predictionTest_"  << problemName << ".out";
 
     ofstream os(s.str().c_str());
     // appending to its existing contents
@@ -646,7 +691,7 @@ namespace boosting {
 
     unsigned int numObs = (isTrain ? data->numTrainObs : data->numTestObs );
 
-    os << "ActY\tBoosting\n";
+    os << "ActY\tBoostingPredictedY\n";
 
     for (unsigned int i=0; i < numObs; ++i) { // for each observation
 
@@ -665,17 +710,34 @@ namespace boosting {
 
     // set the output file name
     stringstream s;
-    s << "GERMA_" << problemName << ".out";
+
+    s << outputDir() << "/" << "RMAObjVals_" << problemName << ".out";
+
     ofstream os(s.str().c_str());
 
-    // output Greedy RMA and PEBBL RMA solutions for each iteration
-    os << "iter\tGRMA\tERMA\n";
-    for (unsigned int i=0; i<getNumIterations(); ++i ) // for each iteration
+    os << "Iteration\tGreedy_RMA\tPEBBL_RMA\n";
+
+    // for each boosting iteration
+    for (unsigned int i=0; i<getNumIterations(); ++i )
       os << i << "\t" << vecGRMAObjVal[i] << "\t" << vecERMAObjVal[i] << "\n" ;
 
     os.close();  // close the output file
 
   } // end saveGERMAObjVals function
+
+
+  // save weights for current iteration (curIter)
+  void Boosting::saveWeights(const unsigned int& curIter) {
+
+    // create a file name to save
+    stringstream s;
+    s << outputDir() << "/" << "wt_" << problemName << "_" << curIter << ".out";
+    ofstream os(s.str().c_str());
+
+    for (unsigned int i=0; i < data->numTrainObs ; ++i) // for each observation
+      os << data->dataIntTrain[i].w << ", "; // output each weight
+
+  } // end saveWeights function
 
 
 } // namespace boosting

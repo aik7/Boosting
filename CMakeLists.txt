@@ -42,6 +42,7 @@ endif()
 set(CMAKE_CXX_FLAGS_DEBUG   "-O0 -g -Wall -Werror=reorder")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
 
+MESSAGE( STATUS "CMAKE_BUILD_TYPE        : ${CMAKE_BUILD_TYPE}" )
 MESSAGE( STATUS "C++ compiler            : ${CMAKE_CXX_COMPILER}" )
 MESSAGE( STATUS "C++ compiler ID         : ${CMAKE_CXX_COMPILER_ID}" )
 MESSAGE( STATUS "C++ compiler version    : ${CMAKE_CXX_COMPILER_VERSION}" )

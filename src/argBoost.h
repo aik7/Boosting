@@ -8,7 +8,7 @@
 
 #include <pebbl_config.h>
 #include <pebbl/utilib/ParameterSet.h>
-#include <limits>
+#include <string>
 #include "argRMA.h"
 #include "utility.h"
 
@@ -25,7 +25,7 @@ namespace arg {
     ArgBoost();
     virtual ~ArgBoost(){};
 
-    /////////////////// parameters for Boosting ///////////////////
+    /////////////////// Parameters for Boosting ///////////////////
 
     // bool         isLPBoost()        const {return _isLPBoost;}
     bool         isUseGurobi()      const {return _isUseGurobi;}
@@ -34,7 +34,7 @@ namespace arg {
     unsigned int getExponentP()     const {return _exponentP;}
     bool         isPrintBoost()     const {return _isPrintBoost;}
 
-    /////////////////// parameters for LPBR class ///////////////////
+    /////////////////// Parameters for LPBR class ///////////////////
 
     double getCoefficientD() const {return _coeffD;}
     double getNu()           const {return _nu;}
@@ -56,14 +56,22 @@ namespace arg {
     bool         isSeqCoverValue() const {return _isSeqCoverValue;}
     unsigned int getNumLimitedObs() const {return _numLimitedObs;}
 
-    //////////////////////// Evaluation parameters ////////////////////////
+    /////////////////// Parameters for evaluation and saving //////////////
 
     bool isEvalEachIter()   const {return _isEvalEachIter;}
     bool isEvalFinalIter()  const {return _isEvalFinalIter;}
 
-    bool isSaveWts()        const {return _isSaveWts;}
+    string outputDir()      const {return _outputDir;}
+
+    bool isSaveErrors()     const {return _isSaveErrors;}
     bool isSavePred()       const {return _isSavePredictions;}
     bool isSaveAllRMASols() const {return _isSaveAllRMASols;}
+    bool isSaveWts()        const {return _isSaveWts;}
+
+    bool isSaveModel()      const {return _isSaveModel;}
+
+    /////////////////// Parameters for debugging //////////////////
+
     bool isSaveClpMps()     const {return _isSaveClpMps;}
 
     bool isStandData()      const {return _isStandData;}
@@ -111,7 +119,7 @@ namespace arg {
     // set a maximum number of bounded subproblems to check
     unsigned int _maxBoundedSP;
 
-    //////////////////////// Evaluation parameters ////////////////////////
+    /////////////////// parameters for evaluations and saving //////////////////
 
     // whether or not to evaluate solutions in each iteration
     bool _isEvalEachIter;
@@ -119,14 +127,26 @@ namespace arg {
     // whether or not to evaluate solutions in the final column generation
     bool _isEvalFinalIter;
 
-    // whether or not to save weights for each boosting iteration
-    bool _isSaveWts;
+    // the output direcotry to save all outputs
+    string _outputDir;
+
+    // whether or not to save MSE for train and/or test data
+    // for each boosting iteration
+    bool _isSaveErrors;
 
     // whether or not to save actual and predicted y-values
     bool _isSavePredictions;
 
-    // whether or not to save all RMA solutions for each Boosting iterations
+    // whether or not to save all RMA solutions for each boosting iterations
     bool _isSaveAllRMASols;
+
+    // whether or not to save weights for each boosting iteration
+    bool _isSaveWts;
+
+    // whether or not to save the trained boosting model
+    bool _isSaveModel;
+
+    /////////////////// Parameters for debugging //////////////////
 
     // whether or not to save ClpMps files for each boosting iteration
     bool _isSaveClpMps;

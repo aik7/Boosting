@@ -73,7 +73,7 @@ namespace boosting {
 
     void printRMPCheckInfo();  // restricted mater problem solution
     void printRMAInfo();       // print RMA problem info
-    //void printEachIterAllErrs() {}
+
     void printClpElements();  // print CLP elements
 
     /************* save a model ****************/

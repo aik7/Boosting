@@ -16,6 +16,11 @@
 #include <cassert>
 #include <ctime>
 
+#include <bits/stdc++.h>
+#include <iostream>
+#include <sys/stat.h>
+#include <sys/types.h>
+        
 #include <ClpSimplex.hpp>
 #include <CoinTime.hpp>
 #include <CoinBuild.hpp>
@@ -157,13 +162,18 @@ namespace boosting {
 
     /************************ Saving functions ************************/
 
-    // save weights for all observations
-    void    saveWeights(const unsigned int &curIter);
+    // save the train and/or test MSE in each boosting itearation
+    void    saveErrors();
 
-    // save actual and predicted y-values
+    // save actual and predicted response value
     void    savePredictions(const bool &isTrain, vector<DataXy> origData);
 
+    // save the greedy and/or PEBBL RMA objective values
+    // in each boosting itearation
     void    saveGERMAObjVals();
+
+    // save weights of all observations for each boosting iteration
+    void    saveWeights(const unsigned int &curIter);
 
     virtual void saveModel() = 0;
 
@@ -263,30 +273,28 @@ namespace boosting {
     // (size: # of boxes inserted)
     deque<bool>             vecIsObjValPos;
 
-    // whether or not each training observation is covered by each box
-    // ( size: [# of train obs] * [# of boxes found so far] )
+    // whether or not each train or test observation is covered by each box
+    // ( size: [# of train or test obs] * [# of boxes found so far] )
     deque<deque<bool> >     matIsCvdObsByBoxTrain;
+    deque<deque<bool> >     matIsCvdObsByBoxTest;
 
     // errors for the train and test data
     double                  errTrain, errTest;
 
-    // a vector of PEBBL RMA solutions for all iterations
+    // vectors of Greery RMA and PEBBL RMA solutions for all iterations
     // (size: # of Boosting iterations)
-    vector<double>          vecERMAObjVal;
+    vector<double>          vecErrTrain;
+    vector<double>          vecErrTest;
 
-    // a vector of Greery RMA solutions for all iterations
-    // (size: # of Boosting iterations)
-    vector<double>          vecGRMAObjVal;
-
-    // predictions of training data by the current model
+    // predictions of the training and test data by this boosting model
+    // (size: # of train or test observations)
     vector<double>          vecPredTrain;
-
-    // predictions of testing data by model
     vector<double>          vecPredTest;
 
-    // whether or not each training observation is covered by each box
-    // ( size: [# of test obs] * [# of boxes found so far] )
-    deque<deque<bool> >     matIsCvdObsByBoxTest;
+    // vectors of Greery RMA and PEBBL RMA solutions for all iterations
+    // (size: # of Boosting iterations)
+    vector<double>          vecERMAObjVal;
+    vector<double>          vecGRMAObjVal;
 
     // TODO:: put this function somewhere else
     string getDateTime() {

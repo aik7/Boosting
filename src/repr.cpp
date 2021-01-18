@@ -528,7 +528,7 @@ namespace boosting {
 
   //////////////////////// Evaluating methods //////////////////////////////
 
-//   // evaluate error rate in each iteration
+  // evaluate error rate in each iteration
   double REPR::evaluate(const bool &isTrain, const vector<DataXy> &origData,
                         const deque<deque<bool> > &matIsCvdObsByBox) {
 
@@ -536,12 +536,6 @@ namespace boosting {
 
     // set the size of training or testing observations
     unsigned int numObs = ( isTrain ? data->numTrainObs : data->numTestObs );
-
-    // if isSavePred is enabled and the last column generation iteration
-    if ( isSavePred() && (curIter==getNumIterations()-1) ) {
-      if (isTrain) vecPredTrain.resize(data->numTrainObs);
-      else         vecPredTest. resize(data->numTestObs);
-    }
 
     for (unsigned int i=0; i<numObs; ++i) { // for each obsercation
 
@@ -587,14 +581,15 @@ namespace boosting {
                        << ", avgY: "                << data->avgY
                        << ", sdY: "                 << data->sdY << "\n") ;
 
-      // map back to the expected y value to its original value
+      // map back to the expected y value in its original value
       expY = data->avgY + expY * data->sdY;
       actY = origData[i].y;                  // actual y value
 
       // if isSavePred is enabled and the last column generation iteration
-      if ( isSavePred() && (curIter==getNumIterations()-1) ) {
+      // save prediction for each observation
+      if ( isSavePred() && (curIter==getNumIterations()) ) {
         if (isTrain) vecPredTrain[i] = expY;
-        else          vecPredTest[i] = expY;
+        else         vecPredTest[i]  = expY;
       }
 
       err  = expY - actY;  // difference between expacted and actual y values
@@ -612,6 +607,11 @@ namespace boosting {
     mse /= (double) numObs;
 
     if (ROOTPROC) { DEBUGPR(20, cout << "MSE: " <<  mse << "\n"); }
+
+    if ( isSaveErrors() ) { // store MSEs in a vector to save
+      if (isTrain) vecErrTrain[curIter] = mse;
+      else         vecErrTest [curIter] = mse;
+    }
 
     return mse;
 
@@ -779,7 +779,8 @@ namespace boosting {
 
     // set the output file name
     stringstream s;
-    s << problemName << "_model_" << getDateTime() << ".out";
+
+    s << outputDir() << "/" << "model_" << problemName << ".out"; // << getDateTime()
     ofstream os(s.str().c_str());
 
     // save # of attributes and boxes
@@ -816,17 +817,17 @@ namespace boosting {
     os << "\n\n" ;  // go to the next line
 
     // output each box's lower and upper bounds in original values
-    for (unsigned int k=0; k<curIter; ++k ) { // for each Boosting iteration
+    for (unsigned int k=0; k<curIter-1; ++k ) { // for each Boosting iteration
 
       if (matOrigLower.size()!=0) { // if integerized
 
-        os << "Box_" << k << "_a: " ;
+        os << "\nBox_" << k << "_a: " ;
         for (unsigned int j=0; j<data->numAttrib; ++j)
-          os << matOrigLower[k][j] << "\n" ;
+          os << matOrigLower[k][j] << " " ;
 
-        os << "Box_" << k << "_b: " ;
+        os << "\nBox_" << k << "_b: " ;
         for (unsigned int j=0; j<data->numAttrib; ++j)
-          os << matOrigUpper[k][j] << "\n" ;
+          os << matOrigUpper[k][j] << " " ;
 
       } else { // if data is not integerized for RMA
 
