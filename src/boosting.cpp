@@ -16,19 +16,32 @@ namespace boosting {
 #endif // HAVE_GUROBI
   {
 
+    initMPI(argc, argv);
+
     isRMAonly = false;     // is not RMA only
 
     setup(argc, argv);     // setup all paramaters from PEBBL
 
     setDataRMA(argc, argv);   // set Data RMA class object from SolveRMA class
 
-    if (isPebblRMA()) setupPebblRMA(argc, argv);  // setup PEBBL RMA
+    initMPI(argc, argv);
+
+    if (isPebblRMA()) 
+      setupPebblRMA(argc, argv);  // setup PEBBL RMA
 
     resetBoosting();                              // reset Boosting
 
     (isPebblRMA()) ? greedyLevel=EXACT : greedyLevel=GREEDY;
 
-    if (ROOTPROC) cout << (isUseGurobi() ? "Gurobi" : "CLP") << " solver\n";
+    if (ROOTPROC) {
+      cout << (isUseGurobi() ? "Gurobi" : "CLP") << " solver\n";
+      createOutputDir();
+    }
+
+  } // end Boosting constructor
+
+
+  void Boosting:: createOutputDir() {
 
     int n = outputDir().length();  // # of characters in the string
     char charOutDir[n + 1];        // declaring character array
@@ -42,7 +55,7 @@ namespace boosting {
     else
         cout << "\"" << outputDir() << "\" directory created\n";
 
-  } // end Boosting constructor
+  } // end createOutputDir function
 
 
   // reset Boosting variables

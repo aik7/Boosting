@@ -383,7 +383,7 @@ namespace boosting {
       // if the current iteration is greater than 0,
       // and the current lower and upper bounads are the same
       // as the previous iteration's
-      if (curIter>0
+      if (curIter>1
           && grma->getLowerBounds() == matIntLower[curIter-1]
           && grma->getUpperBounds() == matIntUpper[curIter-1] ) {
         ucout << "Greedy Stopping Condition!\n";

@@ -20,7 +20,7 @@
 #include <iostream>
 #include <sys/stat.h>
 #include <sys/types.h>
-        
+
 #include <ClpSimplex.hpp>
 #include <CoinTime.hpp>
 #include <CoinBuild.hpp>
@@ -58,6 +58,8 @@ namespace boosting {
 
     Boosting(int& argc, char**& argv);
     virtual ~Boosting() {}
+
+    void createOutputDir();
 
     // reset and resize Boosting variables
     void resetBoosting();
