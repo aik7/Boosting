@@ -43,36 +43,95 @@ REPR is a prediction algorithm using linear regression with both linear and boxe
 ```
 git clone --recursive https://github.com/aik7/Boosting.git
 ```
-* Build Boosting along with PEBBL, RMA, and Coin-OR CLP
+
+* Run the following command in the Boosting main directory
+  to build Boosting along with PEBBL, RMA, and Coin-OR CLP
 ```
-cd Boosting
 sh scripts/build.sh
 ```
 
-* If you want to use Gurobi to solve the restricted master problem,
-set the Gurobi directory in the cmake file
-and use `-DENABLE_GUROBI=true` when you cmake.
+* You may need to set `LD_LIBRARY_PATH` which can be in your `.bashrc` file
+```
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:<path_to_dir>/Boosting/external/coin/dist/lib
+```
+### Compile with Gurobi
+
+#### Option 1:
+* If you want to download Gurobi and compile with Boosting,
+  you can run the following command in the Boosting main directory
+  to build Boosting along with PEBBL, RMA, Coin-OR CLP and Gurobi.
+```
+sh scripts/build_gurobi.sh
+```
+
+#### Option 2:
+
+* If you already have Gurobi Linux 9.1 version, run the following commands in the Boosting main directory by setting your GUROBI home directory `<gurobi_home_dir>`:
+  ```
+  mkdir build ; cd build; cmake -DENABLE_GUROBI=true -DGUROBI_HOME=<gurobi_home_dir> .. ; make
+  ```
+
+* If your Gurobi version is different, read [How to compile with Gurobi](https://github.com/aik7/Boosting/wiki/How-to-compile-with-Gurobi)
+
+
+#### Please set your Gurobi license
+
 
 ## Example run commands:
 
 ### Serial implementation
+
+* Run the following command in the Boosting main directory to run REPR using a training dataset
 ```
-./build/boosting <data_filename>
+./build/boosting <train_data_filename>
 ```
 
-* You can use a sample data, `./data/servo.data` for `<data_filename>`.
+* You can use a sample data, `./data/servo.data` for `<train_data_filename>`.
+
+* If you want to test REPR for both the train and test datasets
+```
+./build/boosting <train_data_filename> <test_data_filename>
+```
+
+* The test dataset is an optional, but you have to have the train dataset.
 
 ### Parallel implementation
 ```
-mpirun -np 4 ./build/boosting <data_filename>
+mpirun -np 4 ./build/boosting <train_data_filename>
 ```
 
-### Using parameters
+## Parameters
+
+| parameters      |      description                               | data type | range         | default value  |
+|-----------------|:-----------------------------------------------|:---------:|--------------:|---------------:|
+| numIterations   | the number of boosting iterations              | integer   | [0, infinity) | 1              |
+| rmaSolveMode   | Specify the apporach to solve the RMA subproblem.  (hybrid: coming soon)              | string   | {"exact", "greedy", "hybrid"} | "exact"      |
+| isUseGurobi     | Use Gurobi instead of CLP to solve the restricted master Problem (RMP). If you want to enable this option, you have to compile with Gurobi. | bool      | true or false | false          |
+| p               | the exponent of each observation's error variable in RMP | integer    | 1 or 2       | 1 for CLP; 2 for Gurobi |
+| c               | a penalty term for linear coefficients in RMP | double     | [0, infinity) | 1.0           |
+| e               | a penalty term for rule coefficients in RMP | double     | [0, infinity) | 1.0           |
+| isEvalEachIter  | whether or not to evaluate the current REPR model using MSE in each boosting iteration | bool      | true or false | true           |
+| outputDir     | Specify the output directory name where all output files will be saved | string      |  NA   | "results"          |
+| isSaveModel     | whether or not to save the trained boosting model using MSE in each boosting iteration | bool      | true or false | true           |
+| isSaveErrors  | whether or not to save the train and test MSEs for each boosting iteration  | bool      | true or false | true           |
+| isSavePredictions  | whether or not to save the actual and boosting predicted response values in a file after the training  | bool      | true or false | true           |
+| isSaveAllRMASols  | whether or not to save the Greedy and PEBBL RMA solutions of each boosting iteration in a file   | bool      | true or false | false          |
+| isSaveWts      | whether or not to save the weights of each boosting iteration in a file      | bool      | true or false | false          |
+
+
+* The following is an example command to run REPR using the parameters.
 ```
-./build/boosting --numIterations=10 <data_filename>
+./build/boosting --numIterations=10 --rmaSolveMode=greedy --c=0.5 --e=0.5 <train_data_filename>
 ```
 
-* You can set the number of boosting iterations using `numIterations`.
+## Output files
+
+* The following outputs files are saved at the output directory specified by `--outputDir`.  The default output file direcotry is `results`.
+
+* `model_[train_data_name].out` file contains the trained model information (if `--isSaveModel=true`)
+* `error_[train_data_name].out` file contains the train and/or test MSEs for each boosting iteration (if `--isSaveErrors=true`)
+* `predictionTrain_[train_data_name].out` file contains the actual and boosting predicted response values for the train data (if `--isSavePredictions=true`)
+* `predictionTrain_[train_data_name].out` file contains the actual and boosting predicted response values for the test data (if `--isSavePredictions=true` and the test data is given)
 
 ## Class Diagram
 
@@ -88,8 +147,7 @@ mpirun -np 4 ./build/boosting <data_filename>
 ```
 ├── argBoost.cpp     : a file contains Boosting argument class
 ├── argBoost.h
-├── argBoost.o
-├── boosting.cpp     : a file contains Boosting driver class
+├── boosting.cpp     : a file contains Boosting class
 ├── boosting.h
 ├── driver.cpp       : a driver file
 ├── lpbr.cpp         : a file contains LPBR class
