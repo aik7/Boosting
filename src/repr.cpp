@@ -336,13 +336,18 @@ namespace boosting {
   // set a weight of each observation for RMA
   // if rank 0, send the weights to the other ranks
   // if not rank 0, receive the weights from the rank 0
-  void REPR::setWeights() {
+  void REPR::setWeights(int interaction) {
 
     if (ROOTPROC) { // if root process
 
       // assign a weight for each observation ($/mu-/nu$, dual variables)
       for (unsigned int i=0; i < numObs ; ++i) // for each observation
-        data->dataIntTrain[i].w = vecDualVars[i] - vecDualVars[numObs+i];
+      {
+        double weightAdjust = 1.0;
+        if (interaction >= 0)
+          weightAdjust = data->dataStandTrain[i].X[interaction];
+        data->dataIntTrain[i].w = weightAdjust*(vecDualVars[i] - vecDualVars[numObs+i]);
+      }
 
     } // end if root process
 
@@ -397,7 +402,7 @@ namespace boosting {
 
 
   // insert columns in each column iteration
-  void REPR::insertColumns() {
+  void REPR::insertColumns(int interaction) {
 
     if (greedyLevel==GREEDY) numBoxesIter = 1;
     // numBoxesIter using PEBBL is already set
@@ -413,17 +418,17 @@ namespace boosting {
       // 2nd argument: whether or not it is positive box variable
       // 3rd and 4th arguments: lower and upper bounds in integer value
       if (greedyLevel==EXACT) // for PEEBL solution
-        insertEachColumn(k, sl[k]->isPosIncumb, sl[k]->a, sl[k]->b);
+        insertEachColumn(k, sl[k]->isPosIncumb, sl[k]->a, sl[k]->b,interaction);
       else                    // for Greedy solution
         insertEachColumn(k, grma->isPostObjVal(),
-                         grma->getLowerBounds(), grma->getUpperBounds());
+                         grma->getLowerBounds(), grma->getUpperBounds(),-1);
 
     } // end for each solution, k
 
     numBoxesSoFar  += numBoxesIter;
     numCols        += numBoxesIter;
 
-    if (greedyLevel=EXACT) // if PEEBL, dispose the solutions
+    if (greedyLevel==EXACT) // if PEBBL, dispose the solutions
       for (unsigned int k=0; k<s.size(); ++k)
         sl[k]->dispose();
 
@@ -433,7 +438,8 @@ namespace boosting {
   // insert each column for current iteration k
   void REPR::insertEachColumn(const int & k, const bool &isPosObjVal,
                               const vector<unsigned int> &vecLower,
-                              const vector<unsigned int> &vecUpper) {
+                              const vector<unsigned int> &vecUpper,
+                              int   interaction) {
 
     if (curIter!=0 && debug>=1) // if is not the first iteration and the debug mode
       checkDuplicateBoxes(vecLower, vecUpper);
@@ -447,32 +453,33 @@ namespace boosting {
 
 #ifdef HAVE_GUROBI
     if (isUseGurobi())
-      insertColumnGurobiModel(k);  // insert k-th column of this iterations using Gurobi
+      insertColumnGurobiModel(k,interaction);  // insert k-th column using Gurobi
     else
 #endif // HAVE_GUROBI
-      insertColumnClpModel(k);     // insert k-th column of this iterations using CLP
+      insertColumnClpModel(k,interaction);     // insert k-th column using CLP
 
   } // end insertEachColumn function
 
 
   // insert a colum in CLP model
-  void REPR::insertColumnClpModel(const unsigned int &k) {
+  void REPR::insertColumnClpModel(const unsigned int &k, int interaction) {
 
     // matIsCvdObsByBox[numBoxesSoFar+k].resize(numObs);
 
-    for (unsigned int i = 0; i < numObs; ++i) { // for each observation
+    for (unsigned int i = 0; i < numObs; ++i)
+    { // for each observation
 
-      if (matIsCvdObsByBox[numBoxesSoFar+k][i]) { // if this observatoin is covered
+      double baseCoef = vecIsObjValPos[numBoxesSoFar+k] ? 1.0 : -1.0;
 
-        if (vecIsObjValPos[numBoxesSoFar+k]) { // if it's a positive box variable
-          columnInsert[i]        = 1;
-          columnInsert[numObs+i] = -1;
-        } else {  // if not a box variable
-          columnInsert[i]        = -1;
-          columnInsert[numObs+i] = 1;
-        } // end if positive or negative box variable
+      if (interaction >= 0)
+        baseCoef *= data->dataStandTrain[i].X[interaction];
 
-      } else { // if this observation is not covered by k-th box
+      if (matIsCvdObsByBox[numBoxesSoFar+k][i])
+      { // if this observation is covered
+        columnInsert[i]        = baseCoef;
+        columnInsert[numObs+i] = -baseCoef;
+      } else 
+      { // if this observation is not covered by k-th box
         columnInsert[i]        = 0;
         columnInsert[numObs+i] = 0;
       } // end if covered observation or not
@@ -492,24 +499,24 @@ namespace boosting {
 
 #ifdef HAVE_GUROBI
 
-  void REPR::insertColumnGurobiModel(const unsigned int &k) {
+  void REPR::insertColumnGurobiModel(const unsigned int &k, int interaction) {
 
     // add columns using GUROBI
     col.clear();
     constr = modelGrb.getConstrs();
 
-    for (unsigned int i = 0; i < numObs; ++i) { // for each observation
+    for (unsigned int i = 0; i < numObs; ++i) 
+    { // for each observation
 
-      if (matIsCvdObsByBox[numBoxesSoFar+k][i]) { // if this observatoin is covered
+      double baseCoef = vecIsObjValPos[numBoxesSoFar+k] ? 1.0 : -1.0;
 
-        if (vecIsObjValPos[numBoxesSoFar+k]) { // if it's positive box variable
-          col.addTerm( 1, constr[i]);
-          col.addTerm(-1, constr[i+numObs]);
-        } else {
-          col.addTerm(-1, constr[i]);
-          col.addTerm( 1, constr[i+numObs]);
-        } // end if covered observation or not
+      if (interaction >= 0)
+        baseCoef *= data->dataStandTrain[i].X[interaction];
 
+      if (matIsCvdObsByBox[numBoxesSoFar+k][i])
+      { // if this observatoin is covered
+        col.addTerm( baseCoef, constr[i]);
+        col.addTerm(-baseCoef, constr[i+numObs]);
       } // end if this observation is covered
 
     } // end for each observation

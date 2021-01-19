@@ -93,14 +93,14 @@ namespace boosting {
     void         resetGurobi();
 #endif // HAVE_GUROBI
 
-    virtual void setWeights() = 0;
+    virtual void setWeights(int interaction) = 0;
 
     virtual bool isStoppingCondition() = 0;
 
     void         setStoppingCondition();
 
     // insert column
-    virtual void insertColumns() = 0;
+    virtual void insertColumns(int interaction) = 0;
 
     // set vecIsObjValPos,
     // a vector of whether or not each solution, k, is positive
@@ -124,8 +124,8 @@ namespace boosting {
     // resize vecERMAObjVal and vecGRMAObjVal
     void   resetVecRMAObjVals();
 
-    // set vecERMAObjVal and vecGRMAObjVal for current iteration
-    void   setVecRMAObjVals();
+    // set vecERMAObjVal and vecGRMAObjVal for current iteration, along with interaction
+    void   setVecRMAObjVals(int j);   // j indicates the interaction
 
     /************************ Evaluating methods ************************/
 
@@ -154,7 +154,7 @@ namespace boosting {
     // print curret iteration, testing and testing errors
     void printBoostingErr();
 
-    // print restricted mater problem solution
+    // print restricted master problem solution
     virtual void printRMPCheckInfo() = 0;
 
     // print pritinc problem, RMA, info
@@ -195,8 +195,8 @@ namespace boosting {
     // unsigned int  numIter;  // # of iterations
     unsigned int  curIter;    // the current iteration number
 
-    unsigned int  numRows;    // # of constraints / rows in the mater problem
-    unsigned int  numCols;    // # of variables / columns in the mater problem
+    unsigned int  numRows;    // # of constraints / rows in the master problem
+    unsigned int  numCols;    // # of variables / columns in the master problem
 
     unsigned int  numBoxesSoFar;  // # of total boxes entered so far
     unsigned int  numBoxesIter;   // # of boxes entered in the current interaction
@@ -283,7 +283,10 @@ namespace boosting {
     // (size: # of Boosting iterations)
     vector<double>          vecERMAObjVal;
 
-    // a vector of Greery RMA solutions for all iterations
+    // a vector of variable interactions; -1 means no interaction
+    vector<int>             vecInteractions;
+
+    // a vector of Greedy RMA solutions for all iterations
     // (size: # of Boosting iterations)
     vector<double>          vecGRMAObjVal;
 

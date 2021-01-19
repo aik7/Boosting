@@ -45,25 +45,27 @@ namespace boosting {
     void setConstraintsLHS();      // set LHS constraints, elements
     void setInitRMPClpModel();     // set initial RMP CLP model
 
-    void setWeights();            // set data weights in DataRMA class
+    void setWeights(int interaction);   // set data weights in DataRMA class
 
     bool isStoppingCondition();    // whether or not stopping condition
 
     /************************* insert columns **************************/
     // insert columns using PEBBL or Greedy RMA solutions
-    void insertColumns();
+    // The argument specifies and interaction, -1 meaning no interaction
+    void insertColumns(int interaction = -1);
 
     // insert columns using Greedy RMA solution
     void insertEachColumn(const int & k, const bool &isPosObjVal,
                           const vector<unsigned int> &vecLower,
-                          const vector<unsigned int> &vecUpper);
+                          const vector<unsigned int> &vecUpper,
+                          int interaction);
 
     // insert a column in the CLP model using k-th RMA solution
-    void insertColumnClpModel(const unsigned int &k);
+    void insertColumnClpModel(const unsigned int &k, int interaction = -1);
 
 #ifdef HAVE_GUROBI
     void setGurobiRMP();
-    void insertColumnGurobiModel(const unsigned int &k);
+    void insertColumnGurobiModel(const unsigned int &k, int interaction = -1);
 #endif
     /************************* Evaluating methods **************************/
 

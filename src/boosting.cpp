@@ -92,21 +92,54 @@ namespace boosting {
 
         //ucout << "\nColGen Iter: " << curIter << "\n";
 
-        setWeights();  // set data weight in DataRMA class
+        // Start JE code for interactions (first, simple version)
+        // Variable index -1 means a box with no variable interactions; 
+        // -2 means not set yet; anything else means an interaction with that variabel
 
-        solveRMA();    // solve the subproblem of RMA
+        int    bestInteraction = -2;     // Which interaction to select
+        double bestScore       = -1.0;   // The reduced cost is E minus score
+                                         // Negative value will be overwritten the
+                                         // first time through the j loop below
+        for (int j = -1; j < (int) numAttrib; j++)
+        {
+          // Don't bother with interactions with (essentially) binary variables
+          if (j == -1 || data->vecNumDistVals[j] > 2)
+          {
+            if (j < 0)
+              cout << "No interaction\n";
+            else
+              cout << "Interaction with variable " << j << endl;
+            setWeights(j);
+            solveRMA();
+            double thisScore = rma->getSolution()->value;
+            if (thisScore > bestScore)
+            {
+              bestInteraction = j;
+              bestScore       = thisScore;
+              if (greedyLevel==EXACT)        // Not sure if greedy will still work here
+                setPebblRMASolutions();
+            }
+          }
+        }
 
-        if (greedyLevel==EXACT) setPebblRMASolutions();
+        if (bestInteraction < 0)
+          cout << "Best option has no interaction\n";
+        else 
+          cout << "Best interaction with variable " << bestInteraction << endl;
+        cout << "Score is " << bestScore << endl;
 
         if (ROOTPROC) { // if root process
 
           // save the weights for the current iteration
-          if (isSaveWts())           saveWeights(curIter);
+          if (isSaveWts())
+            saveWeights(curIter);
 
-          // save Greedy and/or Exact RMA solutions in a file
-          if (isSaveAllRMASols())    setVecRMAObjVals();
+          // save Greedy and/or Exact RMA solutions in a file (also save interaction)
+          if (isSaveAllRMASols())
+            setVecRMAObjVals(bestInteraction);
 
-          if (isStoppingCondition()) isStopCond = 1;
+          if (isStoppingCondition())        // JE: is this really needed?
+            isStopCond = 1;
 
         } // end if root process
 
@@ -116,7 +149,7 @@ namespace boosting {
 
         if (ROOTPROC) { // if root process
 
-          insertColumns();  // insert columns using RMA solutions
+          insertColumns(bestInteraction);  // insert columns using RMA solutions
 
           solveRMP();       // solve the updated RMP
 
@@ -445,11 +478,14 @@ namespace boosting {
     if ( (isPebblRMA() && isInitGuess()) || !isPebblRMA() )
       vecGRMAObjVal.resize(getNumIterations());
 
+    // Also resize the memory for the interactions
+    vecInteractions.resize(getNumIterations());
+
   }  // end resetVecRMAObjVals function
 
 
   // set vecERMAObjVal and vecGRMAObjVal for current iteration
-  void Boosting::setVecRMAObjVals() {
+  void Boosting::setVecRMAObjVals(int j) {
 
     // if PEBBL RMA is enabled
     if (isPebblRMA())
@@ -459,6 +495,9 @@ namespace boosting {
     // or PEBBL RMA is not enabled (GreedyRMA only)
     if ( (isPebblRMA() && isInitGuess()) || !isPebblRMA() )
       vecGRMAObjVal[curIter] = grma->getObjVal();
+
+    // Record interaction index as well
+    vecInteractions[curIter] = j;
 
   } // end setVecRMAObjVals function
 
