@@ -17,6 +17,7 @@ namespace arg {
   ArgBoost::ArgBoost():
 
     _isUseGurobi(false),
+    _rmaSolveMode("exact"),
     _isREPR(true),
     _numIterations(1),
     _exponentP(2),
@@ -63,6 +64,10 @@ namespace arg {
 
     create_categorized_parameter("isUseGurobi", _isUseGurobi, "<bool>",
         "false",	"whether or not to use Gurobi to solve the RMP", "REPR");
+
+    create_categorized_parameter("rmaSolveMode", _rmaSolveMode, "<string>",
+        "exact",	"Solve RMA by the greedy, hybrid, or exact approaches", 
+        "REPR");
 
     create_categorized_parameter("repr", _isREPR, "<bool>",
         "true",	"Run REPR", "REPR");

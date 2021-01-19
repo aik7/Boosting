@@ -105,6 +105,7 @@ mpirun -np 4 ./build/boosting <train_data_filename>
 | parameters      |      description                               | data type | range         | default value  |
 |-----------------|:-----------------------------------------------|:---------:|--------------:|---------------:|
 | numIterations   | the number of boosting iterations              | integer   | [0, infinity) | 1              |
+| rmaSolveMode   | Specify the apporach to solve the RMA subproblem.  (hybrid: coming soon)              | string   | {"exact", "greedy", "hybrid"} | "exact"      |
 | isUseGurobi     | Use Gurobi instead of CLP to solve the restricted master Problem (RMP). If you want to enable this option, you have to compile with Gurobi. | bool      | true or false | false          |
 | p               | the exponent of each observation's error variable in RMP | integer    | 1 or 2       | 1 for CLP; 2 for Gurobi |
 | c               | a penalty term for linear coefficients in RMP | double     | [0, infinity) | 1.0           |
@@ -120,7 +121,7 @@ mpirun -np 4 ./build/boosting <train_data_filename>
 
 * The following is an example command to run REPR using the parameters.
 ```
-./build/boosting --numIterations=10 --isUseGurobi=true --c=0.5 --e=0.5 <train_data_filename>
+./build/boosting --numIterations=10 --rmaSolveMode=greedy --c=0.5 --e=0.5 <train_data_filename>
 ```
 
 ## Output files

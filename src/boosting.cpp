@@ -21,12 +21,18 @@ namespace boosting {
     isRMAonly = false;     // is not RMA only
 
     setup(argc, argv);     // setup all paramaters from PEBBL
+    
+    if      (rmaSolveMode().compare("exact")==0)
+      _isPebblRMA = true;
+    else if (rmaSolveMode().compare("greedy")==0)
+      _isPebblRMA = false;
+    // TODO: add hybrid here
 
     setDataRMA(argc, argv);   // set Data RMA class object from SolveRMA class
 
     initMPI(argc, argv);
 
-    if (isPebblRMA()) 
+    if (isPebblRMA())
       setupPebblRMA(argc, argv);  // setup PEBBL RMA
 
     resetBoosting();                              // reset Boosting

@@ -29,6 +29,7 @@ namespace arg {
 
     // bool         isLPBoost()        const {return _isLPBoost;}
     bool         isUseGurobi()      const {return _isUseGurobi;}
+    string       rmaSolveMode()     const {return _rmaSolveMode;}
     bool         isREPR()           const {return _isREPR;}
     unsigned int getNumIterations() const {return _numIterations;}
     unsigned int getExponentP()     const {return _exponentP;}
@@ -82,6 +83,9 @@ namespace arg {
 
     // if this is true, use Gurobi to solve RMP else use CLP
     bool         _isUseGurobi;
+
+    // RMA solve mode can be greedy, hybrind, or exact
+    string       _rmaSolveMode;
 
     // if isREPR=true, run REPR; else, run LPBosot
     bool          _isREPR;
