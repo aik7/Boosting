@@ -72,8 +72,6 @@ namespace boosting {
 
     void setStandardizedData();
 
-    ////void discretizeData();
-    //// virtual void   resetMaster() = 0;
     virtual void setInitRMP() = 0;
 
     void         solveRMP();
@@ -120,7 +118,7 @@ namespace boosting {
     void   setOriginalBounds();
 
     // set PEBBL RMA solutions
-    void setPebblRMASolutions();
+    void   setPebblRMASolutions();
 
     // resize vecERMAObjVal and vecGRMAObjVal
     void   resetVecRMAObjVals();
@@ -140,12 +138,6 @@ namespace boosting {
     /************************ Checking methods ************************/
     bool checkDuplicateBoxes(vector<unsigned int> vecIntLower,
                              vector<unsigned int> vecIntUpper);
-
-    void checkObjValue(vector<DataXw> intData,
-                       vector<unsigned int> lower,
-                       vector<unsigned int> upper);
-
-    // void checkObjValue(const unsigned int &k, vector<DataXw> intData);	// double-check objevtive value for (a, b)
 
     /************************ Printing functions ************************/
 
@@ -182,16 +174,6 @@ namespace boosting {
     GreedyLevel greedyLevel;
 
   protected:
-
-    // // return the index for the training observation
-    // inline unsigned int idxTrain(const unsigned int &i) {
-    //   return data->vecTrainObsIdx[i];
-    // }
-    //
-    // // return the index for the testing observation
-    // inline unsigned int idxTest(const unsigned int &i) {
-    //   return data->vecTestObsIdx[i];
-    // }
 
     ///////////////////// Boosting variables /////////////////////
 
@@ -260,8 +242,11 @@ namespace boosting {
 
     ///////////////////// For RMA /////////////////////
 
-    BasicArray<pebbl::solution*>       s;   // PEBBL solution objects
-    BasicArray<pebblRMA::rmaSolution*> sl;  // PEBBL RMA solution objects
+    // a vector of PEBBL solution objects
+    BasicArray<pebbl::solution*>       vecPebblSols;
+
+    // a vector of PEBBL RMA solution objects
+    BasicArray<pebblRMA::rmaSolution*> vecPebblRMASols;
 
     // store lower and upper bound of rules (boxes) in integer and original values
     vector<vector<unsigned int> >    matIntLower;
@@ -297,24 +282,6 @@ namespace boosting {
     // (size: # of Boosting iterations)
     vector<double>          vecERMAObjVal;
     vector<double>          vecGRMAObjVal;
-
-    // TODO:: put this function somewhere else
-    string getDateTime() {
-
-      time_t rawtime;
-      struct tm * timeinfo;
-      char buffer[80];
-
-      time (&rawtime);
-      timeinfo = localtime(&rawtime);
-
-      strftime(buffer,sizeof(buffer),"%m%d%Y%H%M",timeinfo);
-      string str(buffer);
-
-      // cout << str;
-      return str;
-
-    } // end getDataTime function
 
   }; // end Boosting class
 

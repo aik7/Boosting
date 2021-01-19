@@ -21,7 +21,7 @@ namespace boosting {
     isRMAonly = false;     // is not RMA only
 
     setup(argc, argv);     // setup all paramaters from PEBBL
-    
+
     if      (rmaSolveMode().compare("exact")==0)
       _isPebblRMA = true;
     else if (rmaSolveMode().compare("greedy")==0)
@@ -57,7 +57,7 @@ namespace boosting {
 
     // creating a directory
     if (mkdir(charOutDir, 0777) != 0)
-        cerr << "Error :  " << strerror(errno) << endl;
+        cout << strerror(errno) << "\n";
     else
         cout << "\"" << outputDir() << "\" directory created\n";
 
@@ -529,13 +529,19 @@ namespace boosting {
   // setPebblRMASolutions
   void Boosting::setPebblRMASolutions() {
 
-    rma->getAllSolutions(s);
-    numBoxesIter = s.size();
-    sl.resize(numBoxesIter);
+    // PEBBL branching::getAllSolutions
+    // Do you need whichProcessor?
+    rma->getAllSolutions(vecPebblSols);
 
-    // for each boxes in current iteration
+    // set # of boxes inserting in this iteration
+    numBoxesIter = vecPebblSols.size();
+    vecPebblRMASols.resize(numBoxesIter);
+
+    // for each boxes in current iteration,
+    // dynamically downcast from a PEBBL solution object
+    // to a RMA solution object
     for (unsigned int k=0; k<numBoxesIter; ++k)
-      sl[k] = dynamic_cast<pebblRMA::rmaSolution*>(s[k]);
+      vecPebblRMASols[k] = dynamic_cast<pebblRMA::rmaSolution*>(vecPebblSols[k]);
 
   } // end setPebblRMASolutions function
 
@@ -586,8 +592,8 @@ namespace boosting {
       for (unsigned int l=0; l < numBoxesSoFar; ++l)
         for (unsigned int j=0; j<data->numAttrib; ++j) // for each attribute
           // if no duplicates boxes
-          if ( matIntLower[l][j] != vecIntLower[j]       // sl[k]->a[j]
-               || matIntUpper[l][j] != vecIntUpper[j] )  // sl[k]->b[j] )
+          if ( matIntLower[l][j] != vecIntLower[j]
+               || matIntUpper[l][j] != vecIntUpper[j] )
             return false;
 
       ucout << "Duplicate Solution Found!! \n" ;
@@ -597,36 +603,6 @@ namespace boosting {
     return true;
 
   } // end checkDuplicateBoxes function
-
-
-  // check objective value for the current lower and upper bounds
-  void Boosting::checkObjValue(vector<DataXw> intData,
-                               vector<unsigned int> lower,
-                               vector<unsigned int> upper) {
-
-    double totalWeights=0.0;
-
-    for (unsigned int i=0; i<data->numTrainObs; i++) { // for each training data
-
-      for (unsigned int j=0; j<data->numAttrib; ++j) { // for each feature
-
-        if ( (lower[j] <= intData[i].X[j])
-             && (intData[i].X[j] <= upper[j]) ) {
-
-          if (j==data->numAttrib-1)  // if this observation is covered by this solution
-            totalWeights += intData[i].w;   //dataWts[i];
-
-        } else break; // else go to the next observation
-
-      }  // end for each feature
-
-    }  // end for each training observation
-
-    ucout << "Check Objective Value: " << totalWeights << "\n";
-    ucout << "Check Lower Bound: " << lower ;
-    ucout << "Check Upper Bound: " << upper ;
-
-  } // end checkObjValue function
 
 
   // evalute the model each iteration

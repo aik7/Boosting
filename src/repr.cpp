@@ -413,10 +413,19 @@ namespace boosting {
       // 2nd argument: whether or not it is positive box variable
       // 3rd and 4th arguments: lower and upper bounds in integer value
       if (greedyLevel==EXACT) { // for PEEBL solution
-        // insertEachColumn(k, sl[k]->isPosIncumb, sl[k]->a, sl[k]->b);
-        insertEachColumn(k, rma->globalSol.isPosSol,
-                         rma->globalSol.a, rma->globalSol.b);
+
+        insertEachColumn(k, vecPebblRMASols[k]->isPosIncumb,
+                          vecPebblRMASols[k]->a, vecPebblRMASols[k]->b);
+
+        if (debug>=1)
+          checkObjValue(data->dataIntTrain,
+                        vecPebblRMASols[k]->a, vecPebblRMASols[k]->b);
+
+        // insertEachColumn(k, rma->globalSol.isPosSol,
+        //                  rma->globalSol.a, rma->globalSol.b);
+
       } else                    // for Greedy solution
+
         insertEachColumn(k, grma->isPostObjVal(),
                          grma->getLowerBounds(), grma->getUpperBounds());
 
@@ -426,8 +435,8 @@ namespace boosting {
     numCols        += numBoxesIter;
 
     if (greedyLevel==EXACT) // if PEEBL, dispose the solutions
-      for (unsigned int k=0; k<s.size(); ++k)
-        sl[k]->dispose();
+      for (unsigned int k=0; k<vecPebblRMASols.size(); ++k)
+        vecPebblRMASols[k]->dispose();
 
   } // end insertPebblColumns function
 
@@ -662,7 +671,7 @@ namespace boosting {
 
     ////////////// print dual variables ////////////////////
 
-    if(debug>=2) {
+    if (debug>=2) {
 
       cout << "/************** vecDualVars *************/";
 
