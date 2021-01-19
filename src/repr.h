@@ -13,10 +13,8 @@
 #include <deque>
 #include <map>
 
-#include "Time.h"
 #include "boosting.h"
 #include "utility.h"
-
 
 using namespace std;
 using namespace rma;
@@ -70,13 +68,14 @@ namespace boosting {
     /************************* Evaluating methods **************************/
 
     // evaluate the current model each observation
-    double evaluate(const bool& isTest, vector<DataXy> origData);
+    double evaluate(const bool& isTrain, const vector<DataXy> &origData,
+                    const deque<deque<bool> > &matIsCvdObsByBox);
 
     /************************* Printing methods **************************/
 
     void printRMPCheckInfo();  // restricted mater problem solution
     void printRMAInfo();       // print RMA problem info
-    //void printEachIterAllErrs() {}
+
     void printClpElements();  // print CLP elements
 
     /************* save a model ****************/

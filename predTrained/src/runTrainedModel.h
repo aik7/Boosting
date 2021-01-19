@@ -103,7 +103,7 @@ private:
   vector<vector<double> > matTestDataX;
 
   // Y values for testing (size: [# of observations])
-  vector<double >        vecTestDataY;
+  vector<double >         vecTestDataY;
 
   // a matrix includes info of whether or not
   // each observation is covered by each box
@@ -115,11 +115,11 @@ private:
   vector<vector<double> > matLower;
   vector<vector<double> > matUpper;
 
-  vector<double>          vecAvgX;  // avg of X
-  vector<double>          vecSdX;   // sd of X
-  double avgY, sdY;                 // avg and sd of Y
+  vector<double>          vecAvgX;   // avg of X
+  vector<double>          vecSdX;    // sd of X
+  double                  avgY, sdY; // avg and sd of Y
 
-  double mse;
+  double                  mse;       // MSE
 
 }; // end TrainedREPR class
 

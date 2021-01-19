@@ -17,6 +17,7 @@ namespace arg {
   ArgBoost::ArgBoost():
 
     _isUseGurobi(false),
+    _rmaSolveMode("exact"),
     _isREPR(true),
     _numIterations(1),
     _exponentP(2),
@@ -38,11 +39,18 @@ namespace arg {
     _numLimitedObs(getIntInf()),
     _maxBoundedSP(10000000),
 
-    _isEvalEachIter(false),
+    _isEvalEachIter(true),
     _isEvalFinalIter(false),
+
+    _outputDir("results"),
+
+    _isSaveErrors(true),
+    _isSavePredictions(true),
+    _isSaveAllRMASols(false),
     _isSaveWts(false),
-    _isSavePredictions(false),
-    _isSaveAllRMASols(true),
+
+    _isSaveModel(true),
+
     _isSaveClpMps(false),
 
     _isStandData(true)
@@ -56,6 +64,10 @@ namespace arg {
 
     create_categorized_parameter("isUseGurobi", _isUseGurobi, "<bool>",
         "false",	"whether or not to use Gurobi to solve the RMP", "REPR");
+
+    create_categorized_parameter("rmaSolveMode", _rmaSolveMode, "<string>",
+        "exact",	"Solve RMA by the greedy, hybrid, or exact approaches", 
+        "REPR");
 
     create_categorized_parameter("repr", _isREPR, "<bool>",
         "true",	"Run REPR", "REPR");
@@ -114,7 +126,7 @@ namespace arg {
     create_categorized_parameter("numLimitedObs", _numLimitedObs, "<unsigned>",
         "inf", "limit number of observations to use", "CrossValidation");
 
-  ///////////////////// Evaluation parameters /////////////////////
+    //////////////// Parameters for evaluation and saving //////////////
 
     create_categorized_parameter("isEvalEachIter", _isEvalEachIter, "<bool>",
         "true",	"Evaluate each iteration ", "Boosting");
@@ -122,15 +134,31 @@ namespace arg {
     create_categorized_parameter("isEvalFinalIter", _isEvalFinalIter, "<bool>",
         "false", "evaluate model in the final iteration ", "Boosting");
 
+    create_categorized_parameter("outputDir", _outputDir, "<string>",
+         "results", "Specify the output directory name",
+         "Boosting");
+
+    create_categorized_parameter("isSaveErrors", _isSaveErrors, "<bool>",
+         "false", "Wether or not to save MSE for each boosting iteration",
+         "Boosting");
+
+    create_categorized_parameter("isSavePredictions", _isSavePredictions,
+         "<bool>", "false",
+         "Wether or not to save predictions for this model", "Boosting");
+
+    create_categorized_parameter("isSaveAllRMASols", _isSaveAllRMASols,
+        "<bool>", "true",
+        "Save all RMA solutions for each boosting iteration ", "Boosting");
+
     create_categorized_parameter("isSaveWts", _isSaveWts, "<bool>",
          "false", "Wether or not to save weights for each boosting iteration ",
          "Boosting");
 
-    create_categorized_parameter("isSavePredictions", _isSavePredictions, "<bool>",
-         "false", "Write predictions for each model ", "Boosting");
+     create_categorized_parameter("isSaveModel", _isSaveModel, "<bool>",
+          "false", "Wether or not to save the trained boosting model",
+          "Boosting");
 
-    create_categorized_parameter("isSaveAllRMASols", _isSaveAllRMASols, "<bool>",
-        "true", "save all RMA solutions for each boosting iteration ", "Boosting");
+    /////////////////// Parameters for debugging //////////////////
 
     create_categorized_parameter("isSaveClpMps", _isSaveClpMps, "<bool>",
         "false", "save a CLP MPS file for each boosting iteration", "Boosting");
