@@ -30,8 +30,8 @@ git:
 install:
   - sh scripts/build.sh
   - sh scripts/build_gurobi.sh
-  - cd build; rm -rf *; cmake -DENABLE_GUROBI=false ..; cd ..
+  - cd build; rm -rf *; cmake -DENABLE_GUROBI=false ..
 
 script:
-  - ./build/boosting --numIterations=3 ./data/servo.data
-  - mpirun -np 2 ./build/boosting --numIterations=3 ./data/servo.data
+  - ./boosting --numIterations=3 ./data/servo.data
+  - mpirun -np 2 /boosting --numIterations=3 ./data/servo.data
