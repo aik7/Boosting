@@ -29,8 +29,10 @@ git:
 
 install:
   - sh scripts/build.sh
-  - sh scripts/build_gurobi.sh
 
 script:
   - ./build/boosting --numIterations=3 ./data/servo.data
   - mpirun -np 2 ./build/boosting --numIterations=3 ./data/servo.data
+
+install:
+  - sh scripts/build_gurobi.sh
