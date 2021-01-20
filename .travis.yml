@@ -2,7 +2,10 @@ sudo: required
 language: cpp
 
 os: linux
-dist: focal
+
+# Ubuntu 20.04 focal
+# Ubuntu 18.04 bionic
+dist: bionic
 compiler: gcc
 
 addons:
@@ -26,6 +29,7 @@ git:
 
 install:
   - sh scripts/build.sh
+  - sh scripts/build_gurobi.sh
 
 script:
   - ./build/boosting --numIterations=3 ./data/servo.data

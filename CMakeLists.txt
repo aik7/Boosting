@@ -63,16 +63,17 @@ if(ENABLE_GUROBI)
   MESSAGE(  STATUS "GUROBI enabled.")
   set(HAVE_GUROBI 1)
 
-  set(GUROBI_HOME "${GUROBI_HOME}")
-
+  # Option 2: download Gurobi in external directory
   if(GUROBI_HOME STREQUAL "")
     set(GUROBI_ROOT ${CMAKE_SOURCE_DIR}/external/gurobi/gurobi911)
+
+  # Option 1: already set GURROBI_HOME and GUROBI_LIBRARIES in the .bashrc files
   else()
-    set(GUROBI_ROOT ${GUROBI_HOME})
+    set(GUROBI_ROOT  $ENV{GUROBI_HOME}/..)
   endif()
 
-  set(GUROBI_INCLUDES ${GUROBI_ROOT}/linux64/src/cpp
-                      ${GUROBI_ROOT}/linux64/include )
+  set(GUROBI_INCLUDES ${GUROBI_ROOT}/linux64/include
+                      ${GUROBI_ROOT}/linux64/src)
   set(GUROBI_LIBRARIES ${GUROBI_ROOT}/linux64/lib/libgurobi_g++5.2.a
                        ${GUROBI_ROOT}/linux64/lib/libgurobi91.so)
   MESSAGE( STATUS "GUROBI include dir      : ${GUROBI_INCLUDES}" )

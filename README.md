@@ -57,21 +57,17 @@ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:<path_to_dir>/Boosting/external/coin/dis
 ### Compile with Gurobi
 
 #### Option 1:
-* If you want to download Gurobi and compile with Boosting,
+
+* If you already have Gurobi or you want to follow their installation instruction,
+  read [How to compile with Gurobi](https://github.com/aik7/Boosting/wiki/How-to-compile-with-Gurobi)
+
+#### Option 2:
+* If you want to download Gurobi at the `external` directory and compile with Boosting,
   you can run the following command in the Boosting main directory
-  to build Boosting along with PEBBL, RMA, Coin-OR CLP and Gurobi.
+  after running `sh scripts/build.sh` above
 ```
 sh scripts/build_gurobi.sh
 ```
-
-#### Option 2:
-
-* If you already have Gurobi Linux 9.1 version, run the following commands in the Boosting main directory by setting your GUROBI home directory `<gurobi_home_dir>`:
-  ```
-  mkdir build ; cd build; cmake -DENABLE_GUROBI=true -DGUROBI_HOME=<gurobi_home_dir> .. ; make
-  ```
-
-* If your Gurobi version is different, read [How to compile with Gurobi](https://github.com/aik7/Boosting/wiki/How-to-compile-with-Gurobi)
 
 
 #### Please set your Gurobi license
