@@ -64,7 +64,7 @@ if(ENABLE_GUROBI)
   set(HAVE_GUROBI 1)
 
   # Option 2: download Gurobi in external directory
-  if(GUROBI_HOME STREQUAL "")
+  if(NOT GUROBI_HOME)
     set(GUROBI_ROOT ${CMAKE_SOURCE_DIR}/external/gurobi/gurobi911)
 
   # Option 1: already set GURROBI_HOME and GUROBI_LIBRARIES in the .bashrc files
