@@ -50,6 +50,11 @@ git clone --recursive https://github.com/aik7/Boosting.git
 sh scripts/build.sh
 ```
 
+* Build in the debug mode
+```
+sh scripts/build.sh -b debug
+```
+
 * You may need to set `LD_LIBRARY_PATH` which can be in your `.bashrc` file
 ```
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:<path_to_dir>/Boosting/external/coin/dist/lib

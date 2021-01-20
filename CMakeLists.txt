@@ -35,7 +35,6 @@ set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 if (NOT CMAKE_BUILD_TYPE)
-  # set(CMAKE_BUILD_TYPE "Debug")
   set(CMAKE_BUILD_TYPE "Release")
 endif()
 
@@ -63,13 +62,13 @@ if(ENABLE_GUROBI)
   MESSAGE(  STATUS "GUROBI enabled.")
   set(HAVE_GUROBI 1)
 
-  # Option 2: download Gurobi in external directory
-  if(NOT GUROBI_HOME)
-    set(GUROBI_ROOT ${CMAKE_SOURCE_DIR}/external/gurobi/gurobi911)
-
   # Option 1: already set GURROBI_HOME and GUROBI_LIBRARIES in the .bashrc files
-  else()
+  if(EXISTS $ENV{GUROBI_HOME})
     set(GUROBI_ROOT  $ENV{GUROBI_HOME}/..)
+
+  # Option 2: download Gurobi in external directory
+  else()
+    set(GUROBI_ROOT ${CMAKE_SOURCE_DIR}/external/gurobi/gurobi911)
   endif()
 
   set(GUROBI_INCLUDES ${GUROBI_ROOT}/linux64/include

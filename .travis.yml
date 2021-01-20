@@ -1,35 +1,52 @@
 sudo: required
 language: cpp
 
-os: linux
-
-# Ubuntu 20.04 focal
 # Ubuntu 18.04 bionic
-dist: bionic
-compiler: gcc
+# Ubuntu 20.04 focal
 
-addons:
-  apt:
-    packages:
+matrix:
+  include:
+    - os: linux
+      dist: bionic
+      compiler: gcc
+      addons:
+        apt:
+          packages:
+            # OpenMPI
+            - openmpi-bin
+            - libopenmpi-dev
 
-      # OpenMPI
-      - openmpi-bin
-      - libopenmpi-dev
+            # fortran
+            - gfortran
 
-      # fortran
-      - gfortran
+             # math libraries
+            - libblas-dev
+            - liblapack-dev
 
-       # math libraries
-      - libblas-dev
-      - liblapack-dev
+    - os: linux
+      dist: focal
+      compiler: gcc
+      addons:
+        apt:
+          packages:
+            # OpenMPI
+            - openmpi-bin
+            - libopenmpi-dev
+
+            # fortran
+            - gfortran
+
+             # math libraries
+            - libblas-dev
+            - liblapack-dev
+
 
 # Handle git submodules
 git:
     submodules: true
 
 install:
-  - sh scripts/build.sh
-  - sh scripts/build_gurobi.sh
+  - sh scripts/build.sh -g gurobi
   - cd build; rm -rf *; cmake -DENABLE_GUROBI=false ..; make; cd ..
 
 script:
