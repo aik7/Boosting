@@ -30,7 +30,7 @@ git:
 install:
   - sh scripts/build.sh
   - sh scripts/build_gurobi.sh
-  - cd build; cmake -DENABLE_GUROBI=false ..; cd ..
+  - cd build; rm -rf *; cmake -DENABLE_GUROBI=false ..; cd ..
 
 script:
   - ./build/boosting --numIterations=3 ./data/servo.data
