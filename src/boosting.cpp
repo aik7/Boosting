@@ -33,7 +33,7 @@ namespace boosting {
     initMPI(argc, argv);
 
     if (isPebblRMA())
-      setupPebblRMA(argc, argv);  // setup PEBBL RMA
+      setupPebblRMA(argc, argv);  // set up PEBBL RMA
 
     resetBoosting();                              // reset Boosting
 
@@ -143,7 +143,7 @@ namespace boosting {
 
         // Start JE code for interactions (first, simple version)
         // Variable index -1 means a box with no variable interactions; 
-        // -2 means not set yet; anything else means an interaction with that variabel
+        // -2 means not set yet; anything else means an interaction with that variable
 
         int    bestInteraction = -2;     // Which interaction to select
         double bestScore       = -1.0;   // The reduced cost is E minus score
@@ -580,7 +580,7 @@ namespace boosting {
 
 
   // resize vecERMAObjVal and vecGRMAObjVal
-  void Boosting::resetVecRMAObjVals() {
+  void Boosting::resetVecRMAObjVals(int interaction) {
 
     // if PEBBL RMA is enabled
     if (isPebblRMA())
@@ -610,7 +610,7 @@ namespace boosting {
       vecGRMAObjVal[curIter] = grma->getObjVal();
 
     // Record interaction index as well
-    vecInteractions[curIter] = j;
+    vecInteractions[curIter] = interaction;
 
   } // end setVecRMAObjVals function
 

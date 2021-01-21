@@ -124,7 +124,7 @@ namespace boosting {
     void   resetVecRMAObjVals();
 
     // set vecERMAObjVal and vecGRMAObjVal for current iteration, along with interaction
-    void   setVecRMAObjVals(int j);   // j indicates the interaction
+    void   setVecRMAObjVals(int interaction = -1);   
 
     /************************ Evaluating methods ************************/
 
@@ -184,7 +184,7 @@ namespace boosting {
     unsigned int  numCols;    // # of variables / columns in the master problem
 
     unsigned int  numBoxesSoFar;  // # of total boxes entered so far
-    unsigned int  numBoxesIter;   // # of boxes entered in the current interaction
+    unsigned int  numBoxesIter;   // # of boxes entered in the current iteration
 
     int isStopCond;  // stopping condition
 

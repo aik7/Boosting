@@ -49,7 +49,7 @@ namespace boosting {
 
     /************************* insert columns **************************/
     // insert columns using PEBBL or Greedy RMA solutions
-    // The argument specifies and interaction, -1 meaning no interaction
+    // The argument specifies an interaction, -1 meaning no interaction
     void insertColumns(int interaction = -1);
 
     // insert columns using Greedy RMA solution
