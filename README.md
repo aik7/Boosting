@@ -55,7 +55,7 @@ sh scripts/build.sh
 sh scripts/build.sh -b debug
 ```
 
-* The debug mode only applies to only the Boosting cmake, If you want to compile RMA and PEBBL in the debug mode, you have to the RMA main direcotry, and run the following command:
+* The debug mode only applies to only the Boosting cmake, If you want to compile RMA and PEBBL in the debug mode, you have to the RMA main directory, and run the following command:
 ```
 sh scripts/build.sh -b debug
 ```
