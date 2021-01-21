@@ -51,4 +51,4 @@ install:
 
 script:
   - ./build/boosting --numIterations=3 ./data/servo.data
-  - mpirun -np 2 ./build/boosting --numIterations=3 ./data/servo.data
+  # - mpirun -np 2 ./build/boosting --numIterations=3 ./data/servo.data
