@@ -17,7 +17,7 @@ REPR is a prediction algorithm using linear regression with both linear and boxe
 ### You need to install
 * CMake (version >= 3.0)
 * C++ compiler (g++)
-* OpenMPI 2.1.1 (openmpi-bin, libopenmpi-dev)
+* OpenMPI 3.1 (openmpi-bin, libopenmpi-dev)
 * Fortran compiler (gfortran)
 * BLAS and LAPACK packages (libblas-dev, liblapack-dev)
 
@@ -50,7 +50,12 @@ git clone --recursive https://github.com/aik7/Boosting.git
 sh scripts/build.sh
 ```
 
-* Build in the debug mode
+* Build Boosting in the debug mode
+```
+sh scripts/build.sh -b debug
+```
+
+* The debug mode only applies to only the Boosting cmake, If you want to compile RMA and PEBBL in the debug mode, you have to the RMA main direcotry, and run the following command:
 ```
 sh scripts/build.sh -b debug
 ```
@@ -69,11 +74,9 @@ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:<path_to_dir>/Boosting/external/coin/dis
 #### Option 2:
 * If you want to download Gurobi at the `external` directory and compile with Boosting,
   you can run the following command in the Boosting main directory
-  after running `sh scripts/build.sh` above
 ```
-sh scripts/build_gurobi.sh
+sh scripts/build.sh -g gurobi
 ```
-
 
 #### Please set your Gurobi license
 

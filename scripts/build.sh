@@ -47,8 +47,9 @@ sh scripts/build.sh
 if [ -d ${BOOSTING_EXT_DIR}"/coin" ]; then
   echo "DIRECTORY ${BOOSTING_EXT_DIR}/coin EXITS"
 else
+  cd ${BOOSTING_EXT_DIR}
   # Build Coin-OR CLP
-  sh ${BOOSTING_EXT_DIR}/build_clp.sh
+  sh build_clp.sh
 fi
 
 
@@ -57,7 +58,8 @@ if [ -d "${GUROBI_HOME}" ]; then
   echo "Using GUROBI_HOME specified in bahsrc"
 # else if gurobi option is enabled and gurobi folder is empty, download gurobi
 elif [ "${gurobi_option}" = "gurobi" ]  && [ -d ${BOOSTING_EXT_DIR}"/gurobi" ]; then
-  sh ${BOOSTING_EXT_DIR}/build_gurobi.sh
+    cd ${BOOSTING_EXT_DIR}
+    sh build_gurobi.sh
 else
   echo "DIRECTORY ${BOOSTING_EXT_DIR}/gurobi EXITS"
 fi
