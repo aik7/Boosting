@@ -57,7 +57,7 @@ fi
 if [ -d "${GUROBI_HOME}" ]; then
   echo "Using GUROBI_HOME specified in bahsrc"
 # else if gurobi option is enabled and gurobi folder is empty, download gurobi
-elif [ "${gurobi_option}" = "gurobi" ]  && [ -d ${BOOSTING_EXT_DIR}"/gurobi" ]; then
+elif [ "${gurobi_option}" = "gurobi" ]  && [ ! -d ${BOOSTING_EXT_DIR}"/gurobi" ]; then
     cd ${BOOSTING_EXT_DIR}
     sh build_gurobi.sh
 else
