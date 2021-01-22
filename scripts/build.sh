@@ -7,17 +7,19 @@ export BOOSTING_EXT_DIR=${BOOSTING_DIR}"/external"
 
 
 # process the command line argument
-while getopts b:g: flag
+while getopts d:p:r:g: flag
 do
   case "${flag}" in
-    b) build_type=${OPTARG};;
+    d) debug_mode=${OPTARG};;
+    p) pebbl_build=${OPTARG};;
+    r) rma_build=${OPTARG};;
     g) gurobi_option=${OPTARG};;
   esac
 done
 
 
 # set CMAKE_BUILD_TYPE
-if [ "${build_type}" = "debug" ]; then
+if [ "${debug_mode}" = "true" ]; then
   export DEBUG_OPTION="-DCMAKE_BUILD_TYPE=Debug"
 else
   export DEBUG_OPTION="-DCMAKE_BUILD_TYPE=Release"
@@ -27,7 +29,7 @@ echo ${DEBUG_OPTION}
 
 
 # set Gurobi
-if [ "${gurobi_option}" = "gurobi" ]; then
+if [ "${gurobi_option}" = "true" ]; then
   export GUROBI_OPTIONS="-DENABLE_GUROBI=true"
 else
   export GUROBI_OPTIONS="-DENABLE_GUROBI=false"
@@ -37,10 +39,12 @@ echo ${GUROBI_OPTIONS}
 
 
 # build PEBBL and RMA
-cd ${BOOSTING_DIR}"/external/RMA/"
-sh scripts/build.sh
-# Ai: decided not to pass the build type to RMA build since it takes time to rebuild
-# sh scripts/build.sh -b ${build_type}
+if [ "${rma_build}" = "false" ]; then
+  echo "NOT BUILDING RMA and PEBBL"
+else
+  cd ${BOOSTING_DIR}"/external/RMA/"
+  sh scripts/build.sh -d ${debug_mode} -p ${pebbl_build}
+fi
 
 
 # Build Coin-OR CLP if it does not exits
@@ -57,7 +61,7 @@ fi
 if [ -d "${GUROBI_HOME}" ]; then
   echo "Using GUROBI_HOME specified in bahsrc"
 # else if gurobi option is enabled and gurobi folder is empty, download gurobi
-elif [ "${gurobi_option}" = "gurobi" ]  && [ ! -d ${BOOSTING_EXT_DIR}"/gurobi" ]; then
+elif [ "${gurobi_option}" = "true" ]  && [ ! -d ${BOOSTING_EXT_DIR}"/gurobi" ]; then
     cd ${BOOSTING_EXT_DIR}
     sh build_gurobi.sh
 else

@@ -57,7 +57,7 @@ sh scripts/build.sh -b debug
 
 * The debug mode only applies to only the Boosting cmake, If you want to compile RMA and PEBBL in the debug mode, you have to the RMA main direcotry, and run the following command:
 ```
-sh scripts/build.sh -b debug
+sh scripts/build.sh -d true
 ```
 
 * You may need to set `LD_LIBRARY_PATH` which can be in your `.bashrc` file
@@ -75,11 +75,13 @@ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:<path_to_dir>/Boosting/external/coin/dis
 * If you want to download Gurobi at the `external` directory and compile with Boosting,
   you can run the following command in the Boosting main directory
 ```
-sh scripts/build.sh -g gurobi
+sh scripts/build.sh -g true
 ```
 
 #### Please set your Gurobi license
 
+### More about the build script
+[How to use scrips/build.sh](https://github.com/aik7/Boosting/wiki/How-to-use-scripts-build.sh)
 
 ## Example run commands:
 
