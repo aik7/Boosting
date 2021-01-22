@@ -121,7 +121,7 @@ namespace boosting {
     void   setPebblRMASolutions();
 
     // resize vecERMAObjVal and vecGRMAObjVal
-    void   resetVecRMAObjVals();
+    void   resetVecRMAObjVals(int interaction = -1);
 
     // set vecERMAObjVal and vecGRMAObjVal for current iteration, along with interaction
     void   setVecRMAObjVals(int interaction = -1);   

@@ -149,15 +149,18 @@ namespace boosting {
         double bestScore       = -1.0;   // The reduced cost is E minus score
                                          // Negative value will be overwritten the
                                          // first time through the j loop below
-        for (int j = -1; j < (int) numAttrib; j++)
+        for (int j = -1; j < (int) data->numAttrib; j++)
         {
           // Don't bother with interactions with (essentially) binary variables
-          if (j == -1 || data->vecNumDistVals[j] > 2)
+          if (j == -1 ) //DBG || data->vecNumDistVals[j] > 2)
           {
-            if (j < 0)
-              cout << "No interaction\n";
-            else
-              cout << "Interaction with variable " << j << endl;
+            if (debug >= 1)
+            {
+              if (j < 0)
+                cout << "\nNo interaction\n";
+              else
+                cout << "\nInteraction with variable " << j << endl;
+            }
             setWeights(j);
             solveRMA();
             double thisScore = rma->getSolution()->value;
@@ -171,11 +174,14 @@ namespace boosting {
           }
         }
 
-        if (bestInteraction < 0)
-          cout << "Best option has no interaction\n";
-        else 
-          cout << "Best interaction with variable " << bestInteraction << endl;
-        cout << "Score is " << bestScore << endl;
+        if (debug >= 1)
+        {
+          if (bestInteraction < 0)
+            cout << "Best option has no interaction\n";
+          else 
+            cout << "Best interaction with variable " << bestInteraction << endl;
+          cout << "Score is " << bestScore << endl;
+        } 
 
         if (ROOTPROC) { // if root process
 
@@ -598,7 +604,7 @@ namespace boosting {
 
 
   // set vecERMAObjVal and vecGRMAObjVal for current iteration
-  void Boosting::setVecRMAObjVals(int j) {
+  void Boosting::setVecRMAObjVals(int interaction) {
 
     // if PEBBL RMA is enabled
     if (isPebblRMA())

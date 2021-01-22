@@ -340,13 +340,14 @@ namespace boosting {
 
     if (ROOTPROC) { // if root process
 
+      unsigned int numTrainObs = data->numTrainObs;
       // assign a weight for each observation ($/mu-/nu$, dual variables)
-      for (unsigned int i=0; i < numObs ; ++i) // for each observation
+      for (unsigned int i=0; i < numTrainObs ; ++i) // for each observation
       {
-        double weightAdjust = 1.0;
+        double weight = vecDualVars[i] - vecDualVars[numTrainObs+i];
         if (interaction >= 0)
-          weightAdjust = data->dataStandTrain[i].X[interaction];
-        data->dataIntTrain[i].w = weightAdjust*(vecDualVars[i] - vecDualVars[numObs+i]);
+          weight *= data->dataStandTrain[i].X[interaction];
+        data->dataIntTrain[i].w = weight;
       }
 
     } // end if root process
@@ -477,12 +478,12 @@ namespace boosting {
 
     // matIsCvdObsByBox[numBoxesSoFar+k].resize(data->numTrainObs);
 
-    for (unsigned int i = 0; i < numObs; ++i)
+    for (unsigned int i = 0; i < data->numTrainObs; ++i)
     { // for each observation
 
       double coef = 0.0;   // If not covered, column elements for this obs are zero
 
-      if (matIsCvdObsByBox[numBoxesSoFar+k][i])              // If covered
+      if (matIsCvdObsByBoxTrain[numBoxesSoFar+k][i])              // If covered
       {
         coef = vecIsObjValPos[numBoxesSoFar+k] ? 1.0 : -1.0; // Then +/- 1
         if (interaction >= 0)
@@ -507,23 +508,37 @@ namespace boosting {
 
 #ifdef HAVE_GUROBI
 
-  void REPR::insertColumnGurobiModel(const unsigned int &k, int interaction) {
-
+  void REPR::insertColumnGurobiModel(const unsigned int &k, int interaction)
+  {
     // add columns using GUROBI
     col.clear();
     constr = modelGrb.getConstrs();
 
-    for (unsigned int i = 0; i < numObs; ++i) 
-    { // for each observation
+    if (debug >= 2)
+    {
+      cout << "Adding column for rule ";
+      if (interaction >=0)
+        cout << "interacting with x" << interaction << std::endl;
+      else
+        cout << "without interaction\n";
+    } 
 
-      if (matIsCvdObsByBox[numBoxesSoFar+k][i])
+    unsigned int numTrainObs = data->numTrainObs;
+    double baseCoef = vecIsObjValPos[numBoxesSoFar+k] ? 1.0 : -1.0;
+    for (unsigned int i = 0; i < numTrainObs; ++i) 
+    { // for each observation
+      if (matIsCvdObsByBoxTrain[numBoxesSoFar+k][i])
       {
-         double coef = vecIsObjValPos[numBoxesSoFar+k] ? 1.0 : -1.0;
-         if (interaction >= 0)
-            coef *= data->dataStandTrain[i].X[interaction];
+        double coef = baseCoef;
+        if (interaction >= 0)
+          coef *= data->dataStandTrain[i].X[interaction];
         col.addTerm( coef, constr[i]);
-        col.addTerm(-coef, constr[i+numObs]);
+        col.addTerm(-coef, constr[i+numTrainObs]);
+        if (debug >= 2)
+          cout << "Observation "  << i << " coefs are " << coef 
+               << " " << -coef << std::endl;
       }
+    }
 
     // insert column
     // lower and upper bounds of this column variable = {0.0, GRB_INFINITY}
