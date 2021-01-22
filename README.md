@@ -49,16 +49,17 @@ git clone --recursive https://github.com/aik7/Boosting.git
 ```
 sh scripts/build.sh
 ```
-
+<!---
 * Build Boosting in the debug mode
 ```
 sh scripts/build.sh -b debug
 ```
 
-* The debug mode only applies to only the Boosting cmake, If you want to compile RMA and PEBBL in the debug mode, you have to the RMA main direcotry, and run the following command:
+* The above invocation applies debug mode only the Boosting package.  If you also want to compile RMA and PEBBL in debug mode, enter the external/RMA directory, and run the following command:
 ```
 sh scripts/build.sh -d true
 ```
+--->
 
 * You may need to set `LD_LIBRARY_PATH` which can be in your `.bashrc` file
 ```
@@ -81,7 +82,7 @@ sh scripts/build.sh -g true
 #### Please set your Gurobi license
 
 ### More about the build script
-[How to use scrips/build.sh](https://github.com/aik7/Boosting/wiki/How-to-use-scripts-build.sh)
+[How to use scrips/build.sh](https://github.com/aik7/Boosting/wiki/How-to-use-the-build.sh-script-in-the-scripts-directory)
 
 ## Example run commands:
 
