@@ -117,6 +117,7 @@ mpirun -np 4 ./build/boosting <train_data_filename>
 | p               | the exponent of each observation's error variable in RMP | integer    | 1 or 2       | 1 for CLP; 2 for Gurobi |
 | c               | a penalty term for linear coefficients in RMP | double     | [0, infinity) | 1.0           |
 | e               | a penalty term for rule coefficients in RMP | double     | [0, infinity) | 1.0           |
+| tolStopCond     | a tolerance value for the stopping condition | double     | [0, infinity) | 1e-10         |
 | isEvalEachIter  | whether or not to evaluate the current REPR model using MSE in each boosting iteration | bool      | true or false | true           |
 | outputDir     | Specify the output directory name where all output files will be saved | string      |  NA   | "results"          |
 | isSaveModel     | whether or not to save the trained boosting model using MSE in each boosting iteration | bool      | true or false | true           |

@@ -633,7 +633,7 @@ namespace boosting {
   // print curret iteration, testing and testing errors
   void Boosting::printBoostingErr() {
     ucout << "Iter: " << curIter;
-    ucout << "\tTrainMSE: " << errTrain;
+    ucout << "\tTrainMSE: " << fixed << setprecision(6) << errTrain;
     if(data->numTestObs!=0) ucout << "\tTestMSE: "  << errTest;
     ucout << "\n";
   } // end printBoostingErr function

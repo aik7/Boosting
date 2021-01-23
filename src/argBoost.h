@@ -33,6 +33,7 @@ namespace arg {
     bool         isREPR()           const {return _isREPR;}
     unsigned int getNumIterations() const {return _numIterations;}
     unsigned int getExponentP()     const {return _exponentP;}
+    double       getTolStopCond()   const {return _tolStopCond;}
     bool         isPrintBoost()     const {return _isPrintBoost;}
 
     /////////////////// Parameters for LPBR class ///////////////////
@@ -95,6 +96,9 @@ namespace arg {
 
     // exponent of residuals
     unsigned int  _exponentP;
+
+    // a tolerance value for the stopping condition
+    double        _tolStopCond;
 
     // whether or not to print more details for boosting
     bool          _isPrintBoost;

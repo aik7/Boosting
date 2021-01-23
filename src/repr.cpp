@@ -373,7 +373,7 @@ namespace boosting {
 
     if (greedyLevel==EXACT) {  // if PEBBL RMA
       // if the incumbent is less tha E + threthold
-      if (rma->incumbentValue <= E ) {
+      if ( rma->incumbentValue <= E + getTolStopCond() ) {
         ucout << "PEBBL Stopping Condition!\n";
         return true;
       } // end if the stopping condition
