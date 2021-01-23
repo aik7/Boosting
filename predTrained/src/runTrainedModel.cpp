@@ -252,14 +252,14 @@ void TrainedREPR::setMatIsObsCovered() {
 
 
 void TrainedREPR::standerdizeX() {
-  for (unsigned int j=0; j<numAttrib; ++j)
-    for (unsigned int i=0; i<numObs; ++i)
+  for (unsigned int j=0; j<numAttrib; ++j) // for each attribute
+    for (unsigned int i=0; i<numObs; ++i)  // for each observation
       matTestDataX[i][j] = ( matTestDataX[i][j] - vecAvgX[j] ) / vecSdX[j];
 }
 
 
 void TrainedREPR::mapToOriginalY() {
-  for (unsigned int i=0; i<numObs; ++i)
+  for (unsigned int i=0; i<numObs; ++i) // for each observation
     vecPredY[i] = vecPredY[i] * sdY + avgY;
 }
 
@@ -297,7 +297,7 @@ void TrainedREPR::computeMSE() {
   //   cout << vecPredY[i] << " " << vecTestDataY[i] << "\n";
 
   mse = 0;
-  for (unsigned int i=0; i<numObs; ++i)
+  for (unsigned int i=0; i<numObs; ++i) // for each observation
     mse += pow(vecPredY[i] - vecTestDataY[i], 2);
 
   mse /= numObs;

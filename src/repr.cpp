@@ -642,7 +642,7 @@ namespace boosting {
       cout << "/************** vecPrimalVars *************/";
 
       // output the constant term
-      cout << "\nbias: " << vecPrimalVars[0];
+      cout << "\nbias: " << std::fixed << std::setprecision(6) << vecPrimalVars[0];
 
       cout << "\n\npositive coefficients_for_linear_variables:\n";
       // output the coefficients for the linear variables
@@ -809,7 +809,10 @@ namespace boosting {
     os << "\n\ncoefficients_for_box_variables:\n";
     // output the cofficeitns for the box variables
     for (i=0; i<numBoxesSoFar; ++i) // for each box
-      os <<  vecPrimalVars[1+2*data->numAttrib+data->numTrainObs+i] << " ";
+      if (vecIsObjValPos[i])
+        os <<   vecPrimalVars[1+2*data->numAttrib+data->numTrainObs+i] << " ";
+      else
+        os << - vecPrimalVars[1+2*data->numAttrib+data->numTrainObs+i] << " ";
 
     os << "\n\nthe_average_value_of_y_value: ";
     os << data->avgY;
