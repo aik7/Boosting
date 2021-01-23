@@ -34,6 +34,7 @@ namespace arg {
     unsigned int getNumIterations() const {return _numIterations;}
     unsigned int getExponentP()     const {return _exponentP;}
     bool         isPrintBoost()     const {return _isPrintBoost;}
+    bool         useInteractions()  const {return _useInteractions;}
 
     /////////////////// Parameters for LPBR class ///////////////////
 
@@ -50,6 +51,7 @@ namespace arg {
     double getCoefficientC() const {return _coeffC;}
     double getCoefficientE() const {return _coeffE;}
     double getCoefficientF() const {return _coeffF;}
+    double getCoefficientG() const {return _coeffG;}  // Penalty for interactions
 
     /////////// Parameters for Greedy level of pricing problems ///////////////
 
@@ -99,6 +101,9 @@ namespace arg {
     // whether or not to print more details for boosting
     bool          _isPrintBoost;
 
+    // whether or not to use rule-variable interactions;
+    bool          _useInteractions;
+
     /////////////////// Parameters for LPBoost class ///////////////////
 
     double _coeffD;	  // coefficients parameters
@@ -114,6 +119,7 @@ namespace arg {
     double _coeffC;  // coefficients parameters
     double _coeffE;  // coefficients parameters
     double _coeffF;  // coefficients parameters
+    double _coeffG;  // penalty coefficient for interactions
 
     //////////// Parameters for Greedy level of pricing problems /////////////
 

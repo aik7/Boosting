@@ -22,6 +22,7 @@ namespace arg {
     _numIterations(1),
     _exponentP(2),
     _isPrintBoost(false),
+    _useInteractions(false),
 
     _coeffD(0.5),
     _nu(.5),
@@ -34,6 +35,7 @@ namespace arg {
     _coeffC(1),
     _coeffE(1),
     _coeffF(0),
+    _coeffG(2*_coeffE),              // Interactions
 
     _isSeqCoverValue(false),
     _numLimitedObs(getIntInf()),
@@ -85,6 +87,9 @@ namespace arg {
     create_categorized_parameter("isPrintBoost", _isPrintBoost, "<bool>", "false",
       "print out more details to cehck boosting procedures", "Boosting");
 
+    create_categorized_parameter("useInteractions", _useInteractions, "<bool>",
+        "false", "whether to use rule-variable interactions", "Boosting");
+
   ///////////////////// LPBoost parameters /////////////////////
 
     create_categorized_parameter("d", _coeffD, "<double>",
@@ -118,6 +123,9 @@ namespace arg {
 
     create_categorized_parameter("f", _coeffF, "<double>",
         "1.0", "coefficient F", "REPR");
+
+    create_categorized_parameter("g", _coeffG, "<double>",
+        "2.0", "coefficient G (penalty on rule-variable interactions", "REPR");
 
     create_categorized_parameter("isSeqCoverValue", _isSeqCoverValue, "<bool>",
         "false",	"Weighted Sequential Coering for Value ",

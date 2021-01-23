@@ -146,15 +146,18 @@ namespace boosting {
         // -2 means not set yet; anything else means an interaction with that variable
 
         int    bestInteraction = -2;     // Which interaction to select
-        double bestScore       = -1.0;   // The reduced cost is E minus score
-                                         // Negative value will be overwritten the
-                                         // first time through the j loop below
-        for (int j = -1; j < (int) data->numAttrib; j++)
+
+        // Best reduced cost starts at +infinity
+        bestRC = std::numeric_limits<double>::infinity();
+
+        // If interactions are off, the following loop will execute for j = -1 only
+        int loopLimit = useInteractions()*((int) data->numAttrib);
+        for (int j = -1; j < loopLimit; j++)
         {
           // Don't bother with interactions with (essentially) binary variables
           if (j == -1 ) //DBG || data->vecNumDistVals[j] > 2)
           {
-            if (debug >= 1)
+            if (debug >= 1 && useInteractions())
             {
               if (j < 0)
                 cout << "\nNo interaction\n";
@@ -163,24 +166,26 @@ namespace boosting {
             }
             setWeights(j);
             solveRMA();
-            double thisScore = rma->getSolution()->value;
-            if (thisScore > bestScore)
+
+            // E is the penalty for simple rules, while G is the penalty for interactions
+            double thisRC = computeReducedCost(j);
+            if (thisRC < bestRC)
             {
               bestInteraction = j;
-              bestScore       = thisScore;
+              bestRC          = thisRC;
               if (greedyLevel==EXACT)        // Not sure if greedy will still work here
                 setPebblRMASolutions();
             }
           }
         }
 
-        if (debug >= 1)
+        if (debug >= 1 && useInteractions())
         {
           if (bestInteraction < 0)
             cout << "Best option has no interaction\n";
           else 
             cout << "Best interaction with variable " << bestInteraction << endl;
-          cout << "Score is " << bestScore << endl;
+          cout << "Reduced cost is " << bestRC << endl;
         } 
 
         if (ROOTPROC) { // if root process

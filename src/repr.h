@@ -47,6 +47,14 @@ namespace boosting {
 
     bool isStoppingCondition();    // whether or not stopping condition
 
+    // Compute reduced cost for rule in the rma object, interacting with variable
+    // j (which is -1 for no interaction)
+
+    double computeReducedCost(int j)
+    {
+        return (j < 0 ? E : G) - rma->getSolution()->value ;
+    }
+
     /************************* insert columns **************************/
     // insert columns using PEBBL or Greedy RMA solutions
     // The argument specifies an interaction, -1 meaning no interaction
@@ -73,7 +81,7 @@ namespace boosting {
 
     /************************* Printing methods **************************/
 
-    void printRMPCheckInfo();  // restricted mater problem solution
+    void printRMPCheckInfo();  // restricted master problem solution
     void printRMAInfo();       // print RMA problem info
 
     void printClpElements();  // print CLP elements
@@ -86,6 +94,7 @@ namespace boosting {
     // parameters for REPR
     unsigned int P;              // the exponent P for the REPR model
     double C, E, D, F;  // coefficients C, E, D, F for the REPR model
+    double G;           // coefficient G (penalty for interactions) in the REPR model
 
   };  // end REPR class
 

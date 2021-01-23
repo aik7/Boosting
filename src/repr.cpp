@@ -15,6 +15,7 @@ namespace boosting {
     D = 0; //getCoefficientD();
     E = getCoefficientE();
     F = 0; //getCoefficientF();
+    G = getCoefficientF();
   } // end setBoostingParameters function
 
 
@@ -378,8 +379,8 @@ namespace boosting {
   bool REPR::isStoppingCondition() {
 
     if (greedyLevel==EXACT) {  // if PEBBL RMA
-      // if the incumbent is less tha E + threthold
-      if (rma->incumbentValue <= E ) {
+      // if the incumbent is less than E + threshold
+      if (bestRC >= 0 ) {
         ucout << "PEBBL Stopping Condition!\n";
         return true;
       } // end if the stopping condition
@@ -501,7 +502,8 @@ namespace boosting {
     // columnInsert: column values to insert,
     // lower and upper bounds of this column variable = {0, COIN_DBL_MAX},
     // objective coefficient = {E})
-    modelClp.addColumn(numRows, colIndex, columnInsert, 0.0, COIN_DBL_MAX, E);
+    double objCoef = (interaction < 0 ? E : G);
+    modelClp.addColumn(numRows, colIndex, columnInsert, 0.0, COIN_DBL_MAX, objCoef);
 
   } // end insertColumnClpModel function
 
@@ -544,7 +546,8 @@ namespace boosting {
     // lower and upper bounds of this column variable = {0.0, GRB_INFINITY}
     // coefficient of the objective = {E}
     // inserting the column in the constraint = {col}
-    modelGrb.addVar(0.0, GRB_INFINITY, E, GRB_CONTINUOUS, col);
+    double objCoef = (interaction < 0 ? E : G);
+    modelGrb.addVar(0.0, GRB_INFINITY, objCoef, GRB_CONTINUOUS);
 
   } // end insertColumnGurobiModel function
 

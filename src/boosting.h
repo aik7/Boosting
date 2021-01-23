@@ -66,6 +66,14 @@ namespace boosting {
 
     virtual void setBoostingParameters() = 0;
 
+    // Method for computing reduced cost of the rule corresponding
+    // to the RMA object, with in interaction with variable j
+    // (j = -1) means no interaction
+    virtual double computeReducedCost(int j = -1) 
+    {
+        return (j < 0 ? getCoefficientE() : getCoefficientG()) - rma->getSolution()->value;
+    };
+
     //////////////////////// training data //////////////////////////////
     void train(const unsigned int& iter, // const bool& isOuter,
                const unsigned int & greedyLevel);
@@ -187,6 +195,8 @@ namespace boosting {
     unsigned int  numBoxesIter;   // # of boxes entered in the current iteration
 
     int isStopCond;  // stopping condition
+
+    double bestRC;   // Best reduced cost found on this loop
 
     ///////////////////// CLP variables /////////////////////
     ClpSimplex       modelClp;   // CLP model
