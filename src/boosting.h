@@ -186,7 +186,7 @@ namespace boosting {
     unsigned int  numBoxesSoFar;  // # of total boxes entered so far
     unsigned int  numBoxesIter;   // # of boxes entered in the current interaction
 
-    int isStopCond;  // stopping condition
+    bool isStopCond;  // stopping condition
 
     ///////////////////// CLP variables /////////////////////
     ClpSimplex       modelClp;   // CLP model

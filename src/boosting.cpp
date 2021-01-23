@@ -155,13 +155,16 @@ namespace boosting {
           // save Greedy and/or Exact RMA solutions in a file
           if (isSaveAllRMASols())    setVecRMAObjVals();
 
-          if (isStoppingCondition()) isStopCond = 1;
+          isStopCond = isStoppingCondition();
 
         } // end if root process
 
         setStoppingCondition();
 
-        if (isStopCond==1) break;
+        if (isStopCond) {
+          if (ROOTPROC && isEvalEachIter()) evaluateModel();
+          break;
+        }
 
         if (ROOTPROC) { // if root process
 

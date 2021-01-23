@@ -594,9 +594,11 @@ namespace boosting {
       expY = data->avgY + expY * data->sdY;
       actY = origData[i].y;                  // actual y value
 
-      // if isSavePred is enabled and the last column generation iteration
+      // if isSavePred is enabled and
+      //    ( the last column generation iteration
+      //      or after hitting the stopping condition)
       // save prediction for each observation
-      if ( isSavePred() && (curIter==getNumIterations()) ) {
+      if ( isSavePred() && ( (curIter==getNumIterations()) || isStopCond ) ) {
         if (isTrain) vecPredTrain[i] = expY;
         else         vecPredTest[i]  = expY;
       }
