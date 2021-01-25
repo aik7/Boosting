@@ -126,7 +126,7 @@ namespace boosting {
 
     modelGrb.setObjective(obj); // optimization sense = None, minimization
     modelGrb.update();
-    modelGrb.write("master.lp");
+    // modelGrb.write("master.lp");
     modelGrb.getEnv().set(GRB_IntParam_OutputFlag, 0);  // not to print out GUROBI
 
   } // end setGruobiRMP function
